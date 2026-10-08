@@ -386,7 +386,8 @@ function goFullscreen(on = true) {
     if (on && !document.fullscreenElement) {
       const req = el.requestFullscreen || el.webkitRequestFullscreen;
       const p = req && req.call(el, { navigationUI: 'hide' });
-      if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+      if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {}))
+        .catch(() => ui.banner('Full screen blocked', 'Tip: browser menu > Add to Home screen'));
     } else if (!on && document.fullscreenElement) document.exitFullscreen?.();
   } catch {}
 }
@@ -808,6 +809,14 @@ function updateHud(frac) {
   mk[0].style.left = `calc(${50 - d}% - 3px)`;
   mk[1].style.left = `calc(${50 + d}% - 3px)`;
 }
+
+// Always-fresh files + offline copy (only on the real website, not when opened from a file)
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+// Show which version is loaded, so it's easy to tell whether a phone has the latest
+try {
+  const d = new Date(document.lastModified);
+  if (!isNaN(d)) $('ver').textContent = 'Updated ' + d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+} catch {}
 
 // ---- Boot ---------------------------------------------------------------------------------------------
 makeScene(0);

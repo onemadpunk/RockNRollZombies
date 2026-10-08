@@ -304,3 +304,5 @@ h3.sub { margin: 4px 0 0; }
   .ctl { font-size: 11px; }
   .ctl th, .ctl td { padding: 3px 6px; }
 }
+
+.ver { position: fixed; right: 10px; bottom: 6px; margin: 0; font-size: 10px; color: var(--dim); opacity: .7; }
