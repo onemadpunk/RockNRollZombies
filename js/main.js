@@ -264,40 +264,32 @@ async function renderScores() {
   catch { $('score-note').textContent = "Couldn't reach the world scoreboard. Showing this device."; fillScores(localRows()); }
 }
 
-// ---- Arcade initials: up/down change a letter, left/right move, Enter saves ---------------
-const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';
-const initials = { letters: ['A', 'A', 'A'], cur: 0 };
-try { const last = localStorage.getItem('rnrz-initials'); if (last && last.length === 3) initials.letters = last.split(''); } catch {}
-function drawInitials() {
-  for (const slot of $('initials').children) {
-    const i = +slot.dataset.i;
-    slot.querySelector('span').textContent = initials.letters[i] === ' ' ? '_' : initials.letters[i];
-    slot.classList.toggle('cur', i === initials.cur);
-  }
+// ---- Player name: up to 12 letters, numbers, spaces and . _ - ' ! -------------------------------
+const NAME_OK = /[^A-Za-z0-9 ._'!-]/g;
+// A short list of words kept off a board kids will see. Not exhaustive; the owner can delete rows in Supabase.
+const RUDE = ['fuck', 'shit', 'cunt', 'bitch', 'dick', 'cock', 'piss', 'twat', 'wank', 'slut', 'whore', 'nigg', 'fag', 'rape', 'nazi', 'porn', 'arse', 'bastard', 'bollock', 'prick'];
+const cleanName = (v) => v.replace(NAME_OK, '').replace(/\s+/g, ' ').trimStart().slice(0, 12);
+const rude = (v) => { const t = v.toLowerCase().replace(/[^a-z]/g, '').replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e'); return RUDE.some((w) => t.includes(w)); };
+let savedName = '';
+try { savedName = cleanName(localStorage.getItem('rnrz-name') || ''); } catch {}
+$('initials').value = savedName;
+$('initials').addEventListener('input', () => { const el = $('initials'); const c = cleanName(el.value); if (c !== el.value) el.value = c; });
+$('initials').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('hs').requestSubmit(); } });
+const myName = () => (cleanName($('initials').value).trim() || savedName || 'Punk');
+// Controller typing: up/down cycles the last letter, right adds a letter, left deletes, A saves.
+const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ';
+function padType(now, was) {
+  const el = $('initials');
+  let v = el.value || '';
+  if (!v) v = 'A';
+  const last = v.slice(-1), k = ABC.indexOf(last);
+  if (now.up && !was.up) v = v.slice(0, -1) + ABC[(k + 1 + ABC.length) % ABC.length];
+  if (now.down && !was.down) v = v.slice(0, -1) + ABC[(k - 1 + ABC.length) % ABC.length];
+  if (now.right && !was.right && v.length < 12) v += 'a';
+  if (now.left && !was.left) v = v.slice(0, -1);
+  el.value = v;
+  if (now.ok && !was.ok) $('hs').requestSubmit();
 }
-function bumpLetter(i, d) {
-  const k = ABC.indexOf(initials.letters[i]);
-  initials.letters[i] = ABC[(k + d + ABC.length) % ABC.length];
-  initials.cur = i; drawInitials(); music.sJump?.();
-}
-for (const slot of $('initials').children) {
-  const i = +slot.dataset.i;
-  slot.querySelector('.up').addEventListener('click', () => bumpLetter(i, 1));
-  slot.querySelector('.dn').addEventListener('click', () => bumpLetter(i, -1));
-  slot.querySelector('span').addEventListener('click', () => { initials.cur = i; drawInitials(); $('initials').focus(); });
-}
-$('initials').addEventListener('keydown', (e) => {
-  const k = e.key;
-  if (k === 'ArrowUp') bumpLetter(initials.cur, 1);
-  else if (k === 'ArrowDown') bumpLetter(initials.cur, -1);
-  else if (k === 'ArrowLeft') { initials.cur = Math.max(0, initials.cur - 1); drawInitials(); }
-  else if (k === 'ArrowRight') { initials.cur = Math.min(2, initials.cur + 1); drawInitials(); }
-  else if (k === 'Enter') $('hs').requestSubmit();
-  else if (k.length === 1 && ABC.includes(k.toUpperCase())) { initials.letters[initials.cur] = k.toUpperCase(); initials.cur = Math.min(2, initials.cur + 1); drawInitials(); }
-  else return;
-  e.preventDefault();
-});
-const myName = () => initials.letters.join('').trimEnd() || 'AAA';
 
 // ---- Share + challenge links (?challenge=ABC-12345 for score, ?race=ABC-1-8345 for a gig time in 1/100s) --
 const challenge = (() => {
@@ -305,8 +297,9 @@ const challenge = (() => {
     const q = new URLSearchParams(location.search);
     const c = q.get('challenge'), r = q.get('race');
     let m;
-    if (c && (m = /^([A-Z0-9_]{1,3})-(\d{1,9})$/i.exec(c))) return { kind: 'score', name: m[1].toUpperCase().replace(/_/g, ' '), score: +m[2] };
-    if (r && (m = /^([A-Z0-9_]{1,3})-(\d{1,2})-(\d{1,8})$/i.exec(r)) && LEVELS[+m[2] - 1]) return { kind: 'speed', name: m[1].toUpperCase().replace(/_/g, ' '), level: +m[2] - 1, time: +m[3] / 100 };
+    const nm = (x) => { const v = cleanName(decodeURIComponent(x).replace(/_/g, ' ')).trim(); return rude(v) ? 'A friend' : v; };
+    if (c && (m = /^(.{1,40})-(\d{1,9})$/.exec(c))) return { kind: 'score', name: nm(m[1]), score: +m[2] };
+    if (r && (m = /^(.{1,40})-(\d{1,2})-(\d{1,8})$/.exec(r)) && LEVELS[+m[2] - 1]) return { kind: 'speed', name: nm(m[1]), level: +m[2] - 1, time: +m[3] / 100 };
   } catch {}
   return null;
 })();
@@ -321,7 +314,7 @@ function showChallenge() {
 let shareInfo = null;   // set at the end of a gig
 function shareLink() {
   const base = location.protocol.startsWith('http') ? location.origin + location.pathname : 'https://rocknrollzombies.com/';
-  const who = myName().replace(/ /g, '_');
+  const who = encodeURIComponent(myName().replace(/ /g, '_'));
   return shareInfo.kind === 'speed'
     ? `${base}?race=${who}-${shareInfo.level + 1}-${Math.round(shareInfo.time * 100)}`
     : `${base}?challenge=${who}-${shareInfo.score}`;
@@ -508,9 +501,10 @@ async function offerSave(time) {
   const bits = [];
   if (localSpeed || worldSpeed) bits.push(`clear time ${fmtTime(time)}`);
   if (localScore || worldScore) bits.push(`score ${run.score.toLocaleString()}`);
-  $('hs-title').textContent = (worldScore || worldSpeed ? 'World top 20! ' : 'New best! ') + 'Enter your initials';
+  $('hs-title').textContent = (worldScore || worldSpeed ? 'World top 20! ' : 'New best! ') + 'Enter your name';
+  $('hs-pad').hidden = !(navigator.getGamepads && [...navigator.getGamepads()].some(Boolean));
   $('hs-where').textContent = `Saving your ${bits.join(' and ')}${online() ? ' to this device and the world scoreboard' : ' to this device'}.`;
-  drawInitials();
+  if (!$('initials').value) $('initials').value = savedName;
   show('hs', true);
   $('initials').focus();
 }
@@ -520,7 +514,9 @@ $('hs').addEventListener('submit', (e) => {
   const P = pending;
   if (!P || !P.flags) return;
   const name = myName();
-  try { localStorage.setItem('rnrz-initials', initials.letters.join('')); } catch {}
+  if (rude(name)) { $('hs-where').textContent = "Let's keep it friendly. Try another name."; $('initials').focus(); return; }
+  savedName = name;
+  try { localStorage.setItem('rnrz-name', name); } catch {}
   const hero = HEROES[sel.char].name.replace('The ', '');
   const base = { name, level: P.level + 1, diff: run.diffKey, hero };
   const F = P.flags;
@@ -639,11 +635,7 @@ function navPads() {
       const pw = padPrev['i' + p.index] || {};
       const pn = { up: b(12) || ay < -0.6, down: b(13) || ay > 0.6, left: b(14) || ax < -0.6, right: b(15) || ax > 0.6, ok: b(0) || b(9) };
       padPrev['i' + p.index] = pn;
-      if (pn.up && !pw.up) bumpLetter(initials.cur, 1);
-      if (pn.down && !pw.down) bumpLetter(initials.cur, -1);
-      if (pn.left && !pw.left) { initials.cur = Math.max(0, initials.cur - 1); drawInitials(); }
-      if (pn.right && !pw.right) { initials.cur = Math.min(2, initials.cur + 1); drawInitials(); }
-      if (pn.ok && !pw.ok) $('hs').requestSubmit();
+      padType(pn, pw);
       continue;
     }
     const screen = SCREENS.map((s) => $(s)).find((el) => !el.hidden);

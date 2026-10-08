@@ -163,12 +163,10 @@
     <div id="rank" hidden><div class="grade" id="grade">A</div><dl id="stats"></dl></div>
     <p id="unlock" class="unlock" hidden></p>
     <form id="hs" class="hs" hidden>
-      <p class="hs-title" id="hs-title">New high score! Enter your initials</p>
-      <div class="initials" id="initials" tabindex="0" aria-label="Initials: use up and down to change a letter, left and right to move, Enter to save">
-        <div class="slot" data-i="0"><button type="button" class="up" aria-label="Next letter">&#9650;</button><span>A</span><button type="button" class="dn" aria-label="Previous letter">&#9660;</button></div>
-        <div class="slot" data-i="1"><button type="button" class="up" aria-label="Next letter">&#9650;</button><span>A</span><button type="button" class="dn" aria-label="Previous letter">&#9660;</button></div>
-        <div class="slot" data-i="2"><button type="button" class="up" aria-label="Next letter">&#9650;</button><span>A</span><button type="button" class="dn" aria-label="Previous letter">&#9660;</button></div>
-      </div>
+      <p class="hs-title" id="hs-title">New high score! Enter your name</p>
+      <input id="initials" class="namebox" maxlength="12" autocomplete="nickname" autocapitalize="words" spellcheck="false"
+        enterkeyhint="done" placeholder="Your name" aria-label="Your name (up to 12 letters)">
+      <p class="tip" id="hs-pad" hidden>Controller: up/down changes the letter, right adds one, left deletes, A saves.</p>
       <p class="tip" id="hs-where"></p>
       <button class="btn small" id="hs-save">Save</button>
     </form>

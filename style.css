@@ -244,7 +244,13 @@ h3.sub { margin: 4px 0 0; }
 #bosscard .tg { font-family: var(--hud); font-size: clamp(12px, 1.5vw, 18px); color: var(--gold); margin-top: 6px; }
 @keyframes cardin { from { opacity: 0; translate: -40px 0; } }
 
-/* Arcade initials entry */
+/* Name entry */
+.namebox {
+  font-family: var(--hud); font-size: clamp(18px, 3vw, 28px); width: min(320px, 70vw); text-align: center;
+  padding: 8px 12px; background: #0c0a14; color: var(--ink); border: 3px solid var(--pink); outline: none; text-transform: none;
+}
+.namebox:focus { border-color: var(--toxic); box-shadow: 0 0 14px rgba(166,255,77,.35); }
+/* (old arcade initials) */
 .hs { flex-direction: column; }
 .hs-title { margin: 0; font-family: var(--hud); color: var(--gold); }
 .initials { display: flex; gap: 10px; outline: none; }

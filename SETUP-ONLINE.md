@@ -41,7 +41,7 @@ Whenever the game changes: open GitHub Desktop, write a short summary, click **C
 create table public.scores (
   id bigint generated always as identity primary key,
   kind text not null check (kind in ('score', 'speed')),
-  name text not null check (name ~ '^[A-Z0-9 ]{1,3}$'),
+  name text not null check (char_length(name) between 1 and 12 and name ~ '^[A-Za-z0-9 ._''!-]+$'),
   score integer not null default 0 check (score between 0 and 5000000),
   time_s numeric(8,2) check (time_s is null or time_s between 20 and 7200),
   level smallint not null check (level between 1 and 20),
