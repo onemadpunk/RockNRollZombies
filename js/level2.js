@@ -44,6 +44,11 @@ export const LEVEL2 = {
   headbangers: [72, 147],
   hands: [],
   throwers: [{ x: 53.5, y: 6.0, kind: 'barfly' }, { x: 75, y: 7.0, kind: 'barfly' }, { x: 139.5, y: 4.5, kind: 'barfly' }, { x: 188.5, y: 5.0, kind: 'barfly' }],
+  // Secret areas: shoot the cracked wall (its cracks glow on the beat), then Up at the door
+  secrets: [
+    { x: 38, theme: 'cellar', name: 'THE CELLAR', loot: ['gold', 'life', 'gold'] },
+    { x: 83.5, theme: 'staff', name: 'STAFF ONLY', loot: ['jacket', 'gold', 'flame'], guards: [['walker', 2], ['rat', 2]] },
+  ],
   checkpoint: 92,
   soundcheck: null,
   ambush: {

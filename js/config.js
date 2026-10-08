@@ -36,6 +36,7 @@ const DEFAULTS = {
   records: {},          // level index -> array of collected record ids
   scores: [],           // [{ name, score, level, diff, date }]
   times: {},            // level index -> [{ name, time, diff, hero }] fastest first
+  secrets: {},          // level index -> array of secret areas found
 };
 
 function load() {
@@ -49,6 +50,7 @@ function load() {
       records: s.records || {},
       scores: Array.isArray(s.scores) ? s.scores : [],
       times: s.times || {},
+      secrets: s.secrets || {},
     };
   } catch { return structuredClone(DEFAULTS); }
 }
@@ -65,6 +67,11 @@ export function unlockCharacter(id) {
 }
 export function unlockLevel(n) {
   if (save.unlocked.levels < n) { save.unlocked.levels = n; persist(); }
+}
+export function findSecret(level, id) {
+  const list = save.secrets[level] || (save.secrets[level] = []);
+  if (!list.includes(id)) { list.push(id); persist(); return true; }
+  return false;
 }
 export function collectRecord(level, id) {
   const list = save.records[level] || (save.records[level] = []);

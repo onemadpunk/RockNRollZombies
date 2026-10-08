@@ -215,6 +215,23 @@ export function sky(scene, r, { top = '#06050d', mid = '#191232', bottom = '#3b2
   };
 }
 
+// ---- Secret areas -------------------------------------------------------------------------
+// Each one: a cracked wall in the level (light leaks through the cracks on the beat) that you
+// shoot open, a door behind it, and a bonus room built off the left edge of the map.
+const SECRET_THEMES = {
+  crypt:      { facade: 0x6a6e80, facadeTex: 'stone', wall: 0x4d5163, wallTex: 'stone', floor: 0x3a3a44, floorTex: 'stone', accent: 0x9affd8, prop: 0x2a2228 },
+  bonecellar: { facade: 0x55586a, facadeTex: 'stone', wall: 0x3a3038, wallTex: 'rock', floor: 0x2a2420, floorTex: 'dirt', accent: 0xa6ff4d, prop: 0xe8dcc0 },
+  cellar:     { facade: 0x4a3a3a, facadeTex: 'brick', wall: 0x5a2e2a, wallTex: 'brick', floor: 0x3a2418, floorTex: 'wood', accent: 0xffb040, prop: 0x5a3a22 },
+  staff:      { facade: 0x5a2e2a, facadeTex: 'brick', wall: 0x3a3440, wallTex: 'brick', floor: 0x26262e, floorTex: 'concrete', accent: 0xff2e88, prop: 0x6a6e78 },
+  tent:       { facade: 0xd8c8a0, facadeTex: 'fabric', wall: 0xa83a3a, wallTex: 'fabric', floor: 0x5a4030, floorTex: 'wood', accent: 0xffc94a, prop: 0xff5aa8 },
+  lost:       { facade: 0x6a8a5a, facadeTex: 'fabric', wall: 0x3a5a8a, wallTex: 'fabric', floor: 0x2a3a1e, floorTex: 'grass', accent: 0xff8ac8, prop: 0x2a5ab0 },
+  kitchen:    { facade: 0x8a8a90, facadeTex: 'metal', wall: 0xd8d0c0, wallTex: 'concrete', floor: 0x3a3a40, floorTex: 'concrete', accent: 0xff4a4a, prop: 0xa82a2a },
+  tunnel:     { facade: 0x6a6460, facadeTex: 'concrete', wall: 0x6a6460, wallTex: 'concrete', floor: 0x26262a, floorTex: 'tarmac', accent: 0xffc94a, prop: 0x6a3a22 },
+  green:      { facade: 0x4a4048, facadeTex: 'concrete', wall: 0x2a5a3a, wallTex: 'concrete', floor: 0x2a2024, floorTex: 'wood', accent: 0xa6ff4d, prop: 0x141016 },
+  vault:      { facade: 0x2a2024, facadeTex: 'rock', wall: 0x2a2024, wallTex: 'rock', floor: 0x1a0806, floorTex: 'rock', accent: 0xff3a1a, prop: 0xffc94a },
+};
+const css = (hex) => '#' + hex.toString(16).padStart(6, '0');
+
 // ---- Gig set pieces --------------------------------------------------------------------------
 // A crowd silhouette: body, head, both arms up (horns!). Optional glowing eyes as a second group.
 function figureGeometry(eyes) {
@@ -403,6 +420,7 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
         beams.push({ g, cone, lamp, ph: i * 0.37, dir: i % 2 ? 1 : -1, sweep, opacity });
       });
     },
+    secretDoors: [],
     addLantern(p) {
       const l = new THREE.Mesh(GEO.box, lanternMat); l.scale.set(0.16, 0.28, 0.16); l.position.copy(p); scene.add(l);
       lanterns.push(p);
@@ -434,6 +452,10 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
         });
         c.mesh.instanceMatrix.needsUpdate = true;
       }
+      for (const d of api.secretDoors) {
+        if (!d.open) d.crackMat.emissiveIntensity = 0.12 + pulse * 0.9;   // a faint light leaking through the cracks, on the beat
+        d.frameMat.emissiveIntensity = 1.5 + pulse * 2;
+      }
       for (const b of beams) {
         // one full sweep every 4 beats; every other bar they cross over
         const bar = Math.floor(beat / 4) % 2;
@@ -447,5 +469,72 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
       }
     },
   };
+  // ---- Secret areas (built last so they can use addLantern) ----
+  const R = new Batch();
+  api.secretDoors = (L.secrets || []).map((sd, k) => {
+    const T = SECRET_THEMES[sd.theme];
+    const y = sd.y || 0;
+    const Mt = (c, tex, scale = 2, amt = 1) => surface(new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }), tex, scale, amt);
+    const glow = (c, i = 1.5) => new THREE.MeshStandardMaterial({ color: 0x000000, emissive: c, emissiveIntensity: i });
+    // The cracked wall: looks like scenery, but the cracks glow
+    const facade = new THREE.Group();
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.0, 0.5), Mt(T.facade, T.facadeTex, 2, 1.3));
+    slab.position.y = 1.5; slab.castShadow = slab.receiveShadow = true; facade.add(slab);
+    // a cap and a base so it reads as part of a building, not a slab on its own
+    for (const [w, h, yy] of [[2.8, 0.28, 3.12], [2.7, 0.2, 0.1]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.7), slab.material); b.position.y = yy; b.castShadow = b.receiveShadow = true; facade.add(b); }
+    const crackMat = glow(T.accent);
+    const crack = (pts) => {
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(0.04, Math.hypot(bx - ax, by - ay) + 0.03, 0.02), crackMat);
+        seg.position.set((ax + bx) / 2, (ay + by) / 2, 0.26); seg.rotation.z = -Math.atan2(bx - ax, by - ay);
+        facade.add(seg);
+      }
+    };
+    crack([[-0.15, 2.95], [0.2, 2.5], [-0.25, 2.05], [0.15, 1.55], [-0.1, 1.05], [0.25, 0.55], [0.05, 0.05]]);
+    crack([[0.2, 2.5], [0.75, 2.2], [1.05, 2.35]]);
+    crack([[-0.1, 1.05], [-0.65, 0.85], [-0.9, 0.45]]);
+    facade.position.set(sd.x, y, -1.05);
+    scene.add(facade);
+    // The door behind it, revealed when the wall breaks
+    const frameMat = glow(T.accent, 2);
+    const mkDoor = (x, yy, z, label) => {
+      const door = new THREE.Group();
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.1), new THREE.MeshBasicMaterial({ color: 0x020203 }));
+      hole.position.y = 1.15; door.add(hole);
+      for (const [w, h, bx, by] of [[0.12, 2.5, -0.71, 1.25], [0.12, 2.5, 0.71, 1.25], [1.54, 0.12, 0, 2.44]]) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.14), frameMat); b.position.set(bx, by, 0.02); door.add(b);
+      }
+      const sign = textPanel(label, { w: 1.4, h: 0.5, color: css(T.accent), neon: true, font: 'Bungee' });
+      sign.position.set(0, 2.85, 0.1); door.add(sign);
+      door.position.set(x, yy, z); scene.add(door);
+      return door;
+    };
+    const door = mkDoor(sd.x, y, -1.3, 'UP \u25B2');
+    door.visible = false;
+    // The room, off the left edge of the map
+    const x0 = -80 - k * 30, x1 = x0 + 16, cx = x0 + 8;
+    solids.push({ x1: x0, x2: x1, y1: -12, y2: 0 }, { x1: x0 - 6, x2: x0, y1: 0, y2: 30 }, { x1, x2: x1 + 6, y1: 0, y2: 30 });
+    const wm = Mt(T.wall, T.wallTex, 2.5, 1.2), fm = Mt(T.floor, T.floorTex, 2, 1.1), pm = new THREE.MeshStandardMaterial({ color: T.prop, roughness: 0.6 });
+    R.add(GEO.box, fm, mat4(cx, -0.5, -0.5, 0, 0, 0, 30, 1, 7));
+    R.add(GEO.box, wm, mat4(cx, 6, -3.3, 0, 0, 0, 30, 16, 0.4));
+    R.add(GEO.box, wm, mat4(x0 - 3, 6, -0.5, 0, 0, 0, 6, 16, 7));
+    R.add(GEO.box, wm, mat4(x1 + 3, 6, -0.5, 0, 0, 0, 6, 16, 7));
+    R.add(GEO.box, wm, mat4(cx, 7.6, -0.5, 0, 0, 0, 30, 0.8, 7));
+    for (const px of [x0 + 4.4, x1 - 2.6]) {   // props against the back wall
+      R.add(GEO.box, pm, mat4(px, 0.45, -2.6, 0, 0.2, 0, 1.2, 0.9, 0.9));
+      R.add(GEO.box, pm, mat4(px + 0.9, 0.35, -2.5, 0, -0.3, 0, 0.8, 0.7, 0.7));
+    }
+    if (sd.theme === 'vault') for (let i = 0; i < 9; i++) R.add(GEO.box, glow(0xffc94a, 0.8), mat4(x0 + 4 + i * 1.1, 0.12 + (i % 3) * 0.1, -2.2, 0, i, 0, 0.6, 0.25 + (i % 3) * 0.2, 0.6));
+    const name = textPanel(sd.name, { w: 6, h: 1, color: css(T.accent), neon: true, font: 'Bungee' });
+    name.position.set(cx, 5.4, -3.05); scene.add(name);
+    for (const lx of [x0 + 3, cx, x1 - 3]) api.addLantern(new THREE.Vector3(lx, 3.8, -2.9));
+    mkDoor(x0 + 1.8, 0, -3.0, 'EXIT \u25B2');
+    return {
+      i: k, x: sd.x, y, hp: sd.hp || 6, open: false, facade, crackMat, frameMat, door, name: sd.name,
+      room: { x0, x1, cx, exitX: x0 + 1.8 }, loot: sd.loot || [], guards: sd.guards || [], visited: false,
+    };
+  });
+  R.build(scene, { cast: false, receive: true });
   return api;
 }

@@ -6,7 +6,7 @@ import {
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
-import { save, collectRecord } from './config.js';
+import { save, collectRecord, findSecret } from './config.js';
 
 const G = 38;               // gravity
 const RUN = 6.2;
@@ -54,14 +54,20 @@ export class Game {
     this.ambush = { state: 'idle', wave: 0, queue: [], wait: 0 };
     this.soundcheck = this.L.soundcheck && save.settings.soundcheck && !run.encore && resume === null ? { left: this.L.soundcheck.length } : null;
     this.enemies = []; this.shots = []; this.foeShots = []; this.pickups = []; this.debris = []; this.fires = []; this.rings = [];
-    this.crates = this.L.crates.map((c) => {
+    const mkCrate = (c) => {
       const mesh = makeFlightCase();
       const y = c.y || 0;
       mesh.position.set(c.x, y, -0.5);
       mesh.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       scene.add(mesh);
       return { x: c.x, y, hp: 2, mesh, loot: c.loot, flash: 0 };
-    });
+    };
+    this.crates = this.L.crates.map(mkCrate);
+    // Secret areas: their loot waits in flight cases inside each room
+    this.doors = this.level.secretDoors || [];
+    this.room = null;
+    this.secretsFound = [];
+    for (const d of this.doors) d.loot.forEach((loot, i) => this.crates.push(mkCrate({ x: d.room.x0 + 6 + i * 2.6, loot })));
     this.L.records.forEach((r, i) => {
       const old = (save.records[this.L.id] || []).includes(i);
       const mesh = makePickup('platinum');
@@ -144,6 +150,7 @@ export class Game {
     this.players.forEach((p, i) => { if (!p.out || first) this.resetPlayer(p, x - i * 1.2); });
     this.camX = x + 4;
     this.lock = null;
+    this.room = null;
     this.cine = null;
     this.bossStarted = false;
     this.bossDone = false;
@@ -353,6 +360,8 @@ export class Game {
       else if (l && inp.held.down && p.onGround && Math.abs(p.y - l.y2) < 0.15) { p.climb = l; p.y = l.y2 - 0.4; }
     }
     if (p.climb) { this.climbStep(p, dt); return; }
+    p.doorCd = (p.doorCd || 0) - dt;
+    if (ctrl && p.onGround && p.doorCd <= 0) this.doorCheck(p, inp);
     const left = ctrl && inp.held.left, right = ctrl && inp.held.right;
     p.crouch = ctrl && inp.held.down && p.onGround;
     p.h = p.crouch ? 1.1 : 1.8;
@@ -764,6 +773,18 @@ export class Game {
           if (s.type !== 'vinyl') s.life = 0;
         }
       }
+      for (const d of this.doors) {
+        if (d.open || s.hits.has(d) || s.life <= 0) continue;
+        if (Math.abs(s.x - d.x) < 1.2 + s.r && s.y > d.y && s.y < d.y + 3) {
+          s.hits.add(d);
+          d.hp -= s.dmg;
+          this.music.sCrate();
+          d.facade.position.x = d.x + (Math.random() - 0.5) * 0.12;
+          this.chunks.emit({ x: s.x, y: s.y }, { n: 6, color: [0x6a6e80, 0x3a3a44], speed: 3, up: 2, life: 0.4, size: 0.08 });
+          if (d.hp <= 0) this.breakWall(d);
+          if (s.type !== 'vinyl') s.life = 0;
+        }
+      }
       for (const c of this.crates) {
         if (c.hp <= 0 || s.hits.has(c)) continue;
         if (Math.abs(s.x - c.x) < 0.55 + s.r && s.y < c.y + 0.8 + s.r && s.y > c.y - 0.2) {
@@ -776,6 +797,71 @@ export class Game {
       }
     }
     this.shots = this.shots.filter((s) => { if (s.life > 0) return true; this.scene.remove(s.mesh); return false; });
+  }
+
+  // ---- Secret areas -------------------------------------------------------------------------
+  breakWall(d) {
+    d.open = true;
+    this.scene.remove(d.facade);
+    d.door.visible = true;
+    this.music.sStomp(); this.music.sPlatinum();
+    this.ui.shake(0.4);
+    this.chunks.emit({ x: d.x, y: d.y + 1.5 }, { n: 40, color: [0x6a6e80, 0x3a3a44, 0x8a8a96], speed: 6, up: 4, life: 1, size: 0.16 });
+    popup('A SECRET DOOR!', 'beat', { x: d.x, y: d.y + 3.4 }, this.camera);
+  }
+
+  doorCheck(p, inp) {
+    if (this.lock || this.bossStarted) return;
+    if (this.room) {
+      const R = this.room.room;
+      const near = Math.abs(p.x - R.exitX) < 0.8;
+      if (near && !p.exitHint) { p.exitHint = true; popup('UP to go back', 'info', { x: R.exitX, y: 3.4 }, this.camera); }
+      if (near && inp.pressed.up) this.leaveRoom();
+      return;
+    }
+    const d = this.doors.find((q) => q.open && Math.abs(p.x - q.x) < 0.8 && Math.abs(p.y - q.y) < 0.3);
+    if (!d) return;
+    if (!d.hinted) { d.hinted = true; popup('UP to go in', 'info', { x: d.x, y: d.y + 3.4 }, this.camera); }
+    if (inp.pressed.up) this.enterRoom(d);
+  }
+
+  /** Everyone still standing goes through together; stray shots are cleared. */
+  movePlayers(x, y) {
+    this.alive.forEach((q, i) => { Object.assign(q, { x: x + i * 1.1, y, vx: 0, vy: 0, climb: null, doorCd: 0.5, standing: null }); });
+    for (const list of [this.shots, this.foeShots]) for (const s of list) this.scene.remove(s.mesh);
+    this.shots = []; this.foeShots = [];
+    this.ui.flash('#000000', 0.85);
+    this.music.sCreak();
+  }
+
+  enterRoom(d) {
+    this.room = d;
+    const R = d.room;
+    this.movePlayers(R.x0 + 2.6, 0);
+    this.camX = R.cx;
+    for (const p of this.players) p.exitHint = false;
+    if (d.visited) return;
+    d.visited = true;
+    this.secretsFound.push(d.i);
+    findSecret(this.L.id, d.i);
+    this.run.score += 1000;
+    this.music.sPlatinum();
+    this.ui.banner('Secret area!', `${d.name} · +1000`);
+    for (const [kind, n] of d.guards) for (let k = 0; k < n; k++) {
+      const x = R.x0 + 8 + k * 1.8 + Math.random();
+      if (kind === 'ghost') this.spawnGhost(x, 1.2);
+      else if (kind === 'crawler') this.spawnCrawler(x);
+      else if (kind === 'rat') this.spawnRat(x);
+      else this.spawnZombie(kind, x);
+    }
+  }
+
+  leaveRoom() {
+    const d = this.room;
+    this.room = null;
+    this.movePlayers(d.x + 0.2, d.y);
+    this.camX = d.x + 1;
+    for (const e of this.enemies) if (!e.dead && e.x < d.room.x1 + 1) { e.dead = true; this.scene.remove(e.model.root); }   // guards stay behind (no free points)
   }
 
   knockDummy(d) {
@@ -2220,6 +2306,7 @@ export class Game {
   // ---------------------------------------------------------------------------
   updateCamera(dt) {
     const A = this.L.arena;
+    if (this.room) { this.camX = this.room.room.cx; return; }
     const live = this.alive;
     const avg = live.length ? live.reduce((s, p) => s + p.x, 0) / live.length : this.camX;
     const face = live.length === 1 ? live[0].face : 0;

@@ -40,6 +40,11 @@ export const LEVEL4 = {
   headbangers: [46, 118],
   hands: [],
   throwers: [{ x: 21, y: 2.2, kind: 'barfly' }, { x: 135, y: 2.2, kind: 'barfly' }],
+  // Secret areas: shoot the cracked wall (its cracks glow on the beat), then Up at the door
+  secrets: [
+    { x: 15, theme: 'kitchen', name: 'THE DINER KITCHEN', loot: ['gold', 'life', 'gold'] },
+    { x: 118.5, theme: 'tunnel', name: "SMUGGLERS' TUNNEL", loot: ['jacket', 'gold', 'sticks'], guards: [['walker', 2], ['rat', 2]] },
+  ],
   checkpoint: 100,
   soundcheck: null,
   ambush: {

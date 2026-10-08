@@ -498,6 +498,7 @@ function endLevel(g, clear) {
   const rows = [
     ['Time', fmtTime(s.time)], ['Zombies down', s.kills], ['On the beat', `${Math.round(r.beatPct * 100)}%`],
     ['Best combo', g.bestCombo], ['Deaths', s.deaths], ['Platinum records', `${g.recordsFound.length}/3 (${(save.records[L.id] || []).length}/3 total)`],
+    ['Secret areas', `${g.secretsFound.length}/${g.doors.length} (${(save.secrets[L.id] || []).length}/${g.doors.length} total)`],
     ['Cash', `$${run.cash}`],
   ];
   $('stats').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');

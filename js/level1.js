@@ -34,6 +34,11 @@ export const LEVEL1 = {
   headbangers: [100, 160],
   hands: [44.5, 47.5, 76, 78.5],
   throwers: [{ x: 62.5, y: 1.8, kind: 'digger' }, { x: 138, y: 2.0, kind: 'digger' }, { x: 164, y: 0, kind: 'digger' }],
+  // Secret areas: shoot the cracked wall (its cracks glow on the beat), then Up at the door
+  secrets: [
+    { x: 18, theme: 'crypt', name: 'THE CRYPT', loot: ['gold', 'life', 'gold'] },
+    { x: 92, theme: 'bonecellar', name: 'THE BONE CELLAR', loot: ['jacket', 'gold', 'vinyl'], guards: [['crawler', 2], ['walker', 1]] },
+  ],
   checkpoint: 110,
   soundcheck: [9.5, 12, 14.5],
   storm: [121, 135],

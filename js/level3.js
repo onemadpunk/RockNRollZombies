@@ -35,6 +35,11 @@ export const LEVEL3 = {
   headbangers: [57, 145],
   hands: [],
   throwers: [{ x: 37.5, y: 1.6, kind: 'barfly' }, { x: 87.5, y: 1.6, kind: 'barfly' }],
+  // Secret areas: shoot the cracked wall (its cracks glow on the beat), then Up at the door
+  secrets: [
+    { x: 33.5, theme: 'tent', name: 'THE VIP TENT', loot: ['gold', 'life', 'gold'] },
+    { x: 75.5, theme: 'lost', name: 'LOST PROPERTY', loot: ['jacket', 'gold', 'sticks'], guards: [['pogo', 2], ['walker', 1]] },
+  ],
   checkpoint: 120,
   soundcheck: null,
   ambush: {

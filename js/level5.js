@@ -38,6 +38,11 @@ export const LEVEL5 = {
   pigeons: false,
   headbangers: [90, 126],
   throwers: [{ x: 72, y: 4.8, kind: 'barfly' }],
+  // Secret areas: shoot the cracked wall (its cracks glow on the beat), then Up at the door
+  secrets: [
+    { x: 37, theme: 'green', name: 'THE GREEN ROOM', loot: ['gold', 'life', 'gold'] },
+    { x: 135, theme: 'vault', name: "THE DEVIL'S VAULT", loot: ['gold', 'gold', 'life'], guards: [['ghost', 2], ['walker', 2]] },
+  ],
   checkpoint: 104,
   soundcheck: null,
   ambush: {
