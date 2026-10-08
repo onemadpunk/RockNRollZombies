@@ -169,6 +169,7 @@ export function makeHero(kind = 'punk') {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 6, 12), MAT.chrome);
   ring.position.set(0.21, 0.17, 0.02); ring.rotation.y = Math.PI / 2; head.add(ring);
   const spikeGeo = new THREE.ConeGeometry(0.06, 1, 5);
+  const hairStart = head.children.length;
   if (kind === 'punk') {
     for (let i = 0; i < 7; i++) {
       const s = new THREE.Mesh(spikeGeo, MAT.mohawk);
@@ -207,6 +208,10 @@ export function makeHero(kind = 'punk') {
     box(0.38, 0.6, 0.1, MAT.dark, 0, 0.12, -0.17, head);
     for (const sx of [-1, 1]) box(0.06, 0.5, 0.2, MAT.dark, sx * 0.19, 0.14, -0.06, head);
   }
+  // Move the hair onto a pivot at the scalp: the game bounces and sweeps it (not the roadie's beard)
+  const hair = pivot(0, 0.38, 0, head);
+  if (kind !== 'roadie') for (const o of head.children.slice(hairStart)) { if (o === hair) continue; head.remove(o); o.position.y -= 0.38; hair.add(o); }
+  p.hair = hair;
 
   // Instrument on the back, swung round for a solo
   const gtr = pivot(0, 0, -0.22, torso);

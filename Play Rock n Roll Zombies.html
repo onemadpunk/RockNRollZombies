@@ -1597,6 +1597,7 @@ function makeHero(kind = 'punk') {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 6, 12), MAT.chrome);
   ring.position.set(0.21, 0.17, 0.02); ring.rotation.y = Math.PI / 2; head.add(ring);
   const spikeGeo = new THREE.ConeGeometry(0.06, 1, 5);
+  const hairStart = head.children.length;
   if (kind === 'punk') {
     for (let i = 0; i < 7; i++) {
       const s = new THREE.Mesh(spikeGeo, MAT.mohawk);
@@ -1635,6 +1636,10 @@ function makeHero(kind = 'punk') {
     box(0.38, 0.6, 0.1, MAT.dark, 0, 0.12, -0.17, head);
     for (const sx of [-1, 1]) box(0.06, 0.5, 0.2, MAT.dark, sx * 0.19, 0.14, -0.06, head);
   }
+  // Move the hair onto a pivot at the scalp: the game bounces and sweeps it (not the roadie's beard)
+  const hair = pivot(0, 0.38, 0, head);
+  if (kind !== 'roadie') for (const o of head.children.slice(hairStart)) { if (o === hair) continue; head.remove(o); o.position.y -= 0.38; hair.add(o); }
+  p.hair = hair;
 
   // Instrument on the back, swung round for a solo
   const gtr = pivot(0, 0, -0.22, torso);
@@ -4829,7 +4834,9 @@ class Game {
     if (this.lock) p.x = Math.min(Math.max(p.x, this.lock.x1 + p.w), this.lock.x2 - p.w);
     if (p.onGround && !p.wasGround) {
       M.sLand();
-      this.chunks.emit({ x: p.x, y: p.y + 0.05 }, { n: 4, color: 0x3b2f2a, speed: 2, up: 1, life: 0.35, size: 0.07 });
+      const hard = Math.min(1, Math.max(0, -(p.lastVy || 0) - 4) / 16);
+      p.squash = 0.3 + hard * 0.7;
+      this.chunks.emit({ x: p.x, y: p.y + 0.05 }, { n: 4 + Math.round(hard * 10), color: [0x6a5a50, 0x8a7a70], speed: 2 + hard * 3, up: 1 + hard, life: 0.35 + hard * 0.2, size: 0.07 + hard * 0.04 });
     }
     p.wasGround = p.onGround;
     if (p.onGround && Math.abs(p.vx) > 3 && Math.random() < 0.15) this.chunks.emit({ x: p.x - p.face * 0.2, y: p.y + 0.05 }, { n: 1, color: 0x3b2f2a, speed: 1, up: 0.8, life: 0.3, size: 0.06 });
@@ -4984,6 +4991,23 @@ class Game {
     P.body.position.y += (bodyY - P.body.position.y) * Math.min(1, dt * 20);
     P.body.rotation.x += (lean - P.body.rotation.x) * Math.min(1, dt * 20);
     if (p.onGround && run >= 0.1 && p.soloT <= 0) P.head.rotation.x *= 0.9;
+
+    // Squash and stretch: stretch on the way up, squash when you land
+    p.squash = Math.max(0, (p.squash || 0) - dt * 5);
+    const stretch = !p.onGround && !p.climb && p.vy > 0 ? Math.min(1, p.vy / 16) * 0.1 : 0;
+    const sy = 1 - p.squash * 0.24 + stretch, sxz = 1 + p.squash * 0.16 - stretch * 0.5;
+    P.root.scale.set(sxz, sy, sxz);
+    if (!p.onGround) p.lastVy = p.vy;
+    // Hair: swept back when running or jumping, flies up when falling, squashes and springs on landing
+    if (P.hair) {
+      const H = P.hair;
+      let tilt = -0.35 * run;
+      if (!p.onGround && !p.climb) tilt = p.vy > 0 ? -0.5 : 0.35;
+      H.rotation.x += (tilt - H.rotation.x) * Math.min(1, dt * 10);
+      const beat = this.beat.pulse || 0;
+      const hs = 1 - p.squash * 0.45 + beat * 0.06;
+      H.scale.y += (hs - H.scale.y) * Math.min(1, dt * 18);
+    }
   }
 
   addSolo(p, n) {
@@ -5242,6 +5266,7 @@ class Game {
     }
     e.hp -= dmg;
     e.flash = 0.08;
+    if (!e.boss) e.hitTilt = 0.4 * (Math.sign(s.vx || 1) === e.face ? 1 : -1);   // knocked back (or forward if hit from behind)
     this.music.sHit();
     if (!s.fire) this.sparks.emit({ x: s.x, y: s.y }, { n: s.power ? 14 : 6, color: s.power ? [0xff2e88, 0xffffff] : [0xa6ff4d, 0xffffff], speed: 5, life: 0.35, size: 0.07, gravity: 4 });
     if (e.boss) {
@@ -5447,6 +5472,7 @@ class Game {
         case 'devil': this.updateDevil(e, dt); break;
       }
       if (e.dead) continue;
+      if (e.hitTilt) { e.hitTilt *= Math.exp(-dt * 9); if (Math.abs(e.hitTilt) < 0.01) e.hitTilt = 0; e.model.root.rotation.x = e.hitTilt; }
       if (e.model.mats) for (const m of e.model.mats) m.emissive.setHex(e.flash > 0 ? 0xffffff : e.angry ? 0x400000 : 0x000000);
       if (e.kind === 'ghost') e.model.mat.emissiveIntensity = e.flash > 0 ? 4 : 1.1;
 
