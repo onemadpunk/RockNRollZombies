@@ -8,7 +8,7 @@ import os
 import re
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-ORDER = ["config", "audio", "input", "models", "levelkit", "level1", "level2", "level3", "level", "fx", "screens", "online", "game", "main"]  # dependencies first
+ORDER = ["config", "audio", "input", "models", "levelkit", "level1", "level2", "level3", "level4", "level", "fx", "screens", "online", "game", "main"]  # dependencies first
 OUT = os.path.join(ROOT, "Play Rock n Roll Zombies.html")
 
 LOCAL_IMPORT = re.compile(r"import\s*\{([^}]*)\}\s*from\s*'\./[^']+';", re.S)

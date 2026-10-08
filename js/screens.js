@@ -61,6 +61,12 @@ const ART = {
     <path d="M140 160 L190 60 L240 160 Z" fill="#5a1a3a"/><path d="M60 160 L95 90 L130 160 Z" fill="#3a1a5a"/><path d="M190 60 v-16" stroke="${GOLD}" stroke-width="2"/>
     <circle cx="250" cy="110" r="34" fill="none" stroke="#666" stroke-width="3"/>${[0, 60, 120, 180, 240, 300].map((a) => `<line x1="250" y1="110" x2="${250 + 34 * Math.cos(a * Math.PI / 180)}" y2="${110 + 34 * Math.sin(a * Math.PI / 180)}" stroke="#666" stroke-width="2"/>`).join('')}
     <path d="M120 40 q20 -20 40 0 q-10 30 -20 40 q-10 -10 -20 -40" fill="#c8d6ff" opacity=".7"/>`,
+  highway: `${sky('#120406', '#8a2a12')}<rect x="0" y="120" width="300" height="80" fill="#5a3424"/>
+    <rect x="20" y="96" width="70" height="28" fill="#4a2218"/><rect x="210" y="86" width="80" height="38" fill="#4a2218"/>
+    <path d="M150 120 L40 200 L260 200 Z" fill="#26262a"/>${[0, 1, 2, 3].map((k) => `<path d="M${148 - k * 2} ${126 + k * 18} h${4 + k * 4} l${1 + k} ${8 + k * 2} h-${6 + k * 6} z" fill="#ffc94a"/>`).join('')}
+    <rect x="196" y="40" width="74" height="34" fill="#2a1d17" stroke="#120c09" stroke-width="3"/><rect x="214" y="74" width="4" height="46" fill="#6a3a22"/><rect x="250" y="74" width="4" height="46" fill="#6a3a22"/>
+    <text x="233" y="62" text-anchor="middle" font-family="Bungee, Impact" font-size="11" fill="${GOLD}">HELL 666</text>
+    <g transform="translate(70 150)"><rect width="56" height="16" fill="#141418"/><rect x="14" y="-12" width="38" height="13" fill="#141418"/><circle cx="12" cy="17" r="5" fill="#000"/><circle cx="44" cy="17" r="5" fill="#000"/><path d="M56 4 l18 -4 l-4 8 l6 4 l-20 0z" fill="#ff7a1a"/></g>`,
 };
 
 export const COMICS = {
@@ -82,7 +88,12 @@ export const COMICS = {
   ],
   after2: [
     { art: 'bassfree', text: 'The singer is back, and the whole band is together again!' },
-    { art: 'devil', text: "But the Devil isn't done. He's heading for the Highway to Hell. Coming soon..." },
+    { art: 'devil', text: "But the Devil isn't done. He's sent the Disco Mummy to grab your roadie, and all your gear." },
+    { art: 'highway', text: 'Fill up the van. Next stop: the Highway to Hell. Watch out for hearses.' },
+  ],
+  after3: [
+    { art: 'bassfree', text: "The roadie is back, and so is the gear. Now you've got a show to play." },
+    { art: 'devil', text: "One gig left: Hell's Stadium. The Devil wants your soul, and he's tuning up. Coming soon..." },
   ],
 };
 

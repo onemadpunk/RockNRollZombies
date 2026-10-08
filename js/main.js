@@ -193,7 +193,7 @@ function renderTitle() {
   const chars = Object.keys(HEROES).map((k) => ({ label: HEROES[k].name.replace('The ', ''), value: k, locked: unlocked.includes(k) ? null : 'Rescue them to unlock' }));
   segButtons($('opt-char'), chars, sel.char, (v) => { sel.char = v; renderTitle(); placeTitleHero(); });
   $('char-label').textContent = sel.players === 2 ? 'Player 1' : 'Character';
-  $('char-blurb').textContent = HEROES[sel.char].blurb + (unlocked.length < 3 ? '  Rescue your bandmates to play as them.' : '');
+  $('char-blurb').textContent = HEROES[sel.char].blurb + (unlocked.length < Object.keys(HEROES).length ? '  Rescue your bandmates to play as them.' : '');
   show('opt-char2-wrap', sel.players === 2);
   const chars2 = Object.keys(HEROES).map((k) => ({ label: HEROES[k].name.replace('The ', ''), value: k, locked: unlocked.includes(k) || k === 'drummer' ? null : 'Rescue them to unlock' }));
   segButtons($('opt-char2'), chars2, sel.char2, (v) => { sel.char2 = v; renderTitle(); });

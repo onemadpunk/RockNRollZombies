@@ -97,6 +97,35 @@ const SONGS = {
     { r: [42, 42], s: 'chug', l: [78, _, 81, 78, 76, _, 73, _] },
     { r: [44, 44], s: 'chug', l: [80, 78, 76, 75, 73, _, 68, _] },
   ],
+  // ---- Level 4 ----
+  highway: [
+    { r: [45, 45], s: 'chug', l: [69, _, _, 72, _, 69, 74, _] },
+    { r: [43, 50], s: 'chug', l: [67, _, 71, _, 74, _, 72, 71] },
+    { r: [45, 45], s: 'chug', l: [69, _, _, 72, _, 69, 74, 76] },
+    { r: [43, 50], s: 'open', l: [79, _, 76, _, 74, _, 72, _] },
+    { r: [50, 50], s: 'drive', l: [74, _, 77, 74, 79, _, 77, 74] },
+    { r: [43, 43], s: 'drive', l: [71, _, 74, 71, 79, _, 74, 71] },
+    { r: [45, 45], s: 'open', l: [76, _, 74, _, 72, _, 69, _] },
+    { r: [52, 52], s: 'chug', l: [76, 74, 72, 71, 69, _, _, _] },
+  ],
+  route: [
+    { r: [45, 45], s: 'drive', l: [81, _, 79, 76, 74, 76, 79, _] },
+    { r: [48, 50], s: 'drive', l: [84, _, 81, 79, 81, _, 86, _] },
+    { r: [45, 45], s: 'drive', l: [81, 84, 86, 84, 81, _, 79, 76] },
+    { r: [43, 43], s: 'gallop', l: [79, _, 83, _, 86, _, 83, 79] },
+  ],
+  roadblock: [
+    { r: [40, 40], s: 'gallop', l: [76, _, 79, 81, 82, 81, 79, _] },
+    { r: [40, 40], s: 'gallop', l: [76, _, 79, 81, 84, 82, 81, 79] },
+    { r: [43, 43], s: 'drive', l: [79, _, 82, _, 84, _, 86, _] },
+    { r: [45, 46], s: 'drive', l: [88, 86, 84, 82, 81, 79, 76, _] },
+  ],
+  boss4: [
+    { r: [45, 45], s: 'disco', l: [69, _, 72, 76, 79, _, 76, _] },
+    { r: [50, 50], s: 'disco', l: [74, _, 77, 81, 84, _, 81, _] },
+    { r: [43, 43], s: 'disco', l: [79, _, 83, 79, 76, _, 74, _] },
+    { r: [52, 52], s: 'disco', l: [76, 77, 79, 80, 81, _, 80, _] },
+  ],
   boss: [
     { r: [40, 40], s: 'half', l: [64, 65, 64, _, 64, 65, 67, _] },
     { r: [41, 41], s: 'half', l: [65, 64, 65, _, 65, 67, 68, _] },
@@ -224,7 +253,11 @@ export class Music {
     // Full kit layer
     const D = this.layers.beat;
     if (pos === 0 && barIdx % 4 === 0) this.crash(t, D, 0.6);
-    if (bar.s === 'half') {
+    if (bar.s === 'disco') {
+      // four on the floor, open hats on the off-beats
+      if (pos === 4 || pos === 12) this.snare(t, D, 0.8);
+      if (pos % 4 === 2) this.hat(t, D, 0.6);
+    } else if (bar.s === 'half') {
       if (pos === 8) this.snare(t, D);
       if (pos % 4 === 0) this.hat(t, D, 0.45);
     } else if (phraseEnd && pos >= 12) {
@@ -262,12 +295,19 @@ export class Music {
         // ska: short bright stabs on the off-beats
         if (pos % 4 === 2) this.chord(t, f * 2, true, 0.7, G, 0.09);
         break;
+      case 'disco':
+        // chicken-scratch 16ths, accented on the off-beats
+        this.chord(t, f * 2, pos % 4 === 2, pos % 4 === 2 ? 0.6 : 0.25, G, 0.05);
+        break;
       case 'boogie':
         // Chuck Berry boogie: root+5th, root+6th, alternating on the 8ths
         if (pos % 2 === 0) this.chord(t, f, pos % 4 === 0, pos % 4 === 0 ? 0.85 : 0.6, G, 0.16, pos % 4 === 0 ? BOOGIE5 : BOOGIE6);
         break;
     }
-    if (bar.s === 'skank') {
+    if (bar.s === 'disco') {
+      // octave-jumping disco bass
+      if (pos % 2 === 0) this.bass(t, mtof(root - 12) * (pos % 4 === 2 ? 2 : 1));
+    } else if (bar.s === 'skank') {
       if (pos % 4 === 0) this.bass(t, mtof(root - 12) * [1, 1.4983, 1.3348, 1.4983][pos / 4]);
     } else if (bar.s === 'boogie') {
       // walking bass: root, 3rd, 5th, 6th on the quarters
@@ -475,6 +515,10 @@ export class Music {
       o.connect(bp).connect(g).connect(this.sfx); o.start(t); vib.start(t); o.stop(t + 1.25); vib.stop(t + 1.25);
     }
   }
+  sHorn() { if (this.ctx) { this.tone('square', 311, 300, 0.5, 0.12); this.tone('square', 392, 380, 0.5, 0.12); this.tone('square', 311, 300, 0.3, 0.12, 0.55); this.tone('square', 392, 380, 0.3, 0.12, 0.55); } }
+  sRumble() { this.ctx && this.noise(this.t, 0.5, 'lowpass', 220, 1, 0.6, this.sfx, 80); }
+  sEngine() { if (this.ctx) { this.tone('sawtooth', 70, 140, 0.9, 0.18); this.noise(this.t, 0.9, 'lowpass', 600, 1, 0.4, this.sfx, 200); } }
+  sDisco() { if (this.ctx) [81, 84, 88, 93].forEach((m, i) => this.tone('square', mtof(m), mtof(m) * 0.98, 0.12, 0.08, i * 0.06)); }
   sBoing() { if (this.ctx) { this.tone('sine', 180, 520, 0.25, 0.4); this.tone('triangle', 90, 260, 0.3, 0.2); } }
   sCreak() { this.ctx && this.noise(this.t, 0.35, 'bandpass', 700, 8, 0.4, this.sfx, 400); }
   sSqueak() { this.ctx && this.tone('square', 1800, 2600, 0.08, 0.05); }

@@ -66,7 +66,7 @@ export function installBot({ mute = true } = {}) {
         if (p.face !== dir) move = dir;
         else if (dist < 2.6 && t.harmful()) move = -dir;
         else if (dist > 5.5) move = dir; else move = 0;
-        if (b.y1 > p.y + 1.75 && dist < 6) jump = true;
+        if (b.y1 > p.y + 1.75 && dist < 8.5) jump = true;
         fire = true;
       }
     }
@@ -96,6 +96,23 @@ export function installBot({ mute = true } = {}) {
       } else if (boss.state === 'ground' && Math.abs(boss.x - p.x) < 2.2) move = p.x < boss.x ? -1 : 1;
     }
 
+    if (boss && boss.kind === 'mummy') {
+      const d = boss.x - p.x;
+      if (boss.state === 'slide' && Math.sign(boss.vx) === -Math.sign(d) && Math.abs(d) < 3.6 && p.y < 1) jump = true;
+      if (boss.state === 'windup' && Math.abs(d) < 3) move = -Math.sign(d) || 1;
+    }
+    for (const f of G.foeShots) {
+      if (f.kind === 'beam' && f.wait > 0 && Math.abs(f.x - p.x) < 1.3) move = p.x < f.x ? -1 : 1;
+      // hearses: jump so we're at the top as it passes
+      if (f.kind === 'hearse' && p.y < 1.15 && f.x - p.x > 2.2 && f.x - p.x < 5.6 && p.onGround) jump = true;
+    }
+    // fire vents: wait for the burst to finish, then go
+    for (const vx of G.L.vents || []) {
+      const ph = ((M.beatFloat() % 4) + 4) % 4, danger = ph > 1.1 && ph < 3.5;
+      if (danger && Math.abs(vx - p.x) < 1.1 && p.y < 3) { move = p.x < vx ? -1 : 1; continue; }
+      const ahead = (vx - p.x) * move;
+      if (move !== 0 && p.onGround && ahead > 0.9 && ahead < 1.9 && !(ph > 3.45 || ph < 0.5)) move = 0;
+    }
     // jump over campfires
     for (const fx of G.level.campfires || []) if (p.onGround && move !== 0 && (fx - p.x) * move > 0.4 && Math.abs(fx - p.x) < 1.6) { jump = true; bot.jumpHold = 30; bot.jumpDir = move; }
     if (move > 0 && p.onGround && !(p.standing && p.standing.mover)) {

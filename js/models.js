@@ -75,6 +75,7 @@ export const HEROES = {
   drummer: { name: 'The Drummer', weapon: 'sticks', jump: 15.5, blurb: 'Drumsticks in a spread. Jumps higher.' },
   bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14, blurb: 'Boomerang vinyl. Solo hits harder.' },
   singer: { name: 'The Singer', weapon: 'notes', jump: 14.5, blurb: 'Fires musical notes that weave up and down.' },
+  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14, blurb: 'Lobs heavy spanners: slow, but they hit twice as hard.' },
 };
 
 export function makeHero(kind = 'punk') {
@@ -82,7 +83,7 @@ export function makeHero(kind = 'punk') {
   const body = pivot(0, 0, 0, root);
   const p = { root, body, kind, jacket: [], spikes: [] };
   const skin = kind === 'bassist' ? MAT.skin2 : MAT.skin;
-  const pants = kind === 'drummer' ? M(0x3a3a2a) : kind === 'singer' ? MAT.tartan : MAT.jeans;
+  const pants = kind === 'drummer' ? M(0x3a3a2a) : kind === 'singer' ? MAT.tartan : kind === 'roadie' ? M(0x5a5440) : MAT.jeans;
   const shoe = kind === 'drummer' ? M(0xe8e8e8) : MAT.boot;
 
   for (const side of [-1, 1]) {
@@ -103,8 +104,9 @@ export function makeHero(kind = 'punk') {
 
   const torso = pivot(0, 1.27, 0, body);
   p.torso = torso;
-  const shirt = kind === 'bassist' ? MAT.flannel : kind === 'drummer' ? M(0x1d1d22) : kind === 'singer' ? M(0x141414) : MAT.tee;
+  const shirt = kind === 'bassist' ? MAT.flannel : kind === 'drummer' ? M(0x1d1d22) : kind === 'singer' || kind === 'roadie' ? M(0x141414) : MAT.tee;
   if (kind === 'singer') for (const sx of [-1, 1]) box(0.04, 0.5, 0.01, MAT.mohawk, sx * 0.08, 0, 0.135, torso);   // braces
+  if (kind === 'roadie') { box(0.3, 0.1, 0.01, MAT.white, 0, 0.12, -0.135, torso); box(0.52, 0.1, 0.3, M(0x3a2a1a), 0, -0.26, 0, torso); }   // CREW + tool belt
   box(0.48, 0.62, 0.26, shirt, 0, 0, 0, torso);
   if (kind === 'punk') box(0.2, 0.2, 0.01, MAT.mohawk, 0, 0.05, 0.135, torso);
   if (kind === 'drummer') for (let i = 0; i < 3; i++) box(0.49, 0.04, 0.27, MAT.white, 0, 0.18 - i * 0.16, 0, torso);   // stripes
@@ -113,7 +115,7 @@ export function makeHero(kind = 'punk') {
   box(0.1, 0.07, 0.02, MAT.chrome, 0, -0.33, 0.145, torso);
 
   // Armour layer: leather jacket (punk), denim vest (drummer), biker vest (bassist)
-  const coat = kind === 'drummer' ? MAT.denim : MAT.leather;
+  const coat = kind === 'drummer' ? MAT.denim : kind === 'roadie' ? M(0xd8ff2a, { emissive: 0x3a4a00, roughness: 0.5 }) : MAT.leather;   // roadie: hi-vis vest
   const J = (w, h, d, x, y, z) => { const m = box(w, h, d, coat, x, y, z, torso); p.jacket.push(m); return m; };
   J(0.56, 0.66, 0.05, 0, 0.01, -0.15);
   J(0.05, 0.66, 0.31, -0.28, 0.01, 0);
@@ -185,6 +187,14 @@ export function makeHero(kind = 'punk') {
       head.add(s);
     }
     box(0.36, 0.06, 0.37, MAT.mohawk, 0, 0.33, 0, head);
+  } else if (kind === 'roadie') {
+    // Beanie + big beard
+    const beanie = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), M(0x2a2a30));
+    beanie.position.y = 0.38; beanie.scale.set(1, 0.9, 1.05); head.add(beanie);
+    box(0.36, 0.06, 0.37, M(0x3a3a44), 0, 0.38, 0, head);
+    const beard = M(0x5a3a1e);
+    box(0.32, 0.2, 0.08, beard, 0, 0.1, 0.16, head);
+    box(0.2, 0.16, 0.08, beard, 0, -0.02, 0.17, head);
   } else if (kind === 'singer') {
     // Bleached quiff
     const blond = M(0xf3e2a0, { roughness: 0.6 });
@@ -200,7 +210,12 @@ export function makeHero(kind = 'punk') {
 
   // Instrument on the back, swung round for a solo
   const gtr = pivot(0, 0, -0.22, torso);
-  if (kind === 'singer') {
+  if (kind === 'roadie') {
+    // a giant spanner across the back
+    box(0.07, 0.8, 0.04, MAT.chrome, 0, 0.1, 0, gtr);
+    box(0.24, 0.16, 0.04, MAT.chrome, 0, 0.52, 0, gtr);
+    box(0.08, 0.1, 0.05, MAT.dark, 0, 0.6, 0, gtr);
+  } else if (kind === 'singer') {
     // microphone and a loop of cable
     const mic = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), MAT.chrome); mic.position.y = 0.32; gtr.add(mic);
     box(0.05, 0.3, 0.05, MAT.dark, 0, 0.12, 0, gtr);
@@ -506,6 +521,53 @@ export function makeBanshee() {
   return z;
 }
 
+// Level 4 boss: a mummy in flares with a gold afro. Disco never died.
+export function makeMummy() {
+  const z = makeZombie('mummy');
+  // bandage texture: wrapped strips in a few shades, with dark gaps
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
+  const g = cv.getContext('2d');
+  for (let y = 0; y < 64; y += 8) {
+    g.fillStyle = ['#e8dcc0', '#d8c8a0', '#efe4cc', '#c8b890'][(y / 8) % 4];
+    g.save(); g.translate(0, y); g.rotate(((y / 8) % 2 ? 1 : -1) * 0.06); g.fillRect(-4, 0, 72, 8); g.restore();
+    g.fillStyle = 'rgba(60,45,25,0.55)'; g.fillRect(0, y + 7, 64, 1);
+  }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1, 2);
+  const wrap = M(0xffffff, { map: tex, roughness: 0.95 });
+  const flare = M(0xb04aff, { roughness: 0.25, metalness: 0.5, emissive: 0x3a1060 });
+  z.mats = [wrap];
+  z.root.traverse((o) => { if (o.isMesh && o.material !== MAT.zEye && o.material !== MAT.dark && o.material !== MAT.sole) o.material = wrap; });
+  // loose bandage ends
+  for (const [x, y, rz] of [[0.2, -0.2, 0.5], [-0.18, 0.1, -0.4]]) box(0.06, 0.34, 0.03, wrap, x, y, 0.15, z.torso).rotation.z = rz;
+  // flares
+  for (const kn of [z.kneeL, z.kneeR]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.42, 10), flare); f.position.set(0, -0.26, 0.02); kn.add(f); }
+  // a glittery shirt collar poking out
+  box(0.3, 0.12, 0.3, flare, 0, 0.32, 0, z.torso);
+  // gold afro + shades
+  const afro = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 10), M(0xffc94a, { roughness: 0.3, metalness: 0.7, emissive: 0x4a3000 }));
+  afro.position.set(0, 0.5, -0.07); afro.scale.set(1.15, 0.85, 1); z.head.add(afro);
+  box(0.36, 0.08, 0.03, MAT.dark, 0, 0.25, 0.21, z.head);
+  return z;
+}
+
+export function makeDiscoBall() {
+  const g = new THREE.Group();
+  const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 1),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0.6, flatShading: true, emissive: 0x7a7a90, emissiveIntensity: 0.8 }));
+  g.add(ball);
+  // a few mirror tiles that catch the light and flash
+  const glint = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 3 });
+  for (let i = 0; i < 18; i++) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.02), glint);
+    const a = Math.random() * Math.PI * 2, b = Math.acos(Math.random() * 2 - 1);
+    t.position.setFromSphericalCoords(0.72, b, a); t.lookAt(0, 0, 0); ball.add(t);
+  }
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 6), MAT.chrome); rod.position.y = 3.6; g.add(rod);
+  g.userData.ball = ball; g.userData.glint = glint;
+  return g;
+}
+
 // Ferris wheel car: you stand on its floor (top at y = 0); it hangs from a rod above.
 export function makeGondola(w = 1.8) {
   const g = new THREE.Group();
@@ -610,6 +672,11 @@ export function makeWeaponMesh(type, power) {
     rec.rotation.x = Math.PI / 2; g.add(rec);
     const lab = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.035, 16), gm);
     lab.rotation.x = Math.PI / 2; g.add(lab);
+  } else if (type === 'spanner') {
+    const steel = new THREE.MeshStandardMaterial({ color: power ? 0xff8ac8 : 0xc8ccd8, metalness: 0.9, roughness: 0.25, emissive: power ? 0xff2e88 : 0x000000, emissiveIntensity: power ? 1.5 : 0 });
+    box(0.1, 0.7, 0.05, steel, 0, 0, 0, g);
+    box(0.3, 0.14, 0.05, steel, 0, 0.38, 0, g);
+    box(0.1, 0.1, 0.06, MAT.dark, 0, 0.42, 0, g);
   } else if (type === 'notes') {
     const ink = new THREE.MeshStandardMaterial({ color: power ? 0xff2e88 : 0x9affd8, emissive: power ? 0xff2e88 : 0x5affc0, emissiveIntensity: power ? 2.5 : 1.4 });
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), ink); head.scale.set(1.25, 0.9, 0.6); g.add(head);
@@ -713,5 +780,36 @@ export function makeCutout() {
   box(0.3, 0.06, 0.06, M(0x111111), 0, 1.45, 0.02, g);
   const target = new THREE.Mesh(new THREE.RingGeometry(0.12, 0.2, 20), glow(0xff2e88, 1.5));
   target.position.set(0, 1.0, 0.03); g.add(target);
+  return g;
+}
+
+// Level 4 traffic: a zombie hearse doing a ton down the highway. Faces -x (it drives right to left).
+export function makeHearse() {
+  const g = new THREE.Group();
+  const paint = M(0x141418, { roughness: 0.25, metalness: 0.6 });
+  const glass = M(0x1a2a3a, { roughness: 0.1, metalness: 0.4, emissive: 0x0a2a1a });
+  box(3.6, 0.55, 1.4, paint, 0, 0.45, 0, g);                       // body
+  box(2.5, 0.5, 1.3, paint, 0.45, 0.95, 0, g);                     // cabin
+  box(0.7, 0.36, 1.32, glass, -0.55, 0.95, 0, g);                  // windscreen
+  box(1.5, 0.3, 1.32, glass, 0.9, 0.98, 0, g);                     // coffin windows
+  box(1.2, 0.22, 0.5, M(0x6a4a2a), 0.9, 0.95, 0, g);               // the coffin inside
+  const chrome = MAT.chrome;
+  box(3.62, 0.05, 1.42, chrome, 0, 0.66, 0, g);                    // chrome trim so it reads at night
+  box(0.1, 0.22, 1.44, chrome, -1.82, 0.38, 0, g);                 // bumper
+  box(0.1, 0.22, 1.44, chrome, 1.82, 0.38, 0, g);
+  const lamp = new THREE.MeshStandardMaterial({ color: 0xfff4c0, emissive: 0xffe08a, emissiveIntensity: 4 });
+  const tail = new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xff1010, emissiveIntensity: 3 });
+  for (const z of [-0.5, 0.5]) { box(0.06, 0.16, 0.26, lamp, -1.85, 0.55, z, g); box(0.06, 0.12, 0.2, tail, 1.85, 0.55, z, g); }
+  const tyre = M(0x0a0a0c, { roughness: 0.9 });
+  const wheels = [];
+  for (const x of [-1.2, 1.2]) for (const z of [-0.66, 0.66]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12), tyre);
+    w.rotation.x = Math.PI / 2; w.position.set(x, 0.32, z); g.add(w); wheels.push(w);
+  }
+  // flames licking off the back
+  const flame = new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.85, toneMapped: false });
+  for (const z of [-0.4, 0.4]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.9, 6), flame); f.rotation.z = -Math.PI / 2; f.position.set(2.3, 0.3, z); g.add(f); }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  g.userData.wheels = wheels;
   return g;
 }
