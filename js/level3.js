@@ -54,7 +54,8 @@ export const LEVEL3 = {
     { x: 96, checkpoint: 100, name: 'The Funfair', song: 'funfair', spawn: { walker: 0.4, pogo: 0.3, ghost: 0.3 }, max: 4 },
     { x: 148, name: 'The Main Stage', song: 'funfair', spawn: { pogo: 0.5, walker: 0.5 }, max: 4 },
   ],
-  palette: { hemiSky: 0x8a9ad0, hemiGround: 0x1a1a14, key: 0xd8d0ff, rim: 0x7affc8 },
+  palette: { hemiSky: 0x8a9ad0, hemiGround: 0x1a1a14, key: 0xd8d0ff, rim: 0x7affc8,
+    grade: { lift: [0.0, 0.02, 0.025], gamma: [1, 1, 1], gain: [1.05, 1.02, 0.96], sat: 1.1 } },   // colour mood: teal night, warm lights
   build: buildFestival,
 };
 
@@ -176,6 +177,9 @@ function buildFestival(scene, quality) {
   sign(148.5, 'MAIN STAGE', '#9affd8');
   sign(196.5, 'ARTISTS ONLY', '#ff2e88');
 
+  world.addCrowd({ x1: 149, x2: 197, z: -6, rows: 3, gap: 0.8, color: 0x34303c, eyes: 0x5a9a2a });
+  world.addCrowd({ x1: 20, x2: 140, z: -12, rows: 2, gap: 2.4, scale: 0.9, color: 0x34303c, eyes: 0x5a9a2a });
+  world.addBeams({ at: [0, 1, 2, 3, 4].map((i) => [A.x1 + 2 + i * 4.5, 9.6, -3.3]), colors: [0xff2e88, 0x9affd8, 0xffc94a, 0x9affd8, 0xff2e88], length: 9.5, width: 1.4 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
   for (let x = 6; x < 225; x += 14) if (onGround(x) && !L.campfires.some((c) => Math.abs(c - x) < 3)) world.addLantern(new THREE.Vector3(x, 2.8, -3.9));

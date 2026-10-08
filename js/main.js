@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { Music } from './audio.js';
 import { Controls, KEYS_SOLO, KEYS_P1, KEYS_P2, bindTouch, onTouchMode, usingTouch, setCapture } from './input.js';
 import { LEVELS, buildLevel } from './level.js';
@@ -48,6 +49,37 @@ composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.55, 0.8);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// "Concert film" look: per-level colour grade, vignette, grain, and a colour-split punch on big hits
+const film = new ShaderPass({
+  uniforms: {
+    tDiffuse: { value: null }, time: { value: 0 }, punch: { value: 0 }, vignette: { value: 0.38 }, grain: { value: 0.035 },
+    lift: { value: new THREE.Vector3() }, gamma: { value: new THREE.Vector3(1, 1, 1) }, gain: { value: new THREE.Vector3(1, 1, 1) }, sat: { value: 1 },
+  },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float time, punch, vignette, grain, sat; uniform vec3 lift, gamma, gain; varying vec2 vUv;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec2 c = vUv - 0.5;
+      float d = length(c);
+      vec2 off = c * (0.003 + punch * 0.022) * d * 2.0;
+      vec3 col = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
+      col = gain * (col + lift * (1.0 - col));
+      col = pow(max(col, 0.0), 1.0 / gamma);
+      float l = dot(col, vec3(0.299, 0.587, 0.114));
+      col = mix(vec3(l), col, sat);
+      col *= 1.0 - vignette * smoothstep(0.32, 0.85, d);
+      col += (hash(vUv * 731.0 + fract(time * 7.0) * 97.0) - 0.5) * grain;
+      gl_FragColor = vec4(col, 1.0);
+    }`,
+});
+composer.addPass(film);
+let filmPunch = 0;
+function setGrade(g = {}) {
+  const U = film.uniforms;
+  U.lift.value.set(...(g.lift || [0, 0, 0])); U.gamma.value.set(...(g.gamma || [1, 1, 1]));
+  U.gain.value.set(...(g.gain || [1, 1, 1])); U.sat.value = g.sat ?? 1;
+}
 
 const music = new Music();
 
@@ -79,6 +111,7 @@ function makeScene(i) {
   rim = new THREE.DirectionalLight(pal.rim, 1.6);
   scene.add(hemi, key, key.target, rim, rim.target);
   world = buildLevel(i, scene, quality);
+  setGrade(pal.grade);
   sparks = new Particles(scene, 600, true);
   chunks = new Particles(scene, 500, false);
   embers = new Embers(scene, 200);
@@ -116,7 +149,9 @@ addEventListener('resize', resize);
 // ---- UI hooks used by the game -------------------------------------------------------------
 let shakeAmt = 0, lightningT = 0;
 const ui = {
-  beatHit() { const b = $('beatbar'); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 160); },
+  beatHit() { const b = $('beatbar'); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 160); ui.punch(0.3); },
+  /** Colour-split jolt for big moments (gentler with flashing off). */
+  punch(a) { filmPunch = Math.max(filmPunch, save.settings.flashing ? a : a * 0.3); },
   banner(title, sub) {
     const el = $('banner');
     el.innerHTML = '';
@@ -126,8 +161,10 @@ const ui = {
     clearTimeout(ui._bt);
     ui._bt = setTimeout(() => (el.hidden = true), 2400);
   },
-  shake(a) { if (save.settings.shake) shakeAmt = Math.max(shakeAmt, a); },
+  shake(a) { if (save.settings.shake) shakeAmt = Math.max(shakeAmt, a); ui.punch(Math.min(1, a)); },
   boss(frac) {
+    if (frac !== null && ui._bossFrac != null && frac < ui._bossFrac) ui.punch(0.45);
+    ui._bossFrac = frac;
     show('bossbar', frac !== null);
     if (frac !== null) $('bossfill').style.width = Math.max(0, frac) * 100 + '%';
   },
@@ -775,7 +812,12 @@ function tick(raw) {
   rim.position.set(camX + 6, 9, -14); rim.target.position.set(camX, 1, 0);
 
   const storm = world.stormAt(camX);
+  world.beat = music.ctx ? music.beatFloat() : t * 160 / 60;
   world.update(t, dt, camera.position, pulse, storm);
+  filmPunch *= Math.exp(-dt * 7);
+  film.uniforms.punch.value = filmPunch;
+  film.uniforms.time.value = t;
+  film.uniforms.grain.value = quality.low ? 0.02 : 0.035;
   lightningT = Math.max(0, lightningT - dt);
   hemi.intensity = 1.15 - storm * 0.35 + lightningT * 10;
   MAT.zEye.emissiveIntensity = 2.2 + pulse * 4;   // every zombie's eyes flash on the beat

@@ -63,7 +63,8 @@ export const LEVEL2 = {
     { x: 80, checkpoint: 82, name: 'The Dive Bar', song: 'bar', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
     { x: 121, checkpoint: 128.5, name: 'The Rooftops', song: 'roof', spawn: { pogo: 0.4, walker: 0.3, rat: 0.3 }, max: 5 },
   ],
-  palette: { hemiSky: 0x7a8ad0, hemiGround: 0x201828, key: 0xb8c8ff, rim: 0xff6ab8 },
+  palette: { hemiSky: 0x7a8ad0, hemiGround: 0x201828, key: 0xb8c8ff, rim: 0xff6ab8,
+    grade: { lift: [0.01, 0.015, 0.0], gamma: [1, 1.02, 1], gain: [1.02, 1.04, 0.96], sat: 1.05 } },   // colour mood: sickly neon green
   build: buildAlley,
 };
 
@@ -217,6 +218,8 @@ function buildAlley(scene, quality) {
   sign(64.3, 'CLIMB! ↑', '#a6ff4d');
   sign(196.5, 'ROOF · NO ENTRY', '#ff2e88');
 
+  world.addCrowd({ x1: 84, x2: 117, z: -3.05, rows: 1, gap: 1.15, eyes: 0x5a9a2a, jump: 0.25 });
+  world.addBeams({ at: [88, 96, 105, 113].map((x) => [x, 6.6, -2.6]), colors: [0xff2e88, 0x5ad1ff, 0xa6ff4d, 0xffc94a], length: 6.6, width: 1.1, sweep: 0.35, opacity: 0.09 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
 

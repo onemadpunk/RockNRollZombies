@@ -121,6 +121,28 @@ export function sky(scene, r, { top = '#06050d', mid = '#191232', bottom = '#3b2
   };
 }
 
+// ---- Gig set pieces --------------------------------------------------------------------------
+// A crowd silhouette: body, head, both arms up (horns!). Optional glowing eyes as a second group.
+function figureGeometry(eyes) {
+  const parts = [];
+  const add = (w, h, d, x, y, rz = 0) => { const g = new THREE.BoxGeometry(w, h, d); if (rz) g.rotateZ(rz); g.translate(x, y, 0); parts.push(g); };
+  add(0.5, 0.95, 0.3, 0, 0.48);
+  add(0.32, 0.32, 0.3, 0, 1.15);
+  add(0.11, 0.62, 0.11, -0.3, 1.28, 0.35);
+  add(0.11, 0.62, 0.11, 0.3, 1.28, -0.35);
+  const body = mergeGeometries(parts);
+  if (!eyes) return body;
+  const e1 = new THREE.BoxGeometry(0.07, 0.05, 0.02); e1.translate(-0.07, 1.18, 0.16);
+  const e2 = new THREE.BoxGeometry(0.07, 0.05, 0.02); e2.translate(0.07, 1.18, 0.16);
+  return mergeGeometries([body, mergeGeometries([e1, e2])], true);
+}
+
+const beamFade = () => canvasTex(4, 64, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#555555'); gr.addColorStop(1, '#000000');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+
 /**
  * Common level plumbing: ground strip with pits, one-way ledges, moving platforms, amps, a checkpoint
  * jukebox, lanterns with 3 roaming point lights. Returns the query API plus a `B` batch for scenery.
@@ -210,6 +232,8 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
   const lanternMat = new THREE.MeshStandardMaterial({ color: lanternColor, emissive: lanternColor, emissiveIntensity: 2.5 });
   const lights = [];
   for (let i = 0; i < 3; i++) { const Lt = new THREE.PointLight(lanternColor, 6, 7, 1.6); scene.add(Lt); lights.push(Lt); }
+  const crowds = [], beams = [];
+  const dummy = new THREE.Object3D();
 
   const api = {
     L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders,
@@ -249,6 +273,42 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
         if (m.chain) m.chain.position.set(x - 0.6, y + 5, -0.1);
       }
     },
+    /** A crowd in the background that jumps, headbangs or sways to the beat (one draw call). */
+    addCrowd({ x1, x2, z = -8, y = 0, rows = 3, gap = 0.8, color = 0x0b0910, eyes = null, glow = null, scale = 1, step = 0.5, jump = 0.4 }) {
+      const per = Math.max(1, Math.floor((x2 - x1) / gap));
+      const geo = figureGeometry(eyes);
+      const dark = new THREE.MeshStandardMaterial({ color, roughness: 1, ...(glow ? { emissive: glow, emissiveIntensity: 0.9 } : {}) });
+      const mat = eyes ? [dark, new THREE.MeshStandardMaterial({ color: eyes, emissive: eyes, emissiveIntensity: 0.9 })] : dark;
+      const mesh = new THREE.InstancedMesh(geo, mat, per * rows);
+      mesh.frustumCulled = false;
+      const people = [];
+      for (let row = 0; row < rows; row++) for (let i = 0; i < per; i++) {
+        const roll = Math.random();
+        people.push({
+          x: x1 + (i + 0.2 + Math.random() * 0.6) * gap, y: y + row * step, z: z - row * 1.1 + (Math.random() - 0.5) * 0.3,
+          s: scale * (0.85 + Math.random() * 0.3), ry: (Math.random() - 0.5) * 0.7,
+          kind: roll < 0.55 ? 0 : roll < 0.8 ? 1 : 2, ph: Math.random() < 0.7 ? 0 : 0.5,
+        });
+      }
+      scene.add(mesh);
+      crowds.push({ mesh, people, cx: (x1 + x2) / 2, half: (x2 - x1) / 2, jump, body: dark, glow: !!glow });
+      return mesh;
+    },
+    /** Stage lights: cones of coloured light that sweep in time with the music. */
+    addBeams({ at, colors = [0xff2e88, 0xa6ff4d, 0x5ad1ff], length = 11, width = 1.5, sweep = 0.5, opacity = 0.1 }) {
+      const fade = beamFade();
+      at.forEach(([x, y, z], i) => {
+        const g = new THREE.Group();
+        g.position.set(x, y, z);
+        const col = colors[i % colors.length];
+        const geo = new THREE.ConeGeometry(width, length, 20, 1, true); geo.translate(0, -length / 2, 0);
+        const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity, alphaMap: fade, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.35), new THREE.MeshStandardMaterial({ color: 0x111111, emissive: col, emissiveIntensity: 2 }));
+        g.add(cone, lamp);
+        scene.add(g);
+        beams.push({ g, cone, lamp, ph: i * 0.37, dir: i % 2 ? 1 : -1, sweep, opacity });
+      });
+    },
     addLantern(p) {
       const l = new THREE.Mesh(GEO.box, lanternMat); l.scale.set(0.16, 0.28, 0.16); l.position.copy(p); scene.add(l);
       lanterns.push(p);
@@ -265,6 +325,28 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
         Lt.intensity = 5 + Math.sin(t * 13 + i * 2) * 0.8 + Math.sin(t * 29 + i) * 0.5 + pulse * 2.5;
       });
       lanternMat.emissiveIntensity = 2.2 + pulse * 1.5;
+      const beat = api.beat || 0;
+      for (const c of crowds) {
+        if (Math.abs(c.cx - cam.x) > c.half + 30) continue;
+        if (c.glow) c.body.emissiveIntensity = 0.22 + pulse * 0.35;
+        c.people.forEach((p, k) => {
+          const f = (((beat + p.ph) % 1) + 1) % 1;   // 0 on the beat
+          let y = p.y, rx = 0, rz = 0;
+          if (p.kind === 0) y += Math.sin(f * Math.PI) * c.jump;                       // jumping
+          else if (p.kind === 1) rx = Math.sin(f * Math.PI) * 0.55;                    // headbanging
+          else rz = Math.sin(((beat + p.ph) / 2) * Math.PI) * 0.18;                    // swaying
+          dummy.position.set(p.x, y, p.z); dummy.rotation.set(rx, p.ry, rz); dummy.scale.setScalar(p.s);
+          dummy.updateMatrix(); c.mesh.setMatrixAt(k, dummy.matrix);
+        });
+        c.mesh.instanceMatrix.needsUpdate = true;
+      }
+      for (const b of beams) {
+        // one full sweep every 4 beats; every other bar they cross over
+        const bar = Math.floor(beat / 4) % 2;
+        b.g.rotation.z = Math.sin((beat / 4 + b.ph) * Math.PI * 2) * b.sweep * (bar ? b.dir : 1);
+        b.cone.material.opacity = b.opacity * (0.6 + pulse * 1.4);
+        b.lamp.material.emissiveIntensity = 1.5 + pulse * 3;
+      }
       for (const a of amps) {
         a.ringMat.emissiveIntensity = 0.5 + pulse * 3;
         for (const c of a.cones) c.scale.y = 1 + pulse * 2;

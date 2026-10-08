@@ -55,7 +55,8 @@ export const LEVEL1 = {
     { x: 121, checkpoint: 125.5, name: 'The Storm', song: 'storm', spawn: { walker: 0.4, pogo: 0.3, crawler: 0.3 }, max: 5 },
     { x: 166, name: 'The Mosh Pit', song: 'storm', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
-  palette: { hemiSky: 0x8a7cc8, hemiGround: 0x1a1220, key: 0xc4ccff, rim: 0xd9b8ff },
+  palette: { hemiSky: 0x8a7cc8, hemiGround: 0x1a1220, key: 0xc4ccff, rim: 0xd9b8ff,
+    grade: { lift: [0.0, 0.01, 0.035], gamma: [1, 1, 1.02], gain: [0.95, 1.0, 1.08], sat: 0.92 } },   // colour mood: cold graveyard blue
   build: buildGraveyard,
 };
 
@@ -188,14 +189,10 @@ function buildGraveyard(scene, quality) {
     for (let y = 0; y < 3; y++) B.add(GEO.box, stackMat, mat4(x, 0.75 + y * 1.5, -2.2, 0, 0, 0, 1.6, 1.45, 1.1));
   }
   B.add(GEO.box, truss, mat4((P.x1 + P.x2) / 2, 9, -3, 0, 0, 0, P.x2 - P.x1, 0.3, 0.3));
-  const beams = [];
-  const beamColors = [0xff2e88, 0xa6ff4d, 0x5ad1ff, 0xff2e88];
-  for (let i = 0; i < 4; i++) {
-    const g = new THREE.ConeGeometry(1.6, 10, 20, 1, true); g.translate(0, -5, 0);
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: beamColors[i], transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    m.position.set(P.x1 + 3 + i * ((P.x2 - P.x1 - 6) / 3), 9, -2.5);
-    scene.add(m); beams.push(m);
-  }
+  world.addBeams({ at: [0, 1, 2, 3].map((i) => [P.x1 + 3 + i * ((P.x2 - P.x1 - 6) / 3), 9, -2.5]), colors: [0xff2e88, 0xa6ff4d, 0x5ad1ff, 0xff2e88], length: 10, width: 1.6, opacity: 0.12 });
+  // the undead audience: at the gig where it all started, and packed into the mosh pit
+  world.addCrowd({ x1: -6, x2: 30, z: -9, rows: 2, gap: 1.0, eyes: 0x5a9a2a });
+  world.addCrowd({ x1: P.x1 + 1.5, x2: P.x2 - 1.5, z: -7, rows: 3, gap: 0.9, eyes: 0x5a9a2a });
 
   // Boss arena: gate pillars, mausoleum back wall, gate bars that drop behind you
   const A = L.arena;
@@ -252,7 +249,6 @@ function buildGraveyard(scene, quality) {
     skyUpdate(t, cam, pulse, storm);
     fogLayers.forEach((f, i) => { f.material.map.offset.x = t * (0.004 + i * 0.002) * (1 + storm * 3); });
     world.baseUpdate(t, cam, pulse);
-    beams.forEach((b, i) => { b.rotation.z = Math.sin(t * 0.8 + i * 1.7) * 0.5; b.material.opacity = 0.07 + pulse * 0.12; });
     rain.update(dt, cam, storm);
     bolt.update(dt);
   };

@@ -57,7 +57,8 @@ export const LEVEL5 = {
     { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 5 },
     { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
   ],
-  palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a },
+  palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a,
+    grade: { lift: [0.035, 0.0, 0.0], gamma: [1.03, 0.98, 0.98], gain: [1.1, 0.93, 0.9], sat: 1.08 } },   // colour mood: blood red
   build: buildStadium,
 };
 
@@ -115,7 +116,8 @@ function buildStadium(scene, quality) {
   for (let tier = 0; tier < 5; tier++) {
     const z = -18 - tier * 7, y = tier * 3.4;
     BG.add(GEO.box, conc, mat4(105, y + 1.4, z, 0, 0, 0, 340, 2.8, 6));
-    for (let x = -40; x < 260; x += 1.1 + r() * 0.8) if (r() < 0.75) BG.add(GEO.box, r() < 0.15 ? fire : soulMat, mat4(x, y + 3.1, z + 1.6, 0, 0, 0, 0.4, 0.6 + r() * 0.3, 0.3));
+    for (let x = -40; x < 260; x += 40) world.addCrowd({ x1: x, x2: x + 40, z: z + 1.6, y: y + 2.8, rows: 1, gap: 1.3, color: 0x141428, glow: 0x4a5acc, scale: 0.95 });
+    for (let x = -40; x < 260; x += 6 + r() * 8) BG.add(GEO.box, fire, mat4(x, y + 3.1, z + 1.6, 0, 0, 0, 0.4, 0.8, 0.3));
   }
   for (let x = -20; x < 260; x += 46) {
     BG.add(GEO.box, steel, mat4(x, 14, -48, 0, 0, 0, 0.8, 28, 0.8));
@@ -178,6 +180,8 @@ function buildStadium(scene, quality) {
   sign(151.5, 'BACKSTAGE', '#9affd8');
   sign(197.5, 'ON STAGE', '#ff3a1a');
 
+  world.addCrowd({ x1: 102, x2: 149, z: -4.2, rows: 2, gap: 0.85, eyes: 0xffc94a });
+  world.addBeams({ at: [0, 1, 2, 3].map((i) => [A.x1 + 3 + i * 5.3, 9.6, -3.2]), colors: [0xff3a1a, 0xffa040, 0xff3a1a, 0xffa040], length: 9.5, width: 1.5, sweep: 0.55, opacity: 0.12 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
   for (let x = 6; x < 196; x += 14) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1)) world.addLantern(new THREE.Vector3(x, 2.8, -3.2));

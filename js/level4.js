@@ -59,7 +59,8 @@ export const LEVEL4 = {
     { x: 96, checkpoint: 100, name: 'Route 666', song: 'route', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
     { x: 158, name: 'The Toll Gates', song: 'route', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
-  palette: { hemiSky: 0xc07858, hemiGround: 0x1a0a08, key: 0xffc8a0, rim: 0xff6a3a },
+  palette: { hemiSky: 0xc07858, hemiGround: 0x1a0a08, key: 0xffc8a0, rim: 0xff6a3a,
+    grade: { lift: [0.03, 0.012, 0.0], gamma: [1.02, 1, 0.98], gain: [1.08, 0.98, 0.88], sat: 1.05 } },   // colour mood: hot orange desert
   build: buildHighway,
 };
 
@@ -216,6 +217,8 @@ function buildHighway(scene, quality) {
   sign(104.5, 'MIND THE HEARSES', '#a6ff4d');
   sign(196.5, 'DISCO INFERNO', '#ff8ac8');
 
+  world.addCrowd({ x1: A.x1 + 1, x2: A.x2 - 1, z: -3.6, rows: 1, gap: 1.2, eyes: 0xff8ac8, jump: 0.3 });
+  world.addBeams({ at: [0, 1, 2, 3].map((i) => [A.x1 + 3 + i * 5.3, 9.6, -3.2]), colors: [0xff2e88, 0x2fa8ff, 0xffc94a, 0xa6ff4d], length: 9.5, width: 1.4, sweep: 0.6 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
   for (let x = 6; x < 196; x += 16) if (onGround(x)) world.addLantern(new THREE.Vector3(x, 3.2, -2.7));
@@ -226,10 +229,10 @@ function buildHighway(scene, quality) {
     world.baseUpdate(t, cam, pulse);
     lava.emissiveIntensity = 1.8 + Math.sin(t * 2) * 0.4 + pulse * 0.6;
     const step = Math.floor(t * 160 / 60) % 4;
-    tileMats.forEach((m, i) => { m.emissiveIntensity = i === step ? 1.4 + pulse * 1.5 : 0.2; });
+    tileMats.forEach((m, i) => { m.emissiveIntensity = i === step ? 0.7 + pulse * 0.6 : 0.12; });
     ball.rotation.y = t * 0.8;
     ball.userData.glint.emissiveIntensity = 2 + pulse * 4;
-    spot.intensity = Math.abs(cam.x - (A.x1 + A.x2) / 2) < 20 ? 8 + pulse * 10 : 0;
+    spot.intensity = Math.abs(cam.x - (A.x1 + A.x2) / 2) < 20 ? 4 + pulse * 5 : 0;
     spot.color.setHSL((t * 0.1) % 1, 0.9, 0.6);
   };
   return world;

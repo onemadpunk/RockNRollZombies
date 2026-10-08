@@ -560,6 +560,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 const __m = {};
 // ---- config.js ----
 {
@@ -2425,6 +2426,28 @@ function sky(scene, r, { top = '#06050d', mid = '#191232', bottom = '#3b2a58', m
   };
 }
 
+// ---- Gig set pieces --------------------------------------------------------------------------
+// A crowd silhouette: body, head, both arms up (horns!). Optional glowing eyes as a second group.
+function figureGeometry(eyes) {
+  const parts = [];
+  const add = (w, h, d, x, y, rz = 0) => { const g = new THREE.BoxGeometry(w, h, d); if (rz) g.rotateZ(rz); g.translate(x, y, 0); parts.push(g); };
+  add(0.5, 0.95, 0.3, 0, 0.48);
+  add(0.32, 0.32, 0.3, 0, 1.15);
+  add(0.11, 0.62, 0.11, -0.3, 1.28, 0.35);
+  add(0.11, 0.62, 0.11, 0.3, 1.28, -0.35);
+  const body = mergeGeometries(parts);
+  if (!eyes) return body;
+  const e1 = new THREE.BoxGeometry(0.07, 0.05, 0.02); e1.translate(-0.07, 1.18, 0.16);
+  const e2 = new THREE.BoxGeometry(0.07, 0.05, 0.02); e2.translate(0.07, 1.18, 0.16);
+  return mergeGeometries([body, mergeGeometries([e1, e2])], true);
+}
+
+const beamFade = () => canvasTex(4, 64, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#555555'); gr.addColorStop(1, '#000000');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+
 /**
  * Common level plumbing: ground strip with pits, one-way ledges, moving platforms, amps, a checkpoint
  * jukebox, lanterns with 3 roaming point lights. Returns the query API plus a `B` batch for scenery.
@@ -2514,6 +2537,8 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
   const lanternMat = new THREE.MeshStandardMaterial({ color: lanternColor, emissive: lanternColor, emissiveIntensity: 2.5 });
   const lights = [];
   for (let i = 0; i < 3; i++) { const Lt = new THREE.PointLight(lanternColor, 6, 7, 1.6); scene.add(Lt); lights.push(Lt); }
+  const crowds = [], beams = [];
+  const dummy = new THREE.Object3D();
 
   const api = {
     L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders,
@@ -2553,6 +2578,42 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
         if (m.chain) m.chain.position.set(x - 0.6, y + 5, -0.1);
       }
     },
+    /** A crowd in the background that jumps, headbangs or sways to the beat (one draw call). */
+    addCrowd({ x1, x2, z = -8, y = 0, rows = 3, gap = 0.8, color = 0x0b0910, eyes = null, glow = null, scale = 1, step = 0.5, jump = 0.4 }) {
+      const per = Math.max(1, Math.floor((x2 - x1) / gap));
+      const geo = figureGeometry(eyes);
+      const dark = new THREE.MeshStandardMaterial({ color, roughness: 1, ...(glow ? { emissive: glow, emissiveIntensity: 0.9 } : {}) });
+      const mat = eyes ? [dark, new THREE.MeshStandardMaterial({ color: eyes, emissive: eyes, emissiveIntensity: 0.9 })] : dark;
+      const mesh = new THREE.InstancedMesh(geo, mat, per * rows);
+      mesh.frustumCulled = false;
+      const people = [];
+      for (let row = 0; row < rows; row++) for (let i = 0; i < per; i++) {
+        const roll = Math.random();
+        people.push({
+          x: x1 + (i + 0.2 + Math.random() * 0.6) * gap, y: y + row * step, z: z - row * 1.1 + (Math.random() - 0.5) * 0.3,
+          s: scale * (0.85 + Math.random() * 0.3), ry: (Math.random() - 0.5) * 0.7,
+          kind: roll < 0.55 ? 0 : roll < 0.8 ? 1 : 2, ph: Math.random() < 0.7 ? 0 : 0.5,
+        });
+      }
+      scene.add(mesh);
+      crowds.push({ mesh, people, cx: (x1 + x2) / 2, half: (x2 - x1) / 2, jump, body: dark, glow: !!glow });
+      return mesh;
+    },
+    /** Stage lights: cones of coloured light that sweep in time with the music. */
+    addBeams({ at, colors = [0xff2e88, 0xa6ff4d, 0x5ad1ff], length = 11, width = 1.5, sweep = 0.5, opacity = 0.1 }) {
+      const fade = beamFade();
+      at.forEach(([x, y, z], i) => {
+        const g = new THREE.Group();
+        g.position.set(x, y, z);
+        const col = colors[i % colors.length];
+        const geo = new THREE.ConeGeometry(width, length, 20, 1, true); geo.translate(0, -length / 2, 0);
+        const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity, alphaMap: fade, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.35), new THREE.MeshStandardMaterial({ color: 0x111111, emissive: col, emissiveIntensity: 2 }));
+        g.add(cone, lamp);
+        scene.add(g);
+        beams.push({ g, cone, lamp, ph: i * 0.37, dir: i % 2 ? 1 : -1, sweep, opacity });
+      });
+    },
     addLantern(p) {
       const l = new THREE.Mesh(GEO.box, lanternMat); l.scale.set(0.16, 0.28, 0.16); l.position.copy(p); scene.add(l);
       lanterns.push(p);
@@ -2569,6 +2630,28 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
         Lt.intensity = 5 + Math.sin(t * 13 + i * 2) * 0.8 + Math.sin(t * 29 + i) * 0.5 + pulse * 2.5;
       });
       lanternMat.emissiveIntensity = 2.2 + pulse * 1.5;
+      const beat = api.beat || 0;
+      for (const c of crowds) {
+        if (Math.abs(c.cx - cam.x) > c.half + 30) continue;
+        if (c.glow) c.body.emissiveIntensity = 0.22 + pulse * 0.35;
+        c.people.forEach((p, k) => {
+          const f = (((beat + p.ph) % 1) + 1) % 1;   // 0 on the beat
+          let y = p.y, rx = 0, rz = 0;
+          if (p.kind === 0) y += Math.sin(f * Math.PI) * c.jump;                       // jumping
+          else if (p.kind === 1) rx = Math.sin(f * Math.PI) * 0.55;                    // headbanging
+          else rz = Math.sin(((beat + p.ph) / 2) * Math.PI) * 0.18;                    // swaying
+          dummy.position.set(p.x, y, p.z); dummy.rotation.set(rx, p.ry, rz); dummy.scale.setScalar(p.s);
+          dummy.updateMatrix(); c.mesh.setMatrixAt(k, dummy.matrix);
+        });
+        c.mesh.instanceMatrix.needsUpdate = true;
+      }
+      for (const b of beams) {
+        // one full sweep every 4 beats; every other bar they cross over
+        const bar = Math.floor(beat / 4) % 2;
+        b.g.rotation.z = Math.sin((beat / 4 + b.ph) * Math.PI * 2) * b.sweep * (bar ? b.dir : 1);
+        b.cone.material.opacity = b.opacity * (0.6 + pulse * 1.4);
+        b.lamp.material.emissiveIntensity = 1.5 + pulse * 3;
+      }
       for (const a of amps) {
         a.ringMat.emissiveIntensity = 0.5 + pulse * 3;
         for (const c of a.cones) c.scale.y = 1 + pulse * 2;
@@ -2640,7 +2723,8 @@ const LEVEL1 = {
     { x: 121, checkpoint: 125.5, name: 'The Storm', song: 'storm', spawn: { walker: 0.4, pogo: 0.3, crawler: 0.3 }, max: 5 },
     { x: 166, name: 'The Mosh Pit', song: 'storm', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
-  palette: { hemiSky: 0x8a7cc8, hemiGround: 0x1a1220, key: 0xc4ccff, rim: 0xd9b8ff },
+  palette: { hemiSky: 0x8a7cc8, hemiGround: 0x1a1220, key: 0xc4ccff, rim: 0xd9b8ff,
+    grade: { lift: [0.0, 0.01, 0.035], gamma: [1, 1, 1.02], gain: [0.95, 1.0, 1.08], sat: 0.92 } },   // colour mood: cold graveyard blue
   build: buildGraveyard,
 };
 
@@ -2773,14 +2857,10 @@ function buildGraveyard(scene, quality) {
     for (let y = 0; y < 3; y++) B.add(GEO.box, stackMat, mat4(x, 0.75 + y * 1.5, -2.2, 0, 0, 0, 1.6, 1.45, 1.1));
   }
   B.add(GEO.box, truss, mat4((P.x1 + P.x2) / 2, 9, -3, 0, 0, 0, P.x2 - P.x1, 0.3, 0.3));
-  const beams = [];
-  const beamColors = [0xff2e88, 0xa6ff4d, 0x5ad1ff, 0xff2e88];
-  for (let i = 0; i < 4; i++) {
-    const g = new THREE.ConeGeometry(1.6, 10, 20, 1, true); g.translate(0, -5, 0);
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: beamColors[i], transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    m.position.set(P.x1 + 3 + i * ((P.x2 - P.x1 - 6) / 3), 9, -2.5);
-    scene.add(m); beams.push(m);
-  }
+  world.addBeams({ at: [0, 1, 2, 3].map((i) => [P.x1 + 3 + i * ((P.x2 - P.x1 - 6) / 3), 9, -2.5]), colors: [0xff2e88, 0xa6ff4d, 0x5ad1ff, 0xff2e88], length: 10, width: 1.6, opacity: 0.12 });
+  // the undead audience: at the gig where it all started, and packed into the mosh pit
+  world.addCrowd({ x1: -6, x2: 30, z: -9, rows: 2, gap: 1.0, eyes: 0x5a9a2a });
+  world.addCrowd({ x1: P.x1 + 1.5, x2: P.x2 - 1.5, z: -7, rows: 3, gap: 0.9, eyes: 0x5a9a2a });
 
   // Boss arena: gate pillars, mausoleum back wall, gate bars that drop behind you
   const A = L.arena;
@@ -2837,7 +2917,6 @@ function buildGraveyard(scene, quality) {
     skyUpdate(t, cam, pulse, storm);
     fogLayers.forEach((f, i) => { f.material.map.offset.x = t * (0.004 + i * 0.002) * (1 + storm * 3); });
     world.baseUpdate(t, cam, pulse);
-    beams.forEach((b, i) => { b.rotation.z = Math.sin(t * 0.8 + i * 1.7) * 0.5; b.material.opacity = 0.07 + pulse * 0.12; });
     rain.update(dt, cam, storm);
     bolt.update(dt);
   };
@@ -2973,7 +3052,8 @@ const LEVEL2 = {
     { x: 80, checkpoint: 82, name: 'The Dive Bar', song: 'bar', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
     { x: 121, checkpoint: 128.5, name: 'The Rooftops', song: 'roof', spawn: { pogo: 0.4, walker: 0.3, rat: 0.3 }, max: 5 },
   ],
-  palette: { hemiSky: 0x7a8ad0, hemiGround: 0x201828, key: 0xb8c8ff, rim: 0xff6ab8 },
+  palette: { hemiSky: 0x7a8ad0, hemiGround: 0x201828, key: 0xb8c8ff, rim: 0xff6ab8,
+    grade: { lift: [0.01, 0.015, 0.0], gamma: [1, 1.02, 1], gain: [1.02, 1.04, 0.96], sat: 1.05 } },   // colour mood: sickly neon green
   build: buildAlley,
 };
 
@@ -3127,6 +3207,8 @@ function buildAlley(scene, quality) {
   sign(64.3, 'CLIMB! ↑', '#a6ff4d');
   sign(196.5, 'ROOF · NO ENTRY', '#ff2e88');
 
+  world.addCrowd({ x1: 84, x2: 117, z: -3.05, rows: 1, gap: 1.15, eyes: 0x5a9a2a, jump: 0.25 });
+  world.addBeams({ at: [88, 96, 105, 113].map((x) => [x, 6.6, -2.6]), colors: [0xff2e88, 0x5ad1ff, 0xa6ff4d, 0xffc94a], length: 6.6, width: 1.1, sweep: 0.35, opacity: 0.09 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
 
@@ -3209,7 +3291,8 @@ const LEVEL3 = {
     { x: 96, checkpoint: 100, name: 'The Funfair', song: 'funfair', spawn: { walker: 0.4, pogo: 0.3, ghost: 0.3 }, max: 4 },
     { x: 148, name: 'The Main Stage', song: 'funfair', spawn: { pogo: 0.5, walker: 0.5 }, max: 4 },
   ],
-  palette: { hemiSky: 0x8a9ad0, hemiGround: 0x1a1a14, key: 0xd8d0ff, rim: 0x7affc8 },
+  palette: { hemiSky: 0x8a9ad0, hemiGround: 0x1a1a14, key: 0xd8d0ff, rim: 0x7affc8,
+    grade: { lift: [0.0, 0.02, 0.025], gamma: [1, 1, 1], gain: [1.05, 1.02, 0.96], sat: 1.1 } },   // colour mood: teal night, warm lights
   build: buildFestival,
 };
 
@@ -3331,6 +3414,9 @@ function buildFestival(scene, quality) {
   sign(148.5, 'MAIN STAGE', '#9affd8');
   sign(196.5, 'ARTISTS ONLY', '#ff2e88');
 
+  world.addCrowd({ x1: 149, x2: 197, z: -6, rows: 3, gap: 0.8, color: 0x34303c, eyes: 0x5a9a2a });
+  world.addCrowd({ x1: 20, x2: 140, z: -12, rows: 2, gap: 2.4, scale: 0.9, color: 0x34303c, eyes: 0x5a9a2a });
+  world.addBeams({ at: [0, 1, 2, 3, 4].map((i) => [A.x1 + 2 + i * 4.5, 9.6, -3.3]), colors: [0xff2e88, 0x9affd8, 0xffc94a, 0x9affd8, 0xff2e88], length: 9.5, width: 1.4 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
   for (let x = 6; x < 225; x += 14) if (onGround(x) && !L.campfires.some((c) => Math.abs(c - x) < 3)) world.addLantern(new THREE.Vector3(x, 2.8, -3.9));
@@ -3410,7 +3496,8 @@ const LEVEL4 = {
     { x: 96, checkpoint: 100, name: 'Route 666', song: 'route', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
     { x: 158, name: 'The Toll Gates', song: 'route', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
-  palette: { hemiSky: 0xc07858, hemiGround: 0x1a0a08, key: 0xffc8a0, rim: 0xff6a3a },
+  palette: { hemiSky: 0xc07858, hemiGround: 0x1a0a08, key: 0xffc8a0, rim: 0xff6a3a,
+    grade: { lift: [0.03, 0.012, 0.0], gamma: [1.02, 1, 0.98], gain: [1.08, 0.98, 0.88], sat: 1.05 } },   // colour mood: hot orange desert
   build: buildHighway,
 };
 
@@ -3567,6 +3654,8 @@ function buildHighway(scene, quality) {
   sign(104.5, 'MIND THE HEARSES', '#a6ff4d');
   sign(196.5, 'DISCO INFERNO', '#ff8ac8');
 
+  world.addCrowd({ x1: A.x1 + 1, x2: A.x2 - 1, z: -3.6, rows: 1, gap: 1.2, eyes: 0xff8ac8, jump: 0.3 });
+  world.addBeams({ at: [0, 1, 2, 3].map((i) => [A.x1 + 3 + i * 5.3, 9.6, -3.2]), colors: [0xff2e88, 0x2fa8ff, 0xffc94a, 0xa6ff4d], length: 9.5, width: 1.4, sweep: 0.6 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
   for (let x = 6; x < 196; x += 16) if (onGround(x)) world.addLantern(new THREE.Vector3(x, 3.2, -2.7));
@@ -3577,10 +3666,10 @@ function buildHighway(scene, quality) {
     world.baseUpdate(t, cam, pulse);
     lava.emissiveIntensity = 1.8 + Math.sin(t * 2) * 0.4 + pulse * 0.6;
     const step = Math.floor(t * 160 / 60) % 4;
-    tileMats.forEach((m, i) => { m.emissiveIntensity = i === step ? 1.4 + pulse * 1.5 : 0.2; });
+    tileMats.forEach((m, i) => { m.emissiveIntensity = i === step ? 0.7 + pulse * 0.6 : 0.12; });
     ball.rotation.y = t * 0.8;
     ball.userData.glint.emissiveIntensity = 2 + pulse * 4;
-    spot.intensity = Math.abs(cam.x - (A.x1 + A.x2) / 2) < 20 ? 8 + pulse * 10 : 0;
+    spot.intensity = Math.abs(cam.x - (A.x1 + A.x2) / 2) < 20 ? 4 + pulse * 5 : 0;
     spot.color.setHSL((t * 0.1) % 1, 0.9, 0.6);
   };
   return world;
@@ -3650,7 +3739,8 @@ const LEVEL5 = {
     { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 5 },
     { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
   ],
-  palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a },
+  palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a,
+    grade: { lift: [0.035, 0.0, 0.0], gamma: [1.03, 0.98, 0.98], gain: [1.1, 0.93, 0.9], sat: 1.08 } },   // colour mood: blood red
   build: buildStadium,
 };
 
@@ -3708,7 +3798,8 @@ function buildStadium(scene, quality) {
   for (let tier = 0; tier < 5; tier++) {
     const z = -18 - tier * 7, y = tier * 3.4;
     BG.add(GEO.box, conc, mat4(105, y + 1.4, z, 0, 0, 0, 340, 2.8, 6));
-    for (let x = -40; x < 260; x += 1.1 + r() * 0.8) if (r() < 0.75) BG.add(GEO.box, r() < 0.15 ? fire : soulMat, mat4(x, y + 3.1, z + 1.6, 0, 0, 0, 0.4, 0.6 + r() * 0.3, 0.3));
+    for (let x = -40; x < 260; x += 40) world.addCrowd({ x1: x, x2: x + 40, z: z + 1.6, y: y + 2.8, rows: 1, gap: 1.3, color: 0x141428, glow: 0x4a5acc, scale: 0.95 });
+    for (let x = -40; x < 260; x += 6 + r() * 8) BG.add(GEO.box, fire, mat4(x, y + 3.1, z + 1.6, 0, 0, 0, 0.4, 0.8, 0.3));
   }
   for (let x = -20; x < 260; x += 46) {
     BG.add(GEO.box, steel, mat4(x, 14, -48, 0, 0, 0, 0.8, 28, 0.8));
@@ -3771,6 +3862,8 @@ function buildStadium(scene, quality) {
   sign(151.5, 'BACKSTAGE', '#9affd8');
   sign(197.5, 'ON STAGE', '#ff3a1a');
 
+  world.addCrowd({ x1: 102, x2: 149, z: -4.2, rows: 2, gap: 0.85, eyes: 0xffc94a });
+  world.addBeams({ at: [0, 1, 2, 3].map((i) => [A.x1 + 3 + i * 5.3, 9.6, -3.2]), colors: [0xff3a1a, 0xffa040, 0xff3a1a, 0xffa040], length: 9.5, width: 1.5, sweep: 0.55, opacity: 0.12 });
   B.build(scene);
   BG.build(scene, { cast: false, receive: true });
   for (let x = 6; x < 196; x += 14) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1)) world.addLantern(new THREE.Vector3(x, 2.8, -3.2));
@@ -6485,6 +6578,7 @@ Object.assign(__m, { WEAPONS, Game });
 
 
 
+
 const { Music } = __m;
 const { Controls, KEYS_SOLO, KEYS_P1, KEYS_P2, bindTouch, onTouchMode, usingTouch, setCapture } = __m;
 const { LEVELS, buildLevel } = __m;
@@ -6529,6 +6623,37 @@ composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.55, 0.8);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// "Concert film" look: per-level colour grade, vignette, grain, and a colour-split punch on big hits
+const film = new ShaderPass({
+  uniforms: {
+    tDiffuse: { value: null }, time: { value: 0 }, punch: { value: 0 }, vignette: { value: 0.38 }, grain: { value: 0.035 },
+    lift: { value: new THREE.Vector3() }, gamma: { value: new THREE.Vector3(1, 1, 1) }, gain: { value: new THREE.Vector3(1, 1, 1) }, sat: { value: 1 },
+  },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float time, punch, vignette, grain, sat; uniform vec3 lift, gamma, gain; varying vec2 vUv;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec2 c = vUv - 0.5;
+      float d = length(c);
+      vec2 off = c * (0.003 + punch * 0.022) * d * 2.0;
+      vec3 col = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
+      col = gain * (col + lift * (1.0 - col));
+      col = pow(max(col, 0.0), 1.0 / gamma);
+      float l = dot(col, vec3(0.299, 0.587, 0.114));
+      col = mix(vec3(l), col, sat);
+      col *= 1.0 - vignette * smoothstep(0.32, 0.85, d);
+      col += (hash(vUv * 731.0 + fract(time * 7.0) * 97.0) - 0.5) * grain;
+      gl_FragColor = vec4(col, 1.0);
+    }`,
+});
+composer.addPass(film);
+let filmPunch = 0;
+function setGrade(g = {}) {
+  const U = film.uniforms;
+  U.lift.value.set(...(g.lift || [0, 0, 0])); U.gamma.value.set(...(g.gamma || [1, 1, 1]));
+  U.gain.value.set(...(g.gain || [1, 1, 1])); U.sat.value = g.sat ?? 1;
+}
 
 const music = new Music();
 
@@ -6560,6 +6685,7 @@ function makeScene(i) {
   rim = new THREE.DirectionalLight(pal.rim, 1.6);
   scene.add(hemi, key, key.target, rim, rim.target);
   world = buildLevel(i, scene, quality);
+  setGrade(pal.grade);
   sparks = new Particles(scene, 600, true);
   chunks = new Particles(scene, 500, false);
   embers = new Embers(scene, 200);
@@ -6597,7 +6723,9 @@ addEventListener('resize', resize);
 // ---- UI hooks used by the game -------------------------------------------------------------
 let shakeAmt = 0, lightningT = 0;
 const ui = {
-  beatHit() { const b = $('beatbar'); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 160); },
+  beatHit() { const b = $('beatbar'); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 160); ui.punch(0.3); },
+  /** Colour-split jolt for big moments (gentler with flashing off). */
+  punch(a) { filmPunch = Math.max(filmPunch, save.settings.flashing ? a : a * 0.3); },
   banner(title, sub) {
     const el = $('banner');
     el.innerHTML = '';
@@ -6607,8 +6735,10 @@ const ui = {
     clearTimeout(ui._bt);
     ui._bt = setTimeout(() => (el.hidden = true), 2400);
   },
-  shake(a) { if (save.settings.shake) shakeAmt = Math.max(shakeAmt, a); },
+  shake(a) { if (save.settings.shake) shakeAmt = Math.max(shakeAmt, a); ui.punch(Math.min(1, a)); },
   boss(frac) {
+    if (frac !== null && ui._bossFrac != null && frac < ui._bossFrac) ui.punch(0.45);
+    ui._bossFrac = frac;
     show('bossbar', frac !== null);
     if (frac !== null) $('bossfill').style.width = Math.max(0, frac) * 100 + '%';
   },
@@ -7256,7 +7386,12 @@ function tick(raw) {
   rim.position.set(camX + 6, 9, -14); rim.target.position.set(camX, 1, 0);
 
   const storm = world.stormAt(camX);
+  world.beat = music.ctx ? music.beatFloat() : t * 160 / 60;
   world.update(t, dt, camera.position, pulse, storm);
+  filmPunch *= Math.exp(-dt * 7);
+  film.uniforms.punch.value = filmPunch;
+  film.uniforms.time.value = t;
+  film.uniforms.grain.value = quality.low ? 0.02 : 0.035;
   lightningT = Math.max(0, lightningT - dt);
   hemi.intensity = 1.15 - storm * 0.35 + lightningT * 10;
   MAT.zEye.emissiveIntensity = 2.2 + pulse * 4;   // every zombie's eyes flash on the beat
