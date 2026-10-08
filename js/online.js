@@ -4,8 +4,8 @@
 // to be in the page, and the database rules only allow reading scores and adding new ones.
 
 export const SCOREBOARD = {
-  url: '',   // e.g. 'https://abcdefgh.supabase.co'
-  key: '',   // the project's anon public key
+  url: 'https://vhxnkeldcjtvheroovqy.supabase.co',
+  key: '',   // the project's publishable key (sb_publishable_...) or legacy anon key (eyJ...)
 };
 
 const TABLE = 'scores';
@@ -14,7 +14,10 @@ let cache = null, cacheAt = 0;
 export const online = () => !!(SCOREBOARD.url && SCOREBOARD.key);
 
 function headers(extra = {}) {
-  return { apikey: SCOREBOARD.key, Authorization: `Bearer ${SCOREBOARD.key}`, 'Content-Type': 'application/json', ...extra };
+  const h = { apikey: SCOREBOARD.key, 'Content-Type': 'application/json', ...extra };
+  // Legacy anon keys are JWTs and also go in Authorization; new publishable keys only use apikey.
+  if (SCOREBOARD.key.startsWith('eyJ')) h.Authorization = `Bearer ${SCOREBOARD.key}`;
+  return h;
 }
 
 async function get(q) {
