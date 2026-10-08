@@ -20,8 +20,11 @@ function headers(extra = {}) {
   return h;
 }
 
+// Give up quickly on a weak signal (in the car) instead of leaving the screen waiting
+const timeout = (ms) => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
+
 async function get(q) {
-  const res = await fetch(`${SCOREBOARD.url}/rest/v1/${TABLE}?${q}`, { headers: headers() });
+  const res = await fetch(`${SCOREBOARD.url}/rest/v1/${TABLE}?${q}`, { headers: headers(), signal: timeout(5000) });
   if (!res.ok) throw new Error('scoreboard ' + res.status);
   return res.json();
 }
@@ -43,24 +46,57 @@ export async function worldTop(board = 'score', limit = 20, fresh = false) {
   return rows;
 }
 
-/** Would this make the world top 20 on that board? (False if we can't reach it.) */
+/** Would this make the world top 20 on that board? null if we can't reach it (offline). */
 export async function worldQualifies(board, value) {
   try {
     const top = await worldTop(board);
     if (top.length < 20) return value > 0;
     const last = top[top.length - 1];
     return board === 'score' ? value > last.score : value < last.time_s;
-  } catch { return false; }
+  } catch { return null; }
 }
 
-/** kind 'score' (high score) or 'speed' (a gig clear time in seconds). */
-export async function submitWorld({ kind, name, score, time, level, diff, hero }) {
-  if (!online()) return false;
-  const res = await fetch(`${SCOREBOARD.url}/rest/v1/${TABLE}`, {
+function post({ kind, name, score, time, level, diff, hero }) {
+  return fetch(`${SCOREBOARD.url}/rest/v1/${TABLE}`, {
     method: 'POST',
     headers: headers({ Prefer: 'return=minimal' }),
     body: JSON.stringify({ kind, name, score: Math.round(score || 0), time_s: time ?? null, level, diff, hero }),
+    signal: timeout(8000),
   });
-  cache = null;
-  return res.ok;
+}
+
+// Scores set offline wait here and go up the next time there's a connection.
+const OUTBOX = 'rnrz-outbox';
+const readOutbox = () => { try { return JSON.parse(localStorage.getItem(OUTBOX)) || []; } catch { return []; } };
+const writeOutbox = (list) => { try { localStorage.setItem(OUTBOX, JSON.stringify(list.slice(-20))); } catch {} };
+
+/** kind 'score' (high score) or 'speed' (a gig clear time in seconds). true, false, or 'queued' if offline. */
+export async function submitWorld(entry) {
+  if (!online()) return false;
+  try {
+    const res = await post(entry);
+    cache = null;
+    return res.ok;
+  } catch {
+    writeOutbox([...readOutbox(), entry]);
+    return 'queued';
+  }
+}
+
+/** Send anything saved while offline. Returns how many went up. */
+export async function flushOutbox() {
+  const list = readOutbox();
+  if (!online() || !list.length || navigator.onLine === false) return 0;
+  const left = [];
+  let sent = 0;
+  for (const e of list) {
+    try {
+      const res = await post(e);
+      if (res.ok) sent++;
+      else if (res.status >= 500) left.push(e);   // server trouble: try again later (a rejected row is dropped)
+    } catch { left.push(e); }
+  }
+  writeOutbox(left);
+  if (sent) cache = null;
+  return sent;
 }

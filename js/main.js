@@ -12,7 +12,7 @@ import { Game, WEAPONS } from './game.js';
 import { MAT, HEROES, makeHero } from './models.js';
 import { DIFFICULTY, ENCORE, SHOP, save, persist, unlockCharacter, unlockLevel, qualifies, addScore, timeQualifies, addTime, fmtTime } from './config.js';
 import { renderComic, renderMap, renderShop } from './screens.js';
-import { online, worldTop, worldQualifies, submitWorld } from './online.js';
+import { online, worldTop, worldQualifies, submitWorld, flushOutbox } from './online.js';
 
 const $ = (id) => document.getElementById(id);
 const show = (id, on = true) => { $(id).hidden = !on; };
@@ -495,18 +495,22 @@ async function offerSave(time) {
   const P = pending, lvl = P.level;
   const localScore = P.score && qualifies(run.score);
   const localSpeed = P.speed && timeQualifies(lvl, time);
-  const [worldScore, worldSpeed] = await Promise.all([
+  const [ws, wsp] = await Promise.all([
     P.score ? worldQualifies('score', run.score) : false,
     P.speed ? worldQualifies(lvl + 1, time) : false,
   ]);
+  // Offline we can't check the world board: if it's a personal best, save it to send later
+  const worldScore = ws === null ? (localScore ? 'later' : false) : ws;
+  const worldSpeed = wsp === null ? (localSpeed ? 'later' : false) : wsp;
   P.flags = { localScore, localSpeed, worldScore, worldSpeed };
   if (state !== 'over' || P !== pending || !(localScore || localSpeed || worldScore || worldSpeed)) return;
   const bits = [];
   if (localSpeed || worldSpeed) bits.push(`clear time ${fmtTime(time)}`);
   if (localScore || worldScore) bits.push(`score ${run.score.toLocaleString()}`);
-  $('hs-title').textContent = (worldScore || worldSpeed ? 'World top 20! ' : 'New best! ') + 'Enter your name';
+  $('hs-title').textContent = (worldScore === true || worldSpeed === true ? 'World top 20! ' : 'New best! ') + 'Enter your name';
   $('hs-pad').hidden = !(navigator.getGamepads && [...navigator.getGamepads()].some(Boolean));
-  $('hs-where').textContent = `Saving your ${bits.join(' and ')}${online() ? ' to this device and the world scoreboard' : ' to this device'}.`;
+  const later = worldScore === 'later' || worldSpeed === 'later';
+  $('hs-where').textContent = `Saving your ${bits.join(' and ')}${!online() ? ' to this device' : later ? " to this device. No signal, so it'll go to the world scoreboard next time you're online" : ' to this device and the world scoreboard'}.`;
   if (!$('initials').value) $('initials').value = savedName;
   show('hs', true);
   $('initials').focus();
@@ -532,7 +536,9 @@ $('hs').addEventListener('submit', (e) => {
   const sends = [];
   if (F.worldScore) sends.push(submitWorld({ ...base, kind: 'score', score: run.score }));
   if (F.worldSpeed) sends.push(submitWorld({ ...base, kind: 'speed', score: run.score, time: Math.round(P.time * 100) / 100 }));
-  if (sends.length) Promise.all(sends).then((r) => ui.banner(r.every(Boolean) ? 'On the world scoreboard!' : "Couldn't reach the scoreboard", ''));
+  if (sends.length) Promise.all(sends).then((r) => ui.banner(
+    r.every((x) => x === true) ? 'On the world scoreboard!' : r.includes('queued') ? 'Saved' : "Couldn't reach the scoreboard",
+    r.includes('queued') ? "It'll post when you're back online" : ''));
   $('over-next').focus();
 });
 
@@ -807,7 +813,32 @@ function updateHud(frac) {
 }
 
 // Always-fresh files + offline copy (only on the real website, not when opened from a file)
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Hand the worker everything this page loaded (engine, fonts, game files) so it all works offline
+  addEventListener('load', () => setTimeout(() => navigator.serviceWorker.ready.then((reg) => {
+    const base = location.href.split('#')[0].split('?')[0];
+    const extra = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon.svg'].map((f) => new URL(f, base).href);
+    const urls = [base, ...extra, ...performance.getEntriesByType('resource').map((e) => e.name)]
+      .filter((u) => u.startsWith(location.origin) || /cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(u));
+    if (reg.active) reg.active.postMessage({ warm: [...new Set(urls)] });
+  }), 3000));
+}
+// Scores set with no signal go up once we're back online
+flushOutbox();
+addEventListener('online', () => flushOutbox());
+
+// Install as an app: Chrome/Android gives us a prompt to show; iPhone needs Share > Add to Home Screen.
+let installPrompt = null;
+const standalone = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+$('tg-install').hidden = !!standalone || !iOS;
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (!standalone) $('tg-install').hidden = false; });
+addEventListener('appinstalled', () => { $('tg-install').hidden = true; installPrompt = null; });
+$('tg-install').addEventListener('click', async () => {
+  if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; return; }
+  $('diff-blurb').textContent = 'To install: tap the Share button in Safari, then "Add to Home Screen". Open it once with a signal, and after that it plays offline.';
+});
 // Show which version is loaded, so it's easy to tell whether a phone has the latest
 try {
   const d = new Date(document.lastModified);
