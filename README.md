@@ -2,6 +2,8 @@
 
 **Turn it up to 11 and dead the undead.**
 
+Made by One Mad Punk.
+
 A Ghosts 'n Goblins-style 2.5D platformer where the music is the game clock. The Devil has dragged your band
 to Hell: play five gigs, rescue your bandmates and win your soul back in a guitar duel.
 

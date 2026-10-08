@@ -114,7 +114,7 @@ export const COMICS = {
   after4: [
     { art: 'devilbeat', text: 'The Devil drops his flying-V. The contract goes up in flames. Your soul is your own again.' },
     { art: 'finale', text: 'And the zombies? Turns out they just wanted a decent gig.' },
-    { art: 'theend', text: 'Thanks for playing! Try Hard mode for the Encore, and hunt down every platinum record.' },
+    { art: 'theend', text: 'Thanks for playing! Made by One Mad Punk. Try Hard mode for the Encore, and hunt down every platinum record.' },
   ],
 };
 
