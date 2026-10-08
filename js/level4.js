@@ -7,6 +7,7 @@ import { makeDiscoBall } from './models.js';
 // Zones: 1 Truck stop (0-48) · 2 Broken bridge (48-96) · 3 Route 666 (96-158) · 4 Toll gates (158-198) · Boss (200-222)
 export const LEVEL4 = {
   id: 3,
+  song: 'Highway to Hell',   // each gig is named after a classic rock song
   name: 'The Highway to Hell',
   short: 'Highway',
   rescue: 'roadie',

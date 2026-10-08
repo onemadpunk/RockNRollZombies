@@ -6,10 +6,12 @@ import { makeGate } from './level1.js';
 // Zones: 1 Gates of Hell (0-46) · 2 The Bleachers (46-100) · 3 The Mosh Pit (100-150) · 4 Backstage (150-198) · Boss (200-222)
 export const LEVEL5 = {
   id: 4,
+  song: 'The Number of the Beast',   // each gig is named after a classic rock song
   name: "Hell's Stadium",
   short: 'Stadium',
   rescue: 'soul',
   boss: 'devil',
+  bossSong: 'Sympathy for the Devil',
   bossName: 'The Devil', bossTag: 'Wants your soul. Plays a mean guitar.',
   ground: [[-30, 40], [45, 96], [101, 240]],
   // [x1, x2, height, type]: the stand goes up in steps, along the top, and back down

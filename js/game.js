@@ -1285,7 +1285,7 @@ export class Game {
     e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
     this.boss = e;
     this.cine = { t: 0, dur: 2.6, x: e.x, y: e.camY };
-    this.ui.bossIntro(this.L.bossName, this.L.bossTag);
+    this.ui.bossIntro(this.L.bossName, this.L.bossTag, this.L.bossSong);
     this.ui.boss(1);
     this.ui.shake(0.3);
   }

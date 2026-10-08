@@ -137,7 +137,8 @@ export function renderMap(container, next, unlocked) {
     const col = s.soon ? '#5c5370' : done ? '#a6ff4d' : here ? '#ff2e88' : '#a99fb8';
     return `<g><circle cx="${x}" cy="${y}" r="${here ? 13 : 10}" fill="${col}" stroke="#0c0a14" stroke-width="3"/>
       <text x="${x}" y="${y + 32}" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${col}">${s.name}</text>
-      <text x="${x}" y="${y + 46}" text-anchor="middle" font-family="Rubik, sans-serif" font-size="10" fill="#a99fb8">${s.soon ? 'Coming soon' : done ? 'Rescued: ' + s.rescue : 'Boss: ' + s.boss}</text></g>`;
+      <text x="${x}" y="${y + 46}" text-anchor="middle" font-family="Rubik, sans-serif" font-size="10" fill="#a99fb8">${s.soon ? 'Coming soon' : done ? 'Rescued: ' + s.rescue : 'Boss: ' + s.boss}</text>
+      ${s.song ? `<text x="${x}" y="${y + 59}" text-anchor="middle" font-family="Rubik, sans-serif" font-size="9" font-style="italic" fill="${col}">♪ ${s.song}</text>` : ''}</g>`;
   }).join('');
   const [vx, vy] = pts[Math.min(next, pts.length - 1)];
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="map" role="img" aria-label="Tour map">

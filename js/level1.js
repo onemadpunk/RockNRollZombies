@@ -7,6 +7,7 @@ import { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel } from './l
 //        4 The storm (121-166) · 5 Mosh pit (166-196) · Boss arena (200-222)
 export const LEVEL1 = {
   id: 0,
+  song: "Don't Fear the Reaper",   // each gig is named after a classic rock song
   name: 'The Graveyard Gig',
   short: 'Graveyard Gig',
   rescue: 'drummer',

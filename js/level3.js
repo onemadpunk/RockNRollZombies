@@ -6,6 +6,7 @@ import { makeGate } from './level1.js';
 // Zones: 1 Car park field (0-42) · 2 Campsite (42-96) · 3 Funfair (96-148) · 4 Main stage (148-196) · Boss (200-222)
 export const LEVEL3 = {
   id: 2,
+  song: 'Stairway to Heaven',   // each gig is named after a classic rock song
   name: 'The Haunted Festival',
   short: 'Festival',
   rescue: 'singer',

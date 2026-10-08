@@ -267,6 +267,7 @@ h3.sub { margin: 4px 0 0; }
 @keyframes barin { from { transform: scaleY(0); } }
 #bosscard { position: absolute; left: 6vw; bottom: 15vh; animation: cardin .6s .3s ease-out both; }
 #bosscard .nm { font-family: var(--display); font-size: clamp(34px, 6vw, 76px); color: var(--ink); text-shadow: 4px 4px 0 var(--pink); transform: rotate(-3deg); }
+#bosscard .sg { font-family: var(--display); font-size: clamp(14px, 2vw, 24px); color: var(--toxic); letter-spacing: .04em; margin-bottom: 4px; }
 #bosscard .tg { font-family: var(--hud); font-size: clamp(12px, 1.5vw, 18px); color: var(--gold); margin-top: 6px; }
 @keyframes cardin { from { opacity: 0; translate: -40px 0; } }
 
@@ -371,7 +372,7 @@ h3.sub { margin: 4px 0 0; }
 <div id="game"></div>
 <div id="vignette"></div>
 <div id="flash"></div>
-<div id="letterbox" hidden><div class="bar top"></div><div class="bar bottom"></div><div id="bosscard"><div class="nm"></div><div class="tg"></div></div></div>
+<div id="letterbox" hidden><div class="bar top"></div><div class="bar bottom"></div><div id="bosscard"><div class="sg" hidden></div><div class="nm"></div><div class="tg"></div></div></div>
 
 <!-- In-game HUD -->
 <div id="hud" hidden>
@@ -2591,6 +2592,7 @@ const { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel } = __m;
 //        4 The storm (121-166) · 5 Mosh pit (166-196) · Boss arena (200-222)
 const LEVEL1 = {
   id: 0,
+  song: "Don't Fear the Reaper",   // each gig is named after a classic rock song
   name: 'The Graveyard Gig',
   short: 'Graveyard Gig',
   rescue: 'drummer',
@@ -2916,6 +2918,7 @@ const { makeGate } = __m;
 //        4 Rooftops (121-196) · Boss arena (200-222)
 const LEVEL2 = {
   id: 1,
+  song: 'Bat Out of Hell',   // each gig is named after a classic rock song
   name: 'The Back Alley Dive Bar',
   short: 'Dive Bar',
   rescue: 'bassist',
@@ -3158,6 +3161,7 @@ const { makeGate } = __m;
 // Zones: 1 Car park field (0-42) · 2 Campsite (42-96) · 3 Funfair (96-148) · 4 Main stage (148-196) · Boss (200-222)
 const LEVEL3 = {
   id: 2,
+  song: 'Stairway to Heaven',   // each gig is named after a classic rock song
   name: 'The Haunted Festival',
   short: 'Festival',
   rescue: 'singer',
@@ -3354,6 +3358,7 @@ const { makeDiscoBall } = __m;
 // Zones: 1 Truck stop (0-48) · 2 Broken bridge (48-96) · 3 Route 666 (96-158) · 4 Toll gates (158-198) · Boss (200-222)
 const LEVEL4 = {
   id: 3,
+  song: 'Highway to Hell',   // each gig is named after a classic rock song
   name: 'The Highway to Hell',
   short: 'Highway',
   rescue: 'roadie',
@@ -3594,10 +3599,12 @@ const { makeGate } = __m;
 // Zones: 1 Gates of Hell (0-46) · 2 The Bleachers (46-100) · 3 The Mosh Pit (100-150) · 4 Backstage (150-198) · Boss (200-222)
 const LEVEL5 = {
   id: 4,
+  song: 'The Number of the Beast',   // each gig is named after a classic rock song
   name: "Hell's Stadium",
   short: 'Stadium',
   rescue: 'soul',
   boss: 'devil',
+  bossSong: 'Sympathy for the Devil',
   bossName: 'The Devil', bossTag: 'Wants your soul. Plays a mean guitar.',
   ground: [[-30, 40], [45, 96], [101, 240]],
   // [x1, x2, height, type]: the stand goes up in steps, along the top, and back down
@@ -3800,7 +3807,7 @@ const TOUR = [
   { name: 'Haunted Festival', boss: 'Banshee Diva', rescue: 'Singer' },
   { name: 'Highway to Hell', boss: 'Disco Mummy', rescue: 'Roadie' },
   { name: "Hell's Stadium", boss: 'The Devil', rescue: 'Your soul' },
-];
+].map((stop, i) => ({ ...stop, song: LEVELS[i] && LEVELS[i].song }));
 
 function buildLevel(index, scene, quality) {
   const L = LEVELS[index];
@@ -4074,7 +4081,8 @@ function renderMap(container, next, unlocked) {
     const col = s.soon ? '#5c5370' : done ? '#a6ff4d' : here ? '#ff2e88' : '#a99fb8';
     return `<g><circle cx="${x}" cy="${y}" r="${here ? 13 : 10}" fill="${col}" stroke="#0c0a14" stroke-width="3"/>
       <text x="${x}" y="${y + 32}" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${col}">${s.name}</text>
-      <text x="${x}" y="${y + 46}" text-anchor="middle" font-family="Rubik, sans-serif" font-size="10" fill="#a99fb8">${s.soon ? 'Coming soon' : done ? 'Rescued: ' + s.rescue : 'Boss: ' + s.boss}</text></g>`;
+      <text x="${x}" y="${y + 46}" text-anchor="middle" font-family="Rubik, sans-serif" font-size="10" fill="#a99fb8">${s.soon ? 'Coming soon' : done ? 'Rescued: ' + s.rescue : 'Boss: ' + s.boss}</text>
+      ${s.song ? `<text x="${x}" y="${y + 59}" text-anchor="middle" font-family="Rubik, sans-serif" font-size="9" font-style="italic" fill="${col}">♪ ${s.song}</text>` : ''}</g>`;
   }).join('');
   const [vx, vy] = pts[Math.min(next, pts.length - 1)];
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="map" role="img" aria-label="Tour map">
@@ -5498,7 +5506,7 @@ class Game {
     e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
     this.boss = e;
     this.cine = { t: 0, dur: 2.6, x: e.x, y: e.camY };
-    this.ui.bossIntro(this.L.bossName, this.L.bossTag);
+    this.ui.bossIntro(this.L.bossName, this.L.bossTag, this.L.bossSong);
     this.ui.boss(1);
     this.ui.shake(0.3);
   }
@@ -6625,9 +6633,14 @@ const ui = {
     lightningT = save.settings.flashing ? 0.25 : 0.05;
     setTimeout(() => music.sThunder(), 120 + Math.random() * 300);
   },
-  bossIntro(name, tag) {
+  bossIntro(name, tag, song) {
     show('letterbox', !!name);
-    if (name) { $('bosscard').querySelector('.nm').textContent = name; $('bosscard').querySelector('.tg').textContent = tag; }
+    if (name) {
+      const card = $('bosscard');
+      card.querySelector('.nm').textContent = name; card.querySelector('.tg').textContent = tag;
+      card.querySelector('.sg').textContent = song ? `♪ ${song}` : '';
+      card.querySelector('.sg').hidden = !song;
+    }
   },
   gameOver(g) { endLevel(g, false); },
   levelClear(g) { endLevel(g, true); },
@@ -6673,7 +6686,7 @@ function renderTitle() {
   const levels = LEVELS.map((L, i) => ({ label: `${i + 1}. ${L.short}`, value: i, locked: i < save.unlocked.levels ? null : 'Beat the previous gig first' }));
   segButtons($('opt-level'), levels, sel.level, (v) => { sel.level = v; renderTitle(); });
   const recs = (save.records[sel.level] || []).length;
-  $('level-blurb').textContent = `${LEVELS[sel.level].name}  ·  Platinum records ${recs}/3`;
+  $('level-blurb').textContent = `“${LEVELS[sel.level].song}”  ·  ${LEVELS[sel.level].name}  ·  Platinum records ${recs}/3`;
   syncToggles();
 }
 for (const b of $('opt-players').children) b.addEventListener('click', () => { sel.players = +b.dataset.v; renderTitle(); });
@@ -6781,7 +6794,7 @@ function showChallenge() {
   if (!challenge) { el.hidden = true; return; }
   el.textContent = challenge.kind === 'score'
     ? `${challenge.name} challenges you to beat ${challenge.score.toLocaleString()} points!`
-    : `${challenge.name} challenges you to clear ${LEVELS[challenge.level].name} faster than ${fmtTime(challenge.time)}!`;
+    : `${challenge.name} challenges you to clear ${LEVELS[challenge.level].song} faster than ${fmtTime(challenge.time)}!`;
   el.hidden = false;
 }
 let shareInfo = null;   // set at the end of a gig
@@ -6796,7 +6809,7 @@ async function shareScore() {
   if (!shareInfo) return;
   const L = LEVELS[shareInfo.level];
   const text = shareInfo.kind === 'speed'
-    ? `I cleared ${L.name} in ${fmtTime(shareInfo.time)} in Rock 'n' Roll Zombies. Can you go faster?`
+    ? `I cleared ${L.song} in ${fmtTime(shareInfo.time)} in Rock 'n' Roll Zombies. Can you go faster?`
     : `I scored ${shareInfo.score.toLocaleString()} in Rock 'n' Roll Zombies. Bet you can't beat it!`;
   const url = shareLink();
   try {
@@ -6912,7 +6925,7 @@ function loadLevel(i, resume = null) {
   music.setSong(LEVELS[i].zones[0].song);
   lastBeat = Math.floor(music.beatFloat());
   showTouch();
-  ui.banner(LEVELS[i].name, run.encore ? 'ENCORE!' : LEVELS[i].rescue === 'soul' ? 'Save your soul' : `Rescue the ${LEVELS[i].rescue}`);
+  ui.banner(LEVELS[i].song, `${LEVELS[i].name} · ${run.encore ? 'ENCORE!' : LEVELS[i].rescue === 'soul' ? 'Save your soul' : `Rescue the ${LEVELS[i].rescue}`}`);
   camDist = 13.5;
 }
 
@@ -6923,7 +6936,7 @@ function endLevel(g, clear) {
   const mins = Math.floor(s.time / 60), secs = String(Math.floor(s.time % 60)).padStart(2, '0');
   const last = run.level >= LEVELS.length - 1;
   $('over-title').textContent = clear ? 'Gig cleared!' : 'Game Over';
-  $('over-text').textContent = clear ? `${L.name} · Score ${run.score.toLocaleString()}` : `Score ${run.score.toLocaleString()}`;
+  $('over-text').textContent = clear ? `${L.song} · Score ${run.score.toLocaleString()}` : `Score ${run.score.toLocaleString()}`;
   show('rank', true);
   $('grade').textContent = clear ? r.grade : '–';
   const rows = [

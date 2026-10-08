@@ -13,7 +13,7 @@ export const TOUR = [
   { name: 'Haunted Festival', boss: 'Banshee Diva', rescue: 'Singer' },
   { name: 'Highway to Hell', boss: 'Disco Mummy', rescue: 'Roadie' },
   { name: "Hell's Stadium", boss: 'The Devil', rescue: 'Your soul' },
-];
+].map((stop, i) => ({ ...stop, song: LEVELS[i] && LEVELS[i].song }));
 
 export function buildLevel(index, scene, quality) {
   const L = LEVELS[index];

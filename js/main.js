@@ -152,9 +152,14 @@ const ui = {
     lightningT = save.settings.flashing ? 0.25 : 0.05;
     setTimeout(() => music.sThunder(), 120 + Math.random() * 300);
   },
-  bossIntro(name, tag) {
+  bossIntro(name, tag, song) {
     show('letterbox', !!name);
-    if (name) { $('bosscard').querySelector('.nm').textContent = name; $('bosscard').querySelector('.tg').textContent = tag; }
+    if (name) {
+      const card = $('bosscard');
+      card.querySelector('.nm').textContent = name; card.querySelector('.tg').textContent = tag;
+      card.querySelector('.sg').textContent = song ? `♪ ${song}` : '';
+      card.querySelector('.sg').hidden = !song;
+    }
   },
   gameOver(g) { endLevel(g, false); },
   levelClear(g) { endLevel(g, true); },
@@ -200,7 +205,7 @@ function renderTitle() {
   const levels = LEVELS.map((L, i) => ({ label: `${i + 1}. ${L.short}`, value: i, locked: i < save.unlocked.levels ? null : 'Beat the previous gig first' }));
   segButtons($('opt-level'), levels, sel.level, (v) => { sel.level = v; renderTitle(); });
   const recs = (save.records[sel.level] || []).length;
-  $('level-blurb').textContent = `${LEVELS[sel.level].name}  ·  Platinum records ${recs}/3`;
+  $('level-blurb').textContent = `“${LEVELS[sel.level].song}”  ·  ${LEVELS[sel.level].name}  ·  Platinum records ${recs}/3`;
   syncToggles();
 }
 for (const b of $('opt-players').children) b.addEventListener('click', () => { sel.players = +b.dataset.v; renderTitle(); });
@@ -308,7 +313,7 @@ function showChallenge() {
   if (!challenge) { el.hidden = true; return; }
   el.textContent = challenge.kind === 'score'
     ? `${challenge.name} challenges you to beat ${challenge.score.toLocaleString()} points!`
-    : `${challenge.name} challenges you to clear ${LEVELS[challenge.level].name} faster than ${fmtTime(challenge.time)}!`;
+    : `${challenge.name} challenges you to clear ${LEVELS[challenge.level].song} faster than ${fmtTime(challenge.time)}!`;
   el.hidden = false;
 }
 let shareInfo = null;   // set at the end of a gig
@@ -323,7 +328,7 @@ async function shareScore() {
   if (!shareInfo) return;
   const L = LEVELS[shareInfo.level];
   const text = shareInfo.kind === 'speed'
-    ? `I cleared ${L.name} in ${fmtTime(shareInfo.time)} in Rock 'n' Roll Zombies. Can you go faster?`
+    ? `I cleared ${L.song} in ${fmtTime(shareInfo.time)} in Rock 'n' Roll Zombies. Can you go faster?`
     : `I scored ${shareInfo.score.toLocaleString()} in Rock 'n' Roll Zombies. Bet you can't beat it!`;
   const url = shareLink();
   try {
@@ -439,7 +444,7 @@ function loadLevel(i, resume = null) {
   music.setSong(LEVELS[i].zones[0].song);
   lastBeat = Math.floor(music.beatFloat());
   showTouch();
-  ui.banner(LEVELS[i].name, run.encore ? 'ENCORE!' : LEVELS[i].rescue === 'soul' ? 'Save your soul' : `Rescue the ${LEVELS[i].rescue}`);
+  ui.banner(LEVELS[i].song, `${LEVELS[i].name} · ${run.encore ? 'ENCORE!' : LEVELS[i].rescue === 'soul' ? 'Save your soul' : `Rescue the ${LEVELS[i].rescue}`}`);
   camDist = 13.5;
 }
 
@@ -450,7 +455,7 @@ function endLevel(g, clear) {
   const mins = Math.floor(s.time / 60), secs = String(Math.floor(s.time % 60)).padStart(2, '0');
   const last = run.level >= LEVELS.length - 1;
   $('over-title').textContent = clear ? 'Gig cleared!' : 'Game Over';
-  $('over-text').textContent = clear ? `${L.name} · Score ${run.score.toLocaleString()}` : `Score ${run.score.toLocaleString()}`;
+  $('over-text').textContent = clear ? `${L.song} · Score ${run.score.toLocaleString()}` : `Score ${run.score.toLocaleString()}`;
   show('rank', true);
   $('grade').textContent = clear ? r.grade : '–';
   const rows = [

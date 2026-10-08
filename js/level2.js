@@ -8,6 +8,7 @@ import { makeGate } from './level1.js';
 //        4 Rooftops (121-196) · Boss arena (200-222)
 export const LEVEL2 = {
   id: 1,
+  song: 'Bat Out of Hell',   // each gig is named after a classic rock song
   name: 'The Back Alley Dive Bar',
   short: 'Dive Bar',
   rescue: 'bassist',
