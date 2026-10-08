@@ -103,7 +103,7 @@ export class Game {
       x, y, vx: 0, vy: 0, h: 1.8, face: 1, onGround: true, crouch: false,
       armor: this.run.upgrades.spikes ? 2 : 1, inv: 1.5, stun: 0, cd: 0, throwT: 0, dead: false, deadT: 0, out: false,
       coyote: 0, buffer: 0, phase: 0, jumpCut: false, drop: 0, wasGround: true, soloT: 0, standing: null,
-      safeX: undefined, safeY: undefined, combo: 0,
+      safeX: undefined, safeY: undefined, combo: 0, climb: null,
     });
     p.hero.root.visible = true;
     p.hero.setArmor(p.armor);
@@ -129,7 +129,7 @@ export class Game {
     this.boss = null;
     this.headbangersLeft = [...this.L.headbangers];
     this.throwersLeft = this.L.throwers.map((d) => ({ ...d }));
-    for (const bx of this.L.birds) this.spawnBird(bx);
+    for (const bx of this.L.birds) typeof bx === 'number' ? this.spawnBird(bx) : this.spawnBird(bx.x, bx.y);
     for (const hx of this.L.hands) this.spawnHand(hx);
     this.players.forEach((p, i) => { if (!p.out || first) this.resetPlayer(p, x - i * 1.2); });
     this.camX = x + 4;
@@ -225,7 +225,7 @@ export class Game {
       if (ambient < max && Math.random() < this.D.spawnChance) this.spawnAmbient(zone, lead);
     }
     this.headbangersLeft = this.headbangersLeft.filter((x) => {
-      if (Math.abs(lead.x - x) < 10 && x > lead.x - 2) { this.spawnZombie('headbanger', x); return false; }
+      if (Math.abs(lead.x - x) < 10 && x > lead.x - 2) { this.spawnZombie('headbanger', x, this.level.surfaceAt(x) ?? 0); return false; }
       return true;
     });
     this.throwersLeft = this.throwersLeft.filter((d) => {
@@ -246,15 +246,17 @@ export class Game {
       if (x < this.camX - this.halfW + 1 || x > this.L.arena.gate - 3) continue;
       if (this.enemies.some((e) => e.kind !== 'bird' && Math.abs(e.x - x) < 1.5)) continue;
       if (kind === 'ghost') { this.spawnGhost(x, lead.y + 1.5 + Math.random()).ambient = true; return; }
-      if (this.level.groundY(x) === null) continue;
-      // Never right at a pit edge: fighting there is a cheap death.
-      if (!this.level.onGround(x - 2.5) || !this.level.onGround(x + 2.5)) continue;
+      // Appear on the surface the player is on (street or rooftop), never right at an edge.
+      const sy = this.level.surfaceAt(x);
+      if (sy === null || Math.abs(sy - lead.y) > 2.5 || this.level.ladders.some((l) => Math.abs(l.x - x) < 1)) continue;
+      if (this.level.surfaceAt(x - 2.5) !== sy || this.level.surfaceAt(x + 2.5) !== sy) continue;
+      if ((this.L.amps || []).some(([ax]) => Math.abs(x - ax) < 1.1)) continue;
       if (kind === 'rat') {
         // rats come in packs out of the drains
-        for (let k = 0; k < 2; k++) if (this.level.groundY(x + k * 0.9 * dir) !== null) this.spawnRat(x + k * 0.9 * dir).ambient = true;
+        for (let k = 0; k < 2; k++) if (this.level.surfaceAt(x + k * 0.9 * dir) === sy) this.spawnRat(x + k * 0.9 * dir, sy).ambient = true;
         return;
       }
-      const e = kind === 'crawler' ? this.spawnCrawler(x) : this.spawnZombie(kind, x);
+      const e = kind === 'crawler' ? this.spawnCrawler(x, sy) : this.spawnZombie(kind, x, sy);
       e.ambient = true;
       return;
     }
@@ -275,6 +277,13 @@ export class Game {
     if (p.onGround && p.standing && p.standing.mover) { p.x += p.standing.dx; p.y += p.standing.dy; }
 
     const ctrl = p.stun <= 0 && p.soloT <= 0 && !this.cine;
+    // Ladders: Up grabs one you're standing at, Down at the top climbs down onto it.
+    if (!p.climb && ctrl) {
+      const l = this.level.ladders.find((d) => Math.abs(p.x - d.x) < 0.65 && p.y >= d.y1 - 0.1 && p.y <= d.y2 + 0.05);
+      if (l && inp.held.up && p.y < l.y2 - 0.05) { p.climb = l; p.buffer = 0; }
+      else if (l && inp.held.down && p.onGround && Math.abs(p.y - l.y2) < 0.15) { p.climb = l; p.y = l.y2 - 0.4; }
+    }
+    if (p.climb) { this.climbStep(p, dt); return; }
     const left = ctrl && inp.held.left, right = ctrl && inp.held.right;
     p.crouch = ctrl && inp.held.down && p.onGround;
     p.h = p.crouch ? 1.1 : 1.8;
@@ -361,6 +370,24 @@ export class Game {
     this.animateHero(p, dt);
   }
 
+  climbStep(p, dt) {
+    const L = p.climb, inp = p.ctrl;
+    p.x += (L.x - p.x) * Math.min(1, dt * 15);
+    p.vx = 0; p.vy = 0;
+    p.crouch = false; p.h = 1.8; p.onGround = false; p.standing = null;
+    const dir = (inp.held.up ? 1 : 0) - (inp.held.down ? 1 : 0);
+    p.y += dir * 4.4 * dt;
+    p.climbPhase = (p.climbPhase || 0) + Math.abs(dir) * dt * 9;
+    if (inp.held.left) p.face = -1;
+    if (inp.held.right) p.face = 1;
+    const W = WEAPONS[p.weapon];
+    if (inp.pressed.throw && p.cd <= 0 && this.shots.filter((s) => s.owner === p).length < W.max) this.throwWeapon(p);
+    if (p.y >= L.y2) { p.y = L.y2 + 0.02; p.climb = null; this.music.sLand(); }          // step off at the top
+    else if (p.y <= L.y1) { p.y = L.y1; p.climb = null; }                                 // reached the bottom
+    else if (inp.pressed.jump && !inp.held.up) { p.climb = null; p.vy = 8; p.jumpCut = true; }   // hop off sideways
+    this.animateHero(p, dt);
+  }
+
   fellInPit(p) {
     const saved = this.D.pitSave === 'always' || (this.D.pitSave === 'jacket' && p.armor > 0);
     if (saved && p.safeX !== undefined) {
@@ -397,7 +424,7 @@ export class Game {
   animateHero(p, dt) {
     const P = p.hero;
     P.root.position.set(p.x, p.y, 0);
-    P.root.rotation.y += (faceRot(p.face) - P.root.rotation.y) * Math.min(1, dt * 18);
+    P.root.rotation.y += ((p.climb ? Math.PI : faceRot(p.face)) - P.root.rotation.y) * Math.min(1, dt * 18);
     P.root.visible = p.inv > 0 && p.soloT <= 0 ? Math.floor(p.inv * 16) % 2 === 0 : true;
 
     // Beat ring at the feet: a little metronome you can see
@@ -412,7 +439,11 @@ export class Game {
     const run = Math.min(1, speed / RUN);
     let legL, legR, kneeL = 0, kneeR = 0, armL, armR, elL = -0.2, elR = -0.2, bodyY = 0, lean = 0;
     const near = p.face > 0 ? 'L' : 'R';
-    if (p.soloT > 0) {
+    if (p.climb) {
+      const c = Math.sin(p.climbPhase || 0);
+      armL = -2.7 + c * 0.45; armR = -2.7 - c * 0.45; elL = elR = -0.5;
+      legL = -0.7 - c * 0.5; legR = -0.7 + c * 0.5; kneeL = 1.1 + c * 0.4; kneeR = 1.1 - c * 0.4;
+    } else if (p.soloT > 0) {
       legL = -0.35; legR = 0.35; kneeL = 0.3; kneeR = 0.2; lean = -0.25;
       if (p.char === 'drummer') {
         // drum roll: both arms hammering
@@ -533,6 +564,7 @@ export class Game {
   hurt(p, fromX) {
     if (p.dead || p.out || p.inv > 0 || this.bossDone) return;
     p.combo = 0;
+    p.climb = null;
     if (p.armor > 0) {
       p.armor--;
       p.hero.setArmor(p.armor);
@@ -555,6 +587,7 @@ export class Game {
 
   kill(p) {
     if (p.dead) return;
+    p.climb = null;
     p.dead = true; p.deadT = 2.6;
     p.combo = 0;
     this.stats.deaths++;
@@ -770,12 +803,12 @@ export class Game {
     return e;
   }
 
-  spawnZombie(kind, x) {
+  spawnZombie(kind, x, y = 0) {
     const model = makeZombie(kind);
     const scale = kind === 'headbanger' ? 1.22 : 1;
     model.root.scale.setScalar(scale);
-    model.root.position.set(x, -2 * scale, 0);
-    const e = this.base(kind, model, x, 0, {
+    model.root.position.set(x, y - 2 * scale, 0);
+    const e = this.base(kind, model, x, y, {
       w: 0.34 * scale, h: 1.8 * scale,
       hp: { headbanger: 4, pogo: 2 }[kind] || 1,
       points: { headbanger: 500, pogo: 300 }[kind] || 100,
@@ -794,18 +827,18 @@ export class Game {
     return e;
   }
 
-  spawnCrawler(x) {
+  spawnCrawler(x, y = 0) {
     const model = makeCrawler();
-    model.root.position.set(x, -0.8, 0);
+    model.root.position.set(x, y - 0.8, 0);
     this.music.sGroan();
-    return this.base('crawler', model, x, 0, { w: 0.45, h: 0.6, hp: 1, points: 150, speed: 2.0 * this.D.enemySpeed, life: 14 });
+    return this.base('crawler', model, x, y, { w: 0.45, h: 0.6, hp: 1, points: 150, speed: 2.0 * this.D.enemySpeed, life: 14 });
   }
 
-  spawnRat(x) {
+  spawnRat(x, y = 0) {
     const model = makeRat();
-    model.root.position.set(x, -0.5, 0);
+    model.root.position.set(x, y - 0.5, 0);
     this.music.sSqueak();
-    return this.base('rat', model, x, 0, { w: 0.3, h: 0.45, hp: 1, points: 120, speed: rand(2.2, 2.9) * this.D.enemySpeed, life: 12, colors: [0x4a4038, 0xc88a8a] });
+    return this.base('rat', model, x, y, { w: 0.3, h: 0.45, hp: 1, points: 120, speed: rand(2.2, 2.9) * this.D.enemySpeed, life: 12, colors: [0x4a4038, 0xc88a8a] });
   }
 
   spawnGhost(x, y) {
@@ -859,11 +892,11 @@ export class Game {
     return e;
   }
 
-  spawnBird(x) {
+  spawnBird(x, y = 1.15) {
     const model = makeCrow(this.L.pigeons);
     model.root.scale.setScalar(1.3);
-    model.root.position.set(x, 1.15, -0.45);
-    const e = this.base('bird', model, x, 1.15, { w: 0.35, h: 0.45, hp: 1, points: 200, state: 'perch', colors: this.L.pigeons ? [0x6a6e7a, 0x4a6a5a] : [0x121016, 0x2b2620] });
+    model.root.position.set(x, y, -0.45);
+    const e = this.base('bird', model, x, y, { w: 0.35, h: 0.45, hp: 1, points: 200, state: 'perch', colors: this.L.pigeons ? [0x6a6e7a, 0x4a6a5a] : [0x121016, 0x2b2620] });
     e.box = () => ({ x1: e.x - e.w, x2: e.x + e.w, y1: e.y - 0.1, y2: e.y + e.h });
     e.center = () => ({ x: e.x, y: e.y + 0.15 });
     e.hittable = () => true;
@@ -925,7 +958,8 @@ export class Game {
   }
 
   sinkOrTurn(e) {
-    if (e.onGround && this.level.groundY(e.x + e.face * 0.6) === null && !this.level.onSolidTop(e.x + e.face * 0.6) && Math.random() < 0.02) e.face *= -1;
+    const ahead = this.level.surfaceAt(e.x + e.face * 0.6);
+    if (e.onGround && (ahead === null || ahead < e.y - 0.5) && Math.random() < 0.02) e.face *= -1;
     if (e.life && e.t > e.life && e.ambient) e.state = 'sink';
   }
 

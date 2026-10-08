@@ -168,6 +168,15 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
     solids.push(s);
     return { ...a, x, solid: s };
   });
+  // Ladders: iron rails + rungs, climbable from y1 up to y2
+  const ladderMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.5, metalness: 0.7 });
+  const ladders = (L.ladders || []).map(({ x, y1 = 0, y2 }) => {
+    const h = y2 - y1;
+    for (const dx of [-0.32, 0.32]) B.add(GEO.box, ladderMat, mat4(x + dx, y1 + h / 2 + 0.3, -0.35, 0, 0, 0, 0.07, h + 0.6, 0.07));
+    for (let y = y1 + 0.3; y < y2 + 0.5; y += 0.38) B.add(GEO.box, ladderMat, mat4(x, y, -0.35, 0, 0, 0, 0.64, 0.05, 0.05));
+    return { x, y1, y2 };
+  });
+
   const juke = makeJukebox();
   juke.root.position.set(L.checkpoint, 0, -0.9);
   juke.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -179,7 +188,13 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
   for (let i = 0; i < 3; i++) { const Lt = new THREE.PointLight(lanternColor, 6, 7, 1.6); scene.add(Lt); lights.push(Lt); }
 
   const api = {
-    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat,
+    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders,
+    /** Height of the top solid surface at x (street, roof, crate...), or null over a pit. */
+    surfaceAt(x) {
+      let top = null;
+      for (const s of solids) if (x > s.x1 + 0.3 && x < s.x2 - 0.3 && s.y2 < 15 && (top === null || s.y2 > top)) top = s.y2;
+      return top;
+    },
     groundY(x) {
       if (!onGround(x)) return null;
       if ((L.blocks || []).some(([a, b]) => x > a - 0.6 && x < b + 0.6)) return null;

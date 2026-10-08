@@ -13,26 +13,36 @@ export const LEVEL2 = {
   rescue: 'bassist',
   boss: 'gargoyle',
   bossName: 'The Gargoyle Punk', bossTag: 'Carved in 1890. Joined a band in 1977.',
-  ground: [[-30, 44], [47, 58], [65, 124], [127, 150], [157, 172], [175, 240]],
-  blocks: [[17, 19.2, 1.3], [31, 33.2, 1.3], [88, 90.6, 0.95], [134, 135.2, 1.6], [143, 144.2, 1.6], [184, 185.2, 1.6]],
-  ledges: [[8, 12, 2.8], [22, 26, 2.8], [24, 27, 5.4], [49, 53, 2.8], [52, 55, 5.2], [67, 71, 2.8], [72, 76, 2.8],
-           [100, 103, 2.6], [110, 113, 2.6], [139, 142, 2.8], [163.5, 167, 6.3], [178, 181, 2.8], [187, 190, 2.8],
+  ground: [[-30, 44], [47, 58], [65, 124], [127, 240]],
+  // [x1, x2, height, type]: dumpsters, a pool table, and buildings you climb and cross
+  blocks: [[17, 19.2, 1.3, 'dumpster'], [31, 33.2, 1.3, 'dumpster'], [68, 79, 7.0, 'building'], [88, 90.6, 0.95, 'pool'],
+           [130, 141, 4.5, 'building'], [144, 152, 6.0, 'building'], [156, 163, 4.5, 'building'],
+           [166, 176, 7.0, 'building'], [180, 190, 5.0, 'building']],
+  ledges: [[8, 12, 2.8], [22, 26, 2.8], [24, 27, 5.4],
+           [48, 55.5, 3.0], [50, 56, 6.0], [56, 67.6, 6.6],          // fire escape landings + plank bridge
+           [100, 103, 2.6], [110, 113, 2.6],
+           [169.5, 174, 10.3],                                        // water tower catwalk (secret)
            [200.3, 202.8, 4.8], [219.2, 221.7, 4.8], [206, 209, 2.8], [213, 216, 2.8]],
+  // Up/Down at a ladder to climb. One up every building's left wall, so a fall is a setback, not a death.
+  ladders: [
+    { x: 50.5, y1: 0, y2: 3.0 }, { x: 54.6, y1: 3.0, y2: 6.0 }, { x: 67.6, y1: 0, y2: 7.0 },
+    { x: 129.6, y1: 0, y2: 4.5 }, { x: 143.6, y1: 0, y2: 6.0 }, { x: 155.6, y1: 0, y2: 4.5 },
+    { x: 165.6, y1: 0, y2: 7.0 }, { x: 179.6, y1: 0, y2: 5.0 }, { x: 170.3, y1: 7.0, y2: 10.3 },
+  ],
   movers: [
     { kind: 'bob', x: 61.5, y: 0, amp: 1.6, w: 2.4 },
-    { kind: 'slide', x: 153.5, y: 0, amp: 2.0, w: 2.9 },
   ],
-  amps: [[161.8, 0.95]],
+  amps: [],
   crates: [
-    { x: 14, loot: 'sticks' }, { x: 50.5, y: 2.8, loot: 'gold' }, { x: 84, loot: 'jacket' }, { x: 117, loot: 'flame' },
-    { x: 164.5, y: 6.3, loot: 'life' }, { x: 166.2, y: 6.3, loot: 'gold' }, { x: 137, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
+    { x: 14, loot: 'sticks' }, { x: 51.8, y: 3.0, loot: 'gold' }, { x: 84, loot: 'jacket' }, { x: 117, loot: 'flame' },
+    { x: 171.6, y: 10.3, loot: 'life' }, { x: 173.3, y: 10.3, loot: 'gold' }, { x: 137, y: 4.5, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
-  records: [{ x: 25.5, y: 6.7 }, { x: 111.5, y: 4.9 }, { x: 165.4, y: 7.6 }],
-  birds: [30, 70, 132, 182],
+  records: [{ x: 25.5, y: 6.7 }, { x: 111.5, y: 4.9 }, { x: 172.4, y: 11.7 }],
+  birds: [30, { x: 76.5, y: 8.15 }, { x: 150, y: 7.15 }, { x: 186, y: 6.15 }],
   pigeons: true,
-  headbangers: [70, 146],
+  headbangers: [72, 147],
   hands: [],
-  throwers: [{ x: 53.5, y: 5.2, kind: 'barfly' }, { x: 74, y: 2.8, kind: 'barfly' }, { x: 140.5, y: 2.8, kind: 'barfly' }, { x: 188.5, y: 2.8, kind: 'barfly' }],
+  throwers: [{ x: 53.5, y: 6.0, kind: 'barfly' }, { x: 75, y: 7.0, kind: 'barfly' }, { x: 139.5, y: 4.5, kind: 'barfly' }, { x: 188.5, y: 5.0, kind: 'barfly' }],
   checkpoint: 92,
   soundcheck: null,
   ambush: {
@@ -74,11 +84,25 @@ function buildAlley(scene, quality) {
   const BG = new Batch();
   const win = () => (r() < 0.35 ? winLit : r() < 0.15 ? winBlue : winDark);
 
-  // Rooftop zone: ground is building tops; front faces get windows
-  for (const [a, b] of L.ground) {
-    if (b < 124) continue;
-    for (let x = Math.max(a, 121) + 0.8; x < b - 0.6; x += 1.4) for (let y = -1.2; y > -9; y -= 1.8) B.add(GEO.box, win(), mat4(x, y, 2.52, 0, 0, 0, 0.7, 1.0, 0.05));
-    B.add(GEO.box, brick3, mat4((a + b) / 2, 0.25, 2.3, 0, 0, 0, b - a, 0.5, 0.3));      // parapet lip
+  // Buildings you climb and run across: brick front with windows, tar roof, parapet lip
+  for (const [a, b, h, type] of L.blocks) {
+    if (type !== 'building') continue;
+    const w = b - a, cx = (a + b) / 2, mat = a < 100 ? brick : r() < 0.5 ? brick3 : brick2;
+    B.add(GEO.box, mat, mat4(cx, h / 2, -0.5, 0, 0, 0, w, h, 6));
+    B.add(GEO.box, tar, mat4(cx, h + 0.04, -0.5, 0, 0, 0, w + 0.05, 0.08, 6.05));
+    B.add(GEO.box, concrete, mat4(cx, h + 0.22, 2.4, 0, 0, 0, w + 0.1, 0.36, 0.3));          // parapet lip
+    for (let x = a + 0.9; x < b - 0.6; x += 1.5) for (let y = 1.4; y < h - 0.6; y += 1.9) B.add(GEO.box, win(), mat4(x, y, 2.52, 0, 0, 0, 0.75, 1.1, 0.05));
+    B.add(GEO.box, metal, mat4(cx + w * 0.25, h + 0.5, -1.8, 0, 0, 0, 1.0, 1.0, 1.0));       // AC unit
+    world.addLantern(new THREE.Vector3(a + 1.6, h + 0.3, -1.6));
+  }
+  // Secret water tower on the tallest roof (climb its ladder to the catwalk)
+  {
+    const [a, b, y] = L.ledges.find(([, , yy]) => yy > 10);
+    const cx = (a + b) / 2;
+    B.add(GEO.cyl, wood, mat4(cx, y + 1.6, -1.6, 0, 0, 0, 3.2, 3.0, 3.2));
+    B.add(GEO.cone4, M(0x2a1a12), mat4(cx, y + 3.6, -1.6, 0, Math.PI / 4, 0, 3.8, 1.0, 3.8));
+    for (const dx of [-1.2, 1.2]) B.add(GEO.box, iron, mat4(cx + dx, (7 + y) / 2, -1.6, 0, 0, 0, 0.14, y - 7, 0.14));
+    B.add(GEO.box, wood, mat4(cx, y - 0.08, -0.2, 0, 0, 0, b - a, 0.16, 1.4));               // catwalk boards
   }
 
   // ---- Alley + fire escapes (0-80): brick facades with windows and iron stairs -------------
@@ -90,34 +114,35 @@ function buildAlley(scene, quality) {
     B.add(GEO.box, concrete, mat4(x + w / 2, h + 0.15, -7.5, 0, 0, 0, w + 0.2, 0.3, 1.4));  // roof edge
     x += w;
   }
-  // fire-escape railings on the ledges in the alley zone
+  // fire-escape railings on the ledges in the alley zone (the bridge gets planks)
   for (const [a, b, y] of L.ledges) {
     if (a > 80) continue;
     for (let x = a; x <= b; x += 0.35) B.add(GEO.box, iron, mat4(x, y + 0.45, -0.95, 0, 0, 0, 0.04, 0.9, 0.04));
     B.add(GEO.box, iron, mat4((a + b) / 2, y + 0.9, -0.95, 0, 0, 0, b - a, 0.05, 0.05));
-    B.add(GEO.box, iron, mat4(a + 0.2, y / 2, -0.95, 0, 0, 0.5, 0.08, y * 1.15, 0.08));   // stair stringer
+    if (b - a > 8) B.add(GEO.box, wood, mat4((a + b) / 2, y - 0.1, -0.2, 0, 0, (r() - 0.5) * 0.02, b - a, 0.14, 1.2));
   }
   // dumpsters (solid blocks), bins, crates
-  for (const [a, b, h] of L.blocks) {
+  for (const [a, b, h, type] of L.blocks) {
     const w = b - a, cx = (a + b) / 2;
-    if (a < 80) {
+    if (type === 'building') continue;
+    if (type === 'dumpster') {
       B.add(GEO.box, dumpster, mat4(cx, h / 2, -0.2, 0, 0, 0, w, h, 1.6));
       B.add(GEO.box, M(0x1a3a2a), mat4(cx, h + 0.05, -0.2, 0, 0, -0.08, w + 0.1, 0.1, 1.7));
-    } else if (a < 121) {
+    } else {
       B.add(GEO.box, wood, mat4(cx, h / 2 - 0.1, -0.2, 0, 0, 0, w, h - 0.2, 1.4));          // pool table
       B.add(GEO.box, felt, mat4(cx, h - 0.05, -0.2, 0, 0, 0, w - 0.2, 0.1, 1.2));
-    } else {
-      B.add(GEO.box, brick3, mat4(cx, h / 2, -0.3, 0, 0, 0, w, h, 1.2));                       // chimney
-      B.add(GEO.box, concrete, mat4(cx, h + 0.08, -0.3, 0, 0, 0, w + 0.2, 0.16, 1.4));
     }
   }
-  for (let x = 2; x < 78; x += 6 + r() * 5) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1)) {
+  for (let x = 2; x < 66; x += 6 + r() * 5) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1) && !L.ladders.some((l) => Math.abs(l.x - x) < 1)) {
     B.add(GEO.cyl, metal, mat4(x, 0.45, -1.8, 0, 0, 0, 0.6, 0.9, 0.6));
     B.add(GEO.cyl, metal, mat4(x, 0.93, -1.8, 0, 0, 0, 0.66, 0.06, 0.66));
   }
-  // pigeon rails
-  for (const x of L.birds) B.add(GEO.box, metal, mat4(x, 1.0, -0.45, 0, 0, 0, 0.8, 0.08, 0.08));
-  for (const x of L.birds) B.add(GEO.box, metal, mat4(x, 0.5, -0.45, 0, 0, 0, 0.08, 1.0, 0.08));
+  // pigeon rails (on the street or up on a roof edge)
+  for (const bd of L.birds) {
+    const x = bd.x ?? bd, y = (bd.y ?? 1.15) - 0.15;
+    B.add(GEO.box, metal, mat4(x, y, -0.45, 0, 0, 0, 0.8, 0.08, 0.08));
+    B.add(GEO.box, metal, mat4(x, y - 0.5, -0.45, 0, 0, 0, 0.08, 1.0, 0.08));
+  }
 
   // ---- The dive bar interior (80-121) --------------------------------------------------------
   B.add(GEO.box, wood, mat4(100.5, 3.5, -3.6, 0, 0, 0, 41, 7, 0.4));                       // back wall
@@ -151,17 +176,16 @@ function buildAlley(scene, quality) {
     BG.add(GEO.box, M(0x15142a), mat4(x, h / 2 - 8, z, 0, 0, 0, w, h, w));
     for (let wy = -6; wy < h - 9; wy += 1.6) for (let wx = x - w / 2 + 0.8; wx < x + w / 2 - 0.5; wx += 1.3) if (r() < 0.4) BG.add(GEO.box, r() < 0.8 ? winLit : winBlue, mat4(wx, wy, z + w / 2 + 0.05, 0, 0, 0, 0.6, 0.8, 0.05));
   }
-  for (const x of [131, 168, 210]) {
+  for (const x of [118, 210]) {
     B.add(GEO.cyl, wood, mat4(x, 4.2, -3.2, 0, 0, 0, 2.6, 2.6, 2.6));                     // water tower
     B.add(GEO.cone4, M(0x2a1a12), mat4(x, 6.0, -3.2, 0, Math.PI / 4, 0, 3.2, 1.0, 3.2));
     for (const dx of [-0.9, 0.9]) B.add(GEO.box, iron, mat4(x + dx, 1.45, -3.2, 0, 0, 0, 0.1, 2.9, 0.1));
   }
-  for (let x = 125; x < 222; x += 9 + r() * 7) B.add(GEO.box, metal, mat4(x, 2.5, -2.4, 0, 0, 0, 0.05, 5, 0.05));     // antennas
-  B.add(GEO.box, brick3, mat4(160, 0.6, -2.6, 0, 0, 0, 80, 1.2, 0.4));                      // back parapet
+  for (const [a, b, h, type] of L.blocks) if (type === 'building' && a > 120) B.add(GEO.box, metal, mat4(b - 1.2, h + 1.6, -2.4, 0, 0, 0, 0.05, 3.2, 0.05));   // antennas
   // arena: two stone pillars for the gargoyle's perches
   const stone = M(0x7d7f8c, { roughness: 0.95 });
   for (const [a, b, y] of L.ledges.filter(([, , y]) => y > 4.5 && y < 5)) B.add(GEO.box, stone, mat4((a + b) / 2, (y - 0.3) / 2, -0.8, 0, 0, 0, b - a - 0.3, y - 0.3, 1.2));
-  for (const [a, b, y] of L.ledges.filter(([a2]) => a2 > 120)) if (y < 4) B.add(GEO.box, iron, mat4((a + b) / 2, y / 2, -0.95, 0, 0, 0, 0.1, y, 0.1));
+  for (const [a, b, y] of L.ledges.filter(([a2]) => a2 > 195)) if (y < 4) B.add(GEO.box, iron, mat4((a + b) / 2, y / 2, -0.95, 0, 0, 0, 0.1, y, 0.1));
   world.solids.push({ x1: L.arena.x2, x2: 240, y1: 0, y2: 20 });
   B.add(GEO.box, brick3, mat4(L.arena.x2 + 1.5, 5, -0.5, 0, 0, 0, 3, 10, 7));
   world.gate = makeGate(scene, iron, L.arena.gate);
@@ -188,7 +212,8 @@ function buildAlley(scene, quality) {
   };
   sign(6.5, 'THE BACK ALLEY →');
   sign(45.5, 'MIND THE SEWER', '#ffc94a');
-  sign(160, 'AMPS: JUMP ON BEAT', '#a6ff4d');
+  sign(127.9, 'ROOFTOP RUN ↑', '#a6ff4d');
+  sign(64.3, 'CLIMB! ↑', '#a6ff4d');
   sign(196.5, 'ROOF · NO ENTRY', '#ff2e88');
 
   B.build(scene);
@@ -197,7 +222,7 @@ function buildAlley(scene, quality) {
   // street lamps in the alley, pendant lights in the bar, bulbs on the roofs
   for (let x = 4; x < 80; x += 12) world.addLantern(new THREE.Vector3(x, 3.2, -2.0));
   for (let x = 84; x < 120; x += 8) world.addLantern(new THREE.Vector3(x, 4.6, -1.4));
-  for (let x = 126; x < 222; x += 11) if (onGround(x)) world.addLantern(new THREE.Vector3(x, 0.3, -1.6));
+  for (let x = 192; x < 222; x += 11) world.addLantern(new THREE.Vector3(x, 0.3, -1.6));
   const extra = new Batch();
   for (let x = 4; x < 80; x += 12) extra.add(GEO.box, iron, mat4(x, 1.6, -2.2, 0, 0, 0, 0.1, 3.2, 0.1));
   extra.build(scene);

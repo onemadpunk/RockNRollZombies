@@ -239,3 +239,6 @@ h3.sub { margin: 4px 0 0; }
 .scores li.me { color: var(--toxic); }
 
 .scores li.empty { list-style: none; margin-left: -28px; text-align: center; color: var(--dim); }
+
+#touch .ud { display: flex; flex-direction: column; gap: 8px; }
+#touch .ud button { width: 60px; height: 60px; }

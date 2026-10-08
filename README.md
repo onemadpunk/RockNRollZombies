@@ -20,6 +20,7 @@ For quick testing while editing, `python serve.py` serves the unbundled version 
 | Move | Arrows / A D | Stick / D-pad | ◀ ▶ |
 | Jump | Space / Z / W | A | JUMP |
 | Throw | X / J | X / B / RB | THROW |
+| Climb ladders | Up / W, Down / S | D-pad up / down | ▲ ▼ |
 | Crouch | Down / S | Down | ▼ |
 | Drop through ledge | Down + Jump | | |
 | Guitar solo | C / L / Shift | Y / LB | SOLO |
@@ -31,6 +32,7 @@ For quick testing while editing, `python serve.py` serves the unbundled version 
 - **Guitar solo:** on-beat throws and kills fill the SOLO meter. When it's full, press C to windmill a power chord that wipes out everything on screen.
 - **Amps:** jump off an amp *on the beat* for a super jump (there's a secret ledge in the storm).
 - **Coffins** over the pits rise and slide in time with the music.
+- **Ladders** go up fire escapes and building walls. In the Dive Bar's rooftops, falling into a gap drops you to the street (with the rats) instead of killing you; climb back up and keep going.
 
 ## The level
 1. **Cemetery Gates**: walkers and crows.

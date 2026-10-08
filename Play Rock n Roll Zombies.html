@@ -250,6 +250,9 @@ h3.sub { margin: 4px 0 0; }
 
 .scores li.empty { list-style: none; margin-left: -28px; text-align: center; color: var(--dim); }
 
+#touch .ud { display: flex; flex-direction: column; gap: 8px; }
+#touch .ud button { width: 60px; height: 60px; }
+
 </style>
 <script type="importmap">
 {
@@ -329,6 +332,7 @@ h3.sub { margin: 4px 0 0; }
       <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td></tr>
       <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td></tr>
       <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td></tr>
+      <tr><td>Climb ladder</td><td>Up / W, Down / S</td><td>W / S</td><td>&uarr; &darr;</td><td>D-pad up / down</td></tr>
       <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td></tr>
       <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td></tr>
       <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td></tr>
@@ -421,7 +425,7 @@ h3.sub { margin: 4px 0 0; }
 <div id="touch" hidden>
   <div class="pad-l">
     <button data-k="left" aria-label="Left">&#9664;</button>
-    <button data-k="down" aria-label="Crouch">&#9660;</button>
+    <div class="ud"><button data-k="up" aria-label="Climb up">&#9650;</button><button data-k="down" aria-label="Crouch or climb down">&#9660;</button></div>
     <button data-k="right" aria-label="Right">&#9654;</button>
   </div>
   <div class="pad-r">
@@ -1032,7 +1036,7 @@ Object.assign(__m, { Music });
 // with its own key map and gamepad, so two people can play on one keyboard or two pads.
 // `held` = currently down; `pressed` = went down this frame.
 
-const ACTIONS = ['left', 'right', 'down', 'jump', 'throw', 'special', 'pause', 'start'];
+const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'throw', 'special', 'pause', 'start'];
 
 const down = new Set();
 let touchMode = false;
@@ -1071,15 +1075,16 @@ function bindTouch(container) {
 
 const KEYS_SOLO = {
   left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], down: ['ArrowDown', 'KeyS'],
+  up: ['ArrowUp', 'KeyW'],   // climbs ladders; still jumps when there's no ladder (see game.js)
   jump: ['Space', 'KeyZ', 'KeyW', 'ArrowUp'], throw: ['KeyX', 'KeyJ', 'KeyK'],
   special: ['KeyC', 'KeyL', 'ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'], start: ['Enter'],
 };
 const KEYS_P1 = {
-  left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], jump: ['KeyW', 'Space'], throw: ['KeyF'], special: ['KeyG'],
+  left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], jump: ['KeyW', 'Space'], throw: ['KeyF'], special: ['KeyG'],
   pause: ['Escape', 'KeyP'], start: ['Enter'],
 };
 const KEYS_P2 = {
-  left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], jump: ['ArrowUp'],
+  left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'], jump: ['ArrowUp'],
   throw: ['KeyK', 'Numpad0'], special: ['KeyL', 'Numpad1'], pause: [], start: [],
 };
 const ALL_CODES = new Set(Object.values({ ...KEYS_SOLO }).flat().concat(Object.values(KEYS_P1).flat(), Object.values(KEYS_P2).flat()));
@@ -1091,6 +1096,7 @@ function readPad(p, out) {
   if (ax < -0.4 || b(14)) out.add('left');
   if (ax > 0.4 || b(15)) out.add('right');
   if (ay > 0.6 || b(13)) out.add('down');
+  if (ay < -0.6 || b(12)) out.add('up');
   if (b(0)) out.add('jump');
   if (b(2) || b(1) || b(5) || b(7)) out.add('throw');
   if (b(3) || b(4) || b(6)) out.add('special');
@@ -1953,6 +1959,15 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
     solids.push(s);
     return { ...a, x, solid: s };
   });
+  // Ladders: iron rails + rungs, climbable from y1 up to y2
+  const ladderMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.5, metalness: 0.7 });
+  const ladders = (L.ladders || []).map(({ x, y1 = 0, y2 }) => {
+    const h = y2 - y1;
+    for (const dx of [-0.32, 0.32]) B.add(GEO.box, ladderMat, mat4(x + dx, y1 + h / 2 + 0.3, -0.35, 0, 0, 0, 0.07, h + 0.6, 0.07));
+    for (let y = y1 + 0.3; y < y2 + 0.5; y += 0.38) B.add(GEO.box, ladderMat, mat4(x, y, -0.35, 0, 0, 0, 0.64, 0.05, 0.05));
+    return { x, y1, y2 };
+  });
+
   const juke = makeJukebox();
   juke.root.position.set(L.checkpoint, 0, -0.9);
   juke.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -1964,7 +1979,13 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
   for (let i = 0; i < 3; i++) { const Lt = new THREE.PointLight(lanternColor, 6, 7, 1.6); scene.add(Lt); lights.push(Lt); }
 
   const api = {
-    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat,
+    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders,
+    /** Height of the top solid surface at x (street, roof, crate...), or null over a pit. */
+    surfaceAt(x) {
+      let top = null;
+      for (const s of solids) if (x > s.x1 + 0.3 && x < s.x2 - 0.3 && s.y2 < 15 && (top === null || s.y2 > top)) top = s.y2;
+      return top;
+    },
     groundY(x) {
       if (!onGround(x)) return null;
       if ((L.blocks || []).some(([a, b]) => x > a - 0.6 && x < b + 0.6)) return null;
@@ -2357,26 +2378,36 @@ const LEVEL2 = {
   rescue: 'bassist',
   boss: 'gargoyle',
   bossName: 'The Gargoyle Punk', bossTag: 'Carved in 1890. Joined a band in 1977.',
-  ground: [[-30, 44], [47, 58], [65, 124], [127, 150], [157, 172], [175, 240]],
-  blocks: [[17, 19.2, 1.3], [31, 33.2, 1.3], [88, 90.6, 0.95], [134, 135.2, 1.6], [143, 144.2, 1.6], [184, 185.2, 1.6]],
-  ledges: [[8, 12, 2.8], [22, 26, 2.8], [24, 27, 5.4], [49, 53, 2.8], [52, 55, 5.2], [67, 71, 2.8], [72, 76, 2.8],
-           [100, 103, 2.6], [110, 113, 2.6], [139, 142, 2.8], [163.5, 167, 6.3], [178, 181, 2.8], [187, 190, 2.8],
+  ground: [[-30, 44], [47, 58], [65, 124], [127, 240]],
+  // [x1, x2, height, type]: dumpsters, a pool table, and buildings you climb and cross
+  blocks: [[17, 19.2, 1.3, 'dumpster'], [31, 33.2, 1.3, 'dumpster'], [68, 79, 7.0, 'building'], [88, 90.6, 0.95, 'pool'],
+           [130, 141, 4.5, 'building'], [144, 152, 6.0, 'building'], [156, 163, 4.5, 'building'],
+           [166, 176, 7.0, 'building'], [180, 190, 5.0, 'building']],
+  ledges: [[8, 12, 2.8], [22, 26, 2.8], [24, 27, 5.4],
+           [48, 55.5, 3.0], [50, 56, 6.0], [56, 67.6, 6.6],          // fire escape landings + plank bridge
+           [100, 103, 2.6], [110, 113, 2.6],
+           [169.5, 174, 10.3],                                        // water tower catwalk (secret)
            [200.3, 202.8, 4.8], [219.2, 221.7, 4.8], [206, 209, 2.8], [213, 216, 2.8]],
+  // Up/Down at a ladder to climb. One up every building's left wall, so a fall is a setback, not a death.
+  ladders: [
+    { x: 50.5, y1: 0, y2: 3.0 }, { x: 54.6, y1: 3.0, y2: 6.0 }, { x: 67.6, y1: 0, y2: 7.0 },
+    { x: 129.6, y1: 0, y2: 4.5 }, { x: 143.6, y1: 0, y2: 6.0 }, { x: 155.6, y1: 0, y2: 4.5 },
+    { x: 165.6, y1: 0, y2: 7.0 }, { x: 179.6, y1: 0, y2: 5.0 }, { x: 170.3, y1: 7.0, y2: 10.3 },
+  ],
   movers: [
     { kind: 'bob', x: 61.5, y: 0, amp: 1.6, w: 2.4 },
-    { kind: 'slide', x: 153.5, y: 0, amp: 2.0, w: 2.9 },
   ],
-  amps: [[161.8, 0.95]],
+  amps: [],
   crates: [
-    { x: 14, loot: 'sticks' }, { x: 50.5, y: 2.8, loot: 'gold' }, { x: 84, loot: 'jacket' }, { x: 117, loot: 'flame' },
-    { x: 164.5, y: 6.3, loot: 'life' }, { x: 166.2, y: 6.3, loot: 'gold' }, { x: 137, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
+    { x: 14, loot: 'sticks' }, { x: 51.8, y: 3.0, loot: 'gold' }, { x: 84, loot: 'jacket' }, { x: 117, loot: 'flame' },
+    { x: 171.6, y: 10.3, loot: 'life' }, { x: 173.3, y: 10.3, loot: 'gold' }, { x: 137, y: 4.5, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
-  records: [{ x: 25.5, y: 6.7 }, { x: 111.5, y: 4.9 }, { x: 165.4, y: 7.6 }],
-  birds: [30, 70, 132, 182],
+  records: [{ x: 25.5, y: 6.7 }, { x: 111.5, y: 4.9 }, { x: 172.4, y: 11.7 }],
+  birds: [30, { x: 76.5, y: 8.15 }, { x: 150, y: 7.15 }, { x: 186, y: 6.15 }],
   pigeons: true,
-  headbangers: [70, 146],
+  headbangers: [72, 147],
   hands: [],
-  throwers: [{ x: 53.5, y: 5.2, kind: 'barfly' }, { x: 74, y: 2.8, kind: 'barfly' }, { x: 140.5, y: 2.8, kind: 'barfly' }, { x: 188.5, y: 2.8, kind: 'barfly' }],
+  throwers: [{ x: 53.5, y: 6.0, kind: 'barfly' }, { x: 75, y: 7.0, kind: 'barfly' }, { x: 139.5, y: 4.5, kind: 'barfly' }, { x: 188.5, y: 5.0, kind: 'barfly' }],
   checkpoint: 92,
   soundcheck: null,
   ambush: {
@@ -2418,11 +2449,25 @@ function buildAlley(scene, quality) {
   const BG = new Batch();
   const win = () => (r() < 0.35 ? winLit : r() < 0.15 ? winBlue : winDark);
 
-  // Rooftop zone: ground is building tops; front faces get windows
-  for (const [a, b] of L.ground) {
-    if (b < 124) continue;
-    for (let x = Math.max(a, 121) + 0.8; x < b - 0.6; x += 1.4) for (let y = -1.2; y > -9; y -= 1.8) B.add(GEO.box, win(), mat4(x, y, 2.52, 0, 0, 0, 0.7, 1.0, 0.05));
-    B.add(GEO.box, brick3, mat4((a + b) / 2, 0.25, 2.3, 0, 0, 0, b - a, 0.5, 0.3));      // parapet lip
+  // Buildings you climb and run across: brick front with windows, tar roof, parapet lip
+  for (const [a, b, h, type] of L.blocks) {
+    if (type !== 'building') continue;
+    const w = b - a, cx = (a + b) / 2, mat = a < 100 ? brick : r() < 0.5 ? brick3 : brick2;
+    B.add(GEO.box, mat, mat4(cx, h / 2, -0.5, 0, 0, 0, w, h, 6));
+    B.add(GEO.box, tar, mat4(cx, h + 0.04, -0.5, 0, 0, 0, w + 0.05, 0.08, 6.05));
+    B.add(GEO.box, concrete, mat4(cx, h + 0.22, 2.4, 0, 0, 0, w + 0.1, 0.36, 0.3));          // parapet lip
+    for (let x = a + 0.9; x < b - 0.6; x += 1.5) for (let y = 1.4; y < h - 0.6; y += 1.9) B.add(GEO.box, win(), mat4(x, y, 2.52, 0, 0, 0, 0.75, 1.1, 0.05));
+    B.add(GEO.box, metal, mat4(cx + w * 0.25, h + 0.5, -1.8, 0, 0, 0, 1.0, 1.0, 1.0));       // AC unit
+    world.addLantern(new THREE.Vector3(a + 1.6, h + 0.3, -1.6));
+  }
+  // Secret water tower on the tallest roof (climb its ladder to the catwalk)
+  {
+    const [a, b, y] = L.ledges.find(([, , yy]) => yy > 10);
+    const cx = (a + b) / 2;
+    B.add(GEO.cyl, wood, mat4(cx, y + 1.6, -1.6, 0, 0, 0, 3.2, 3.0, 3.2));
+    B.add(GEO.cone4, M(0x2a1a12), mat4(cx, y + 3.6, -1.6, 0, Math.PI / 4, 0, 3.8, 1.0, 3.8));
+    for (const dx of [-1.2, 1.2]) B.add(GEO.box, iron, mat4(cx + dx, (7 + y) / 2, -1.6, 0, 0, 0, 0.14, y - 7, 0.14));
+    B.add(GEO.box, wood, mat4(cx, y - 0.08, -0.2, 0, 0, 0, b - a, 0.16, 1.4));               // catwalk boards
   }
 
   // ---- Alley + fire escapes (0-80): brick facades with windows and iron stairs -------------
@@ -2434,34 +2479,35 @@ function buildAlley(scene, quality) {
     B.add(GEO.box, concrete, mat4(x + w / 2, h + 0.15, -7.5, 0, 0, 0, w + 0.2, 0.3, 1.4));  // roof edge
     x += w;
   }
-  // fire-escape railings on the ledges in the alley zone
+  // fire-escape railings on the ledges in the alley zone (the bridge gets planks)
   for (const [a, b, y] of L.ledges) {
     if (a > 80) continue;
     for (let x = a; x <= b; x += 0.35) B.add(GEO.box, iron, mat4(x, y + 0.45, -0.95, 0, 0, 0, 0.04, 0.9, 0.04));
     B.add(GEO.box, iron, mat4((a + b) / 2, y + 0.9, -0.95, 0, 0, 0, b - a, 0.05, 0.05));
-    B.add(GEO.box, iron, mat4(a + 0.2, y / 2, -0.95, 0, 0, 0.5, 0.08, y * 1.15, 0.08));   // stair stringer
+    if (b - a > 8) B.add(GEO.box, wood, mat4((a + b) / 2, y - 0.1, -0.2, 0, 0, (r() - 0.5) * 0.02, b - a, 0.14, 1.2));
   }
   // dumpsters (solid blocks), bins, crates
-  for (const [a, b, h] of L.blocks) {
+  for (const [a, b, h, type] of L.blocks) {
     const w = b - a, cx = (a + b) / 2;
-    if (a < 80) {
+    if (type === 'building') continue;
+    if (type === 'dumpster') {
       B.add(GEO.box, dumpster, mat4(cx, h / 2, -0.2, 0, 0, 0, w, h, 1.6));
       B.add(GEO.box, M(0x1a3a2a), mat4(cx, h + 0.05, -0.2, 0, 0, -0.08, w + 0.1, 0.1, 1.7));
-    } else if (a < 121) {
+    } else {
       B.add(GEO.box, wood, mat4(cx, h / 2 - 0.1, -0.2, 0, 0, 0, w, h - 0.2, 1.4));          // pool table
       B.add(GEO.box, felt, mat4(cx, h - 0.05, -0.2, 0, 0, 0, w - 0.2, 0.1, 1.2));
-    } else {
-      B.add(GEO.box, brick3, mat4(cx, h / 2, -0.3, 0, 0, 0, w, h, 1.2));                       // chimney
-      B.add(GEO.box, concrete, mat4(cx, h + 0.08, -0.3, 0, 0, 0, w + 0.2, 0.16, 1.4));
     }
   }
-  for (let x = 2; x < 78; x += 6 + r() * 5) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1)) {
+  for (let x = 2; x < 66; x += 6 + r() * 5) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1) && !L.ladders.some((l) => Math.abs(l.x - x) < 1)) {
     B.add(GEO.cyl, metal, mat4(x, 0.45, -1.8, 0, 0, 0, 0.6, 0.9, 0.6));
     B.add(GEO.cyl, metal, mat4(x, 0.93, -1.8, 0, 0, 0, 0.66, 0.06, 0.66));
   }
-  // pigeon rails
-  for (const x of L.birds) B.add(GEO.box, metal, mat4(x, 1.0, -0.45, 0, 0, 0, 0.8, 0.08, 0.08));
-  for (const x of L.birds) B.add(GEO.box, metal, mat4(x, 0.5, -0.45, 0, 0, 0, 0.08, 1.0, 0.08));
+  // pigeon rails (on the street or up on a roof edge)
+  for (const bd of L.birds) {
+    const x = bd.x ?? bd, y = (bd.y ?? 1.15) - 0.15;
+    B.add(GEO.box, metal, mat4(x, y, -0.45, 0, 0, 0, 0.8, 0.08, 0.08));
+    B.add(GEO.box, metal, mat4(x, y - 0.5, -0.45, 0, 0, 0, 0.08, 1.0, 0.08));
+  }
 
   // ---- The dive bar interior (80-121) --------------------------------------------------------
   B.add(GEO.box, wood, mat4(100.5, 3.5, -3.6, 0, 0, 0, 41, 7, 0.4));                       // back wall
@@ -2495,17 +2541,16 @@ function buildAlley(scene, quality) {
     BG.add(GEO.box, M(0x15142a), mat4(x, h / 2 - 8, z, 0, 0, 0, w, h, w));
     for (let wy = -6; wy < h - 9; wy += 1.6) for (let wx = x - w / 2 + 0.8; wx < x + w / 2 - 0.5; wx += 1.3) if (r() < 0.4) BG.add(GEO.box, r() < 0.8 ? winLit : winBlue, mat4(wx, wy, z + w / 2 + 0.05, 0, 0, 0, 0.6, 0.8, 0.05));
   }
-  for (const x of [131, 168, 210]) {
+  for (const x of [118, 210]) {
     B.add(GEO.cyl, wood, mat4(x, 4.2, -3.2, 0, 0, 0, 2.6, 2.6, 2.6));                     // water tower
     B.add(GEO.cone4, M(0x2a1a12), mat4(x, 6.0, -3.2, 0, Math.PI / 4, 0, 3.2, 1.0, 3.2));
     for (const dx of [-0.9, 0.9]) B.add(GEO.box, iron, mat4(x + dx, 1.45, -3.2, 0, 0, 0, 0.1, 2.9, 0.1));
   }
-  for (let x = 125; x < 222; x += 9 + r() * 7) B.add(GEO.box, metal, mat4(x, 2.5, -2.4, 0, 0, 0, 0.05, 5, 0.05));     // antennas
-  B.add(GEO.box, brick3, mat4(160, 0.6, -2.6, 0, 0, 0, 80, 1.2, 0.4));                      // back parapet
+  for (const [a, b, h, type] of L.blocks) if (type === 'building' && a > 120) B.add(GEO.box, metal, mat4(b - 1.2, h + 1.6, -2.4, 0, 0, 0, 0.05, 3.2, 0.05));   // antennas
   // arena: two stone pillars for the gargoyle's perches
   const stone = M(0x7d7f8c, { roughness: 0.95 });
   for (const [a, b, y] of L.ledges.filter(([, , y]) => y > 4.5 && y < 5)) B.add(GEO.box, stone, mat4((a + b) / 2, (y - 0.3) / 2, -0.8, 0, 0, 0, b - a - 0.3, y - 0.3, 1.2));
-  for (const [a, b, y] of L.ledges.filter(([a2]) => a2 > 120)) if (y < 4) B.add(GEO.box, iron, mat4((a + b) / 2, y / 2, -0.95, 0, 0, 0, 0.1, y, 0.1));
+  for (const [a, b, y] of L.ledges.filter(([a2]) => a2 > 195)) if (y < 4) B.add(GEO.box, iron, mat4((a + b) / 2, y / 2, -0.95, 0, 0, 0, 0.1, y, 0.1));
   world.solids.push({ x1: L.arena.x2, x2: 240, y1: 0, y2: 20 });
   B.add(GEO.box, brick3, mat4(L.arena.x2 + 1.5, 5, -0.5, 0, 0, 0, 3, 10, 7));
   world.gate = makeGate(scene, iron, L.arena.gate);
@@ -2532,7 +2577,8 @@ function buildAlley(scene, quality) {
   };
   sign(6.5, 'THE BACK ALLEY →');
   sign(45.5, 'MIND THE SEWER', '#ffc94a');
-  sign(160, 'AMPS: JUMP ON BEAT', '#a6ff4d');
+  sign(127.9, 'ROOFTOP RUN ↑', '#a6ff4d');
+  sign(64.3, 'CLIMB! ↑', '#a6ff4d');
   sign(196.5, 'ROOF · NO ENTRY', '#ff2e88');
 
   B.build(scene);
@@ -2541,7 +2587,7 @@ function buildAlley(scene, quality) {
   // street lamps in the alley, pendant lights in the bar, bulbs on the roofs
   for (let x = 4; x < 80; x += 12) world.addLantern(new THREE.Vector3(x, 3.2, -2.0));
   for (let x = 84; x < 120; x += 8) world.addLantern(new THREE.Vector3(x, 4.6, -1.4));
-  for (let x = 126; x < 222; x += 11) if (onGround(x)) world.addLantern(new THREE.Vector3(x, 0.3, -1.6));
+  for (let x = 192; x < 222; x += 11) world.addLantern(new THREE.Vector3(x, 0.3, -1.6));
   const extra = new Batch();
   for (let x = 4; x < 80; x += 12) extra.add(GEO.box, iron, mat4(x, 1.6, -2.2, 0, 0, 0, 0.1, 3.2, 0.1));
   extra.build(scene);
@@ -3013,7 +3059,7 @@ class Game {
       x, y, vx: 0, vy: 0, h: 1.8, face: 1, onGround: true, crouch: false,
       armor: this.run.upgrades.spikes ? 2 : 1, inv: 1.5, stun: 0, cd: 0, throwT: 0, dead: false, deadT: 0, out: false,
       coyote: 0, buffer: 0, phase: 0, jumpCut: false, drop: 0, wasGround: true, soloT: 0, standing: null,
-      safeX: undefined, safeY: undefined, combo: 0,
+      safeX: undefined, safeY: undefined, combo: 0, climb: null,
     });
     p.hero.root.visible = true;
     p.hero.setArmor(p.armor);
@@ -3039,7 +3085,7 @@ class Game {
     this.boss = null;
     this.headbangersLeft = [...this.L.headbangers];
     this.throwersLeft = this.L.throwers.map((d) => ({ ...d }));
-    for (const bx of this.L.birds) this.spawnBird(bx);
+    for (const bx of this.L.birds) typeof bx === 'number' ? this.spawnBird(bx) : this.spawnBird(bx.x, bx.y);
     for (const hx of this.L.hands) this.spawnHand(hx);
     this.players.forEach((p, i) => { if (!p.out || first) this.resetPlayer(p, x - i * 1.2); });
     this.camX = x + 4;
@@ -3135,7 +3181,7 @@ class Game {
       if (ambient < max && Math.random() < this.D.spawnChance) this.spawnAmbient(zone, lead);
     }
     this.headbangersLeft = this.headbangersLeft.filter((x) => {
-      if (Math.abs(lead.x - x) < 10 && x > lead.x - 2) { this.spawnZombie('headbanger', x); return false; }
+      if (Math.abs(lead.x - x) < 10 && x > lead.x - 2) { this.spawnZombie('headbanger', x, this.level.surfaceAt(x) ?? 0); return false; }
       return true;
     });
     this.throwersLeft = this.throwersLeft.filter((d) => {
@@ -3156,15 +3202,17 @@ class Game {
       if (x < this.camX - this.halfW + 1 || x > this.L.arena.gate - 3) continue;
       if (this.enemies.some((e) => e.kind !== 'bird' && Math.abs(e.x - x) < 1.5)) continue;
       if (kind === 'ghost') { this.spawnGhost(x, lead.y + 1.5 + Math.random()).ambient = true; return; }
-      if (this.level.groundY(x) === null) continue;
-      // Never right at a pit edge: fighting there is a cheap death.
-      if (!this.level.onGround(x - 2.5) || !this.level.onGround(x + 2.5)) continue;
+      // Appear on the surface the player is on (street or rooftop), never right at an edge.
+      const sy = this.level.surfaceAt(x);
+      if (sy === null || Math.abs(sy - lead.y) > 2.5 || this.level.ladders.some((l) => Math.abs(l.x - x) < 1)) continue;
+      if (this.level.surfaceAt(x - 2.5) !== sy || this.level.surfaceAt(x + 2.5) !== sy) continue;
+      if ((this.L.amps || []).some(([ax]) => Math.abs(x - ax) < 1.1)) continue;
       if (kind === 'rat') {
         // rats come in packs out of the drains
-        for (let k = 0; k < 2; k++) if (this.level.groundY(x + k * 0.9 * dir) !== null) this.spawnRat(x + k * 0.9 * dir).ambient = true;
+        for (let k = 0; k < 2; k++) if (this.level.surfaceAt(x + k * 0.9 * dir) === sy) this.spawnRat(x + k * 0.9 * dir, sy).ambient = true;
         return;
       }
-      const e = kind === 'crawler' ? this.spawnCrawler(x) : this.spawnZombie(kind, x);
+      const e = kind === 'crawler' ? this.spawnCrawler(x, sy) : this.spawnZombie(kind, x, sy);
       e.ambient = true;
       return;
     }
@@ -3185,6 +3233,13 @@ class Game {
     if (p.onGround && p.standing && p.standing.mover) { p.x += p.standing.dx; p.y += p.standing.dy; }
 
     const ctrl = p.stun <= 0 && p.soloT <= 0 && !this.cine;
+    // Ladders: Up grabs one you're standing at, Down at the top climbs down onto it.
+    if (!p.climb && ctrl) {
+      const l = this.level.ladders.find((d) => Math.abs(p.x - d.x) < 0.65 && p.y >= d.y1 - 0.1 && p.y <= d.y2 + 0.05);
+      if (l && inp.held.up && p.y < l.y2 - 0.05) { p.climb = l; p.buffer = 0; }
+      else if (l && inp.held.down && p.onGround && Math.abs(p.y - l.y2) < 0.15) { p.climb = l; p.y = l.y2 - 0.4; }
+    }
+    if (p.climb) { this.climbStep(p, dt); return; }
     const left = ctrl && inp.held.left, right = ctrl && inp.held.right;
     p.crouch = ctrl && inp.held.down && p.onGround;
     p.h = p.crouch ? 1.1 : 1.8;
@@ -3271,6 +3326,24 @@ class Game {
     this.animateHero(p, dt);
   }
 
+  climbStep(p, dt) {
+    const L = p.climb, inp = p.ctrl;
+    p.x += (L.x - p.x) * Math.min(1, dt * 15);
+    p.vx = 0; p.vy = 0;
+    p.crouch = false; p.h = 1.8; p.onGround = false; p.standing = null;
+    const dir = (inp.held.up ? 1 : 0) - (inp.held.down ? 1 : 0);
+    p.y += dir * 4.4 * dt;
+    p.climbPhase = (p.climbPhase || 0) + Math.abs(dir) * dt * 9;
+    if (inp.held.left) p.face = -1;
+    if (inp.held.right) p.face = 1;
+    const W = WEAPONS[p.weapon];
+    if (inp.pressed.throw && p.cd <= 0 && this.shots.filter((s) => s.owner === p).length < W.max) this.throwWeapon(p);
+    if (p.y >= L.y2) { p.y = L.y2 + 0.02; p.climb = null; this.music.sLand(); }          // step off at the top
+    else if (p.y <= L.y1) { p.y = L.y1; p.climb = null; }                                 // reached the bottom
+    else if (inp.pressed.jump && !inp.held.up) { p.climb = null; p.vy = 8; p.jumpCut = true; }   // hop off sideways
+    this.animateHero(p, dt);
+  }
+
   fellInPit(p) {
     const saved = this.D.pitSave === 'always' || (this.D.pitSave === 'jacket' && p.armor > 0);
     if (saved && p.safeX !== undefined) {
@@ -3307,7 +3380,7 @@ class Game {
   animateHero(p, dt) {
     const P = p.hero;
     P.root.position.set(p.x, p.y, 0);
-    P.root.rotation.y += (faceRot(p.face) - P.root.rotation.y) * Math.min(1, dt * 18);
+    P.root.rotation.y += ((p.climb ? Math.PI : faceRot(p.face)) - P.root.rotation.y) * Math.min(1, dt * 18);
     P.root.visible = p.inv > 0 && p.soloT <= 0 ? Math.floor(p.inv * 16) % 2 === 0 : true;
 
     // Beat ring at the feet: a little metronome you can see
@@ -3322,7 +3395,11 @@ class Game {
     const run = Math.min(1, speed / RUN);
     let legL, legR, kneeL = 0, kneeR = 0, armL, armR, elL = -0.2, elR = -0.2, bodyY = 0, lean = 0;
     const near = p.face > 0 ? 'L' : 'R';
-    if (p.soloT > 0) {
+    if (p.climb) {
+      const c = Math.sin(p.climbPhase || 0);
+      armL = -2.7 + c * 0.45; armR = -2.7 - c * 0.45; elL = elR = -0.5;
+      legL = -0.7 - c * 0.5; legR = -0.7 + c * 0.5; kneeL = 1.1 + c * 0.4; kneeR = 1.1 - c * 0.4;
+    } else if (p.soloT > 0) {
       legL = -0.35; legR = 0.35; kneeL = 0.3; kneeR = 0.2; lean = -0.25;
       if (p.char === 'drummer') {
         // drum roll: both arms hammering
@@ -3443,6 +3520,7 @@ class Game {
   hurt(p, fromX) {
     if (p.dead || p.out || p.inv > 0 || this.bossDone) return;
     p.combo = 0;
+    p.climb = null;
     if (p.armor > 0) {
       p.armor--;
       p.hero.setArmor(p.armor);
@@ -3465,6 +3543,7 @@ class Game {
 
   kill(p) {
     if (p.dead) return;
+    p.climb = null;
     p.dead = true; p.deadT = 2.6;
     p.combo = 0;
     this.stats.deaths++;
@@ -3680,12 +3759,12 @@ class Game {
     return e;
   }
 
-  spawnZombie(kind, x) {
+  spawnZombie(kind, x, y = 0) {
     const model = makeZombie(kind);
     const scale = kind === 'headbanger' ? 1.22 : 1;
     model.root.scale.setScalar(scale);
-    model.root.position.set(x, -2 * scale, 0);
-    const e = this.base(kind, model, x, 0, {
+    model.root.position.set(x, y - 2 * scale, 0);
+    const e = this.base(kind, model, x, y, {
       w: 0.34 * scale, h: 1.8 * scale,
       hp: { headbanger: 4, pogo: 2 }[kind] || 1,
       points: { headbanger: 500, pogo: 300 }[kind] || 100,
@@ -3704,18 +3783,18 @@ class Game {
     return e;
   }
 
-  spawnCrawler(x) {
+  spawnCrawler(x, y = 0) {
     const model = makeCrawler();
-    model.root.position.set(x, -0.8, 0);
+    model.root.position.set(x, y - 0.8, 0);
     this.music.sGroan();
-    return this.base('crawler', model, x, 0, { w: 0.45, h: 0.6, hp: 1, points: 150, speed: 2.0 * this.D.enemySpeed, life: 14 });
+    return this.base('crawler', model, x, y, { w: 0.45, h: 0.6, hp: 1, points: 150, speed: 2.0 * this.D.enemySpeed, life: 14 });
   }
 
-  spawnRat(x) {
+  spawnRat(x, y = 0) {
     const model = makeRat();
-    model.root.position.set(x, -0.5, 0);
+    model.root.position.set(x, y - 0.5, 0);
     this.music.sSqueak();
-    return this.base('rat', model, x, 0, { w: 0.3, h: 0.45, hp: 1, points: 120, speed: rand(2.2, 2.9) * this.D.enemySpeed, life: 12, colors: [0x4a4038, 0xc88a8a] });
+    return this.base('rat', model, x, y, { w: 0.3, h: 0.45, hp: 1, points: 120, speed: rand(2.2, 2.9) * this.D.enemySpeed, life: 12, colors: [0x4a4038, 0xc88a8a] });
   }
 
   spawnGhost(x, y) {
@@ -3769,11 +3848,11 @@ class Game {
     return e;
   }
 
-  spawnBird(x) {
+  spawnBird(x, y = 1.15) {
     const model = makeCrow(this.L.pigeons);
     model.root.scale.setScalar(1.3);
-    model.root.position.set(x, 1.15, -0.45);
-    const e = this.base('bird', model, x, 1.15, { w: 0.35, h: 0.45, hp: 1, points: 200, state: 'perch', colors: this.L.pigeons ? [0x6a6e7a, 0x4a6a5a] : [0x121016, 0x2b2620] });
+    model.root.position.set(x, y, -0.45);
+    const e = this.base('bird', model, x, y, { w: 0.35, h: 0.45, hp: 1, points: 200, state: 'perch', colors: this.L.pigeons ? [0x6a6e7a, 0x4a6a5a] : [0x121016, 0x2b2620] });
     e.box = () => ({ x1: e.x - e.w, x2: e.x + e.w, y1: e.y - 0.1, y2: e.y + e.h });
     e.center = () => ({ x: e.x, y: e.y + 0.15 });
     e.hittable = () => true;
@@ -3835,7 +3914,8 @@ class Game {
   }
 
   sinkOrTurn(e) {
-    if (e.onGround && this.level.groundY(e.x + e.face * 0.6) === null && !this.level.onSolidTop(e.x + e.face * 0.6) && Math.random() < 0.02) e.face *= -1;
+    const ahead = this.level.surfaceAt(e.x + e.face * 0.6);
+    if (e.onGround && (ahead === null || ahead < e.y - 0.5) && Math.random() < 0.02) e.face *= -1;
     if (e.life && e.t > e.life && e.ambient) e.state = 'sink';
   }
 

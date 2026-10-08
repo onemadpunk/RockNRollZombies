@@ -2,7 +2,7 @@
 // with its own key map and gamepad, so two people can play on one keyboard or two pads.
 // `held` = currently down; `pressed` = went down this frame.
 
-const ACTIONS = ['left', 'right', 'down', 'jump', 'throw', 'special', 'pause', 'start'];
+const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'throw', 'special', 'pause', 'start'];
 
 const down = new Set();
 let touchMode = false;
@@ -41,15 +41,16 @@ export function bindTouch(container) {
 
 export const KEYS_SOLO = {
   left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], down: ['ArrowDown', 'KeyS'],
+  up: ['ArrowUp', 'KeyW'],   // climbs ladders; still jumps when there's no ladder (see game.js)
   jump: ['Space', 'KeyZ', 'KeyW', 'ArrowUp'], throw: ['KeyX', 'KeyJ', 'KeyK'],
   special: ['KeyC', 'KeyL', 'ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'], start: ['Enter'],
 };
 export const KEYS_P1 = {
-  left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], jump: ['KeyW', 'Space'], throw: ['KeyF'], special: ['KeyG'],
+  left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], jump: ['KeyW', 'Space'], throw: ['KeyF'], special: ['KeyG'],
   pause: ['Escape', 'KeyP'], start: ['Enter'],
 };
 export const KEYS_P2 = {
-  left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], jump: ['ArrowUp'],
+  left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'], jump: ['ArrowUp'],
   throw: ['KeyK', 'Numpad0'], special: ['KeyL', 'Numpad1'], pause: [], start: [],
 };
 const ALL_CODES = new Set(Object.values({ ...KEYS_SOLO }).flat().concat(Object.values(KEYS_P1).flat(), Object.values(KEYS_P2).flat()));
@@ -61,6 +62,7 @@ function readPad(p, out) {
   if (ax < -0.4 || b(14)) out.add('left');
   if (ax > 0.4 || b(15)) out.add('right');
   if (ay > 0.6 || b(13)) out.add('down');
+  if (ay < -0.6 || b(12)) out.add('up');
   if (b(0)) out.add('jump');
   if (b(2) || b(1) || b(5) || b(7)) out.add('throw');
   if (b(3) || b(4) || b(6)) out.add('special');
