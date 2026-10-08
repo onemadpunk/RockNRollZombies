@@ -33,7 +33,7 @@ export class Game {
    * world: the built level (solids, ledges, L layout...). run: carries between levels.
    * players: [{ char, controls }] (1 or 2 entries).
    */
-  constructor({ world, scene, camera, music, ui, sparks, chunks, run, players }) {
+  constructor({ world, scene, camera, music, ui, sparks, chunks, run, players, resume = null }) {
     Object.assign(this, { level: world, L: world.L, scene, camera, music, ui, sparks, chunks, run });
     this.D = run.diff;
     this.halfW = 9;
@@ -52,7 +52,7 @@ export class Game {
     this.jukeOn = false;
     this.secretFound = false;
     this.ambush = { state: 'idle', wave: 0, queue: [], wait: 0 };
-    this.soundcheck = this.L.soundcheck && save.settings.soundcheck && !run.encore ? { left: this.L.soundcheck.length } : null;
+    this.soundcheck = this.L.soundcheck && save.settings.soundcheck && !run.encore && resume === null ? { left: this.L.soundcheck.length } : null;
     this.enemies = []; this.shots = []; this.foeShots = []; this.pickups = []; this.debris = []; this.fires = []; this.rings = [];
     this.crates = this.L.crates.map((c) => {
       const mesh = makeFlightCase();
@@ -80,7 +80,15 @@ export class Game {
       });
       ui.hint('SOUNDCHECK: throw when the ring flashes. Knock down the 3 cut-outs ON THE BEAT.');
     }
-    this.respawnAll(this.L.start, true);
+    // Continuing after a game over: pick up from the last checkpoint, not the start of the gig
+    this.resumed = resume !== null;
+    if (this.resumed) {
+      this.checkpointX = resume;
+      this.zoneIdx = this.zoneAt(resume);
+      if (resume >= this.L.checkpoint) { this.jukeOn = true; this.level.juke.glow.emissiveIntensity = 3; }
+      if (resume >= this.L.ambush.x2 - 1) this.ambush.state = 'done';
+    }
+    this.respawnAll(this.resumed ? resume : this.L.start, true);
     // Upgrades bought at the merch stand
     if (run.upgrades.flame) { this.players.forEach((p) => (p.weapon = 'flame')); run.upgrades.flame = false; }
   }
@@ -469,6 +477,8 @@ export class Game {
 
   afterDeath(p) {
     const partner = this.players.find((q) => q !== p && !q.dead && !q.out);
+    const nearBoss = this.bossStarted || p.x > this.L.arena.gate - 4;
+    this.continueX = nearBoss ? this.L.arena.gate - 6 : this.checkpointX;   // where Continue picks up after a game over
     this.run.lives--;
     if (this.run.lives <= 0) {
       this.run.lives = 0;
@@ -485,8 +495,7 @@ export class Game {
       return;
     }
     if (this.players.some((q) => q !== p && q.dead && !q.out)) return;   // wait for the other player's timer
-    const nearBoss = this.bossStarted || p.x > this.L.arena.gate - 4;
-    this.respawnAll(nearBoss ? this.L.arena.gate - 6 : this.checkpointX);
+    this.respawnAll(this.continueX);
   }
 
   animateHero(p, dt) {
@@ -1256,6 +1265,7 @@ export class Game {
   startBoss() {
     this.bossStarted = true;
     const A = this.L.arena;
+    this.checkpointX = Math.max(this.checkpointX, A.gate - 6);   // reaching the boss counts as a checkpoint
     this.lock = { x1: A.x1, x2: A.x2 };
     for (const e of this.enemies) if (e.ambient) e.state = 'sink';
     this.gateSolid = { x1: A.gate - 0.3, x2: A.gate + 0.3, y1: 0, y2: 12 };

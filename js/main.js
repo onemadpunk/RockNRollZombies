@@ -424,11 +424,11 @@ function playerConfigs() {
   ];
 }
 
-function loadLevel(i) {
+function loadLevel(i, resume = null) {
   run.level = i;
   run.startScore = run.score;
   makeScene(i);
-  game = new Game({ world, scene, camera, music, ui, sparks, chunks, run, players: playerConfigs() });
+  game = new Game({ world, scene, camera, music, ui, sparks, chunks, run, players: playerConfigs(), resume });
   window.rnrz.game = game;
   only(null);
   show('hud', true); show('hud-p2', game.coop);
@@ -472,13 +472,14 @@ function endLevel(g, clear) {
   // What can go on a board: a clear time for this gig (speed run), and the score at the end of a run.
   const final = !clear || last;
   const time = s.time;
-  pending = { score: final && scoreSavedFor !== run, speed: clear && !run.encore, time, level: run.level };
-  shareInfo = clear ? { kind: 'speed', level: run.level, time, score: run.score } : { kind: 'score', level: run.level, score: run.score };
-  $('share').textContent = clear ? 'Challenge a friend (time)' : 'Challenge a friend (score)';
+  pending = { score: final && scoreSavedFor !== run, speed: clear && !run.encore && !g.resumed, time, level: run.level };   // a continued gig's clock isn't a real speed run
+  continueX = clear ? null : g.continueX ?? null;
+  shareInfo = clear && !g.resumed ? { kind: 'speed', level: run.level, time, score: run.score } : { kind: 'score', level: run.level, score: run.score };
+  $('share').textContent = clear && !g.resumed ? 'Challenge a friend (time)' : 'Challenge a friend (score)';
   show('share-text', false);
   show('hs', false);
   offerSave(time);
-  $('over-next').textContent = clear ? (last ? 'Continue' : 'Next gig') : 'Continue (score resets)';
+  $('over-next').textContent = clear ? (last ? 'Continue' : 'Next gig') : 'Continue from checkpoint';
   show('over-encore', clear && run.diffKey === 'hard' && !run.encore);
   show('over-again', clear);
   $('over-again').textContent = 'Replay gig';
@@ -488,6 +489,7 @@ function endLevel(g, clear) {
 }
 
 let pending = null;
+let continueX = null;
 /** Decide whether to show the initials entry, and say what it will be saved to. */
 async function offerSave(time) {
   const P = pending, lvl = P.level;
@@ -541,9 +543,9 @@ $('over-next').addEventListener('click', () => {
     if (next < LEVELS.length) showComic(comicKey, () => showMap(next));
     else showComic(comicKey, toTitle);
   } else {
-    // Continue after a game over: back to the start of this gig, score wiped
+    // Continue after a game over: back to the last checkpoint of this gig, score wiped
     run.score = 0; run.lives = run.diff.lives;
-    loadLevel(run.level);
+    loadLevel(run.level, continueX);
   }
 });
 $('over-again').addEventListener('click', () => { run.score = run.startScore; loadLevel(run.level); });

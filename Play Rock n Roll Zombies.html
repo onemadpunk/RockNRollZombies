@@ -4196,7 +4196,7 @@ class Game {
    * world: the built level (solids, ledges, L layout...). run: carries between levels.
    * players: [{ char, controls }] (1 or 2 entries).
    */
-  constructor({ world, scene, camera, music, ui, sparks, chunks, run, players }) {
+  constructor({ world, scene, camera, music, ui, sparks, chunks, run, players, resume = null }) {
     Object.assign(this, { level: world, L: world.L, scene, camera, music, ui, sparks, chunks, run });
     this.D = run.diff;
     this.halfW = 9;
@@ -4215,7 +4215,7 @@ class Game {
     this.jukeOn = false;
     this.secretFound = false;
     this.ambush = { state: 'idle', wave: 0, queue: [], wait: 0 };
-    this.soundcheck = this.L.soundcheck && save.settings.soundcheck && !run.encore ? { left: this.L.soundcheck.length } : null;
+    this.soundcheck = this.L.soundcheck && save.settings.soundcheck && !run.encore && resume === null ? { left: this.L.soundcheck.length } : null;
     this.enemies = []; this.shots = []; this.foeShots = []; this.pickups = []; this.debris = []; this.fires = []; this.rings = [];
     this.crates = this.L.crates.map((c) => {
       const mesh = makeFlightCase();
@@ -4243,7 +4243,15 @@ class Game {
       });
       ui.hint('SOUNDCHECK: throw when the ring flashes. Knock down the 3 cut-outs ON THE BEAT.');
     }
-    this.respawnAll(this.L.start, true);
+    // Continuing after a game over: pick up from the last checkpoint, not the start of the gig
+    this.resumed = resume !== null;
+    if (this.resumed) {
+      this.checkpointX = resume;
+      this.zoneIdx = this.zoneAt(resume);
+      if (resume >= this.L.checkpoint) { this.jukeOn = true; this.level.juke.glow.emissiveIntensity = 3; }
+      if (resume >= this.L.ambush.x2 - 1) this.ambush.state = 'done';
+    }
+    this.respawnAll(this.resumed ? resume : this.L.start, true);
     // Upgrades bought at the merch stand
     if (run.upgrades.flame) { this.players.forEach((p) => (p.weapon = 'flame')); run.upgrades.flame = false; }
   }
@@ -4632,6 +4640,8 @@ class Game {
 
   afterDeath(p) {
     const partner = this.players.find((q) => q !== p && !q.dead && !q.out);
+    const nearBoss = this.bossStarted || p.x > this.L.arena.gate - 4;
+    this.continueX = nearBoss ? this.L.arena.gate - 6 : this.checkpointX;   // where Continue picks up after a game over
     this.run.lives--;
     if (this.run.lives <= 0) {
       this.run.lives = 0;
@@ -4648,8 +4658,7 @@ class Game {
       return;
     }
     if (this.players.some((q) => q !== p && q.dead && !q.out)) return;   // wait for the other player's timer
-    const nearBoss = this.bossStarted || p.x > this.L.arena.gate - 4;
-    this.respawnAll(nearBoss ? this.L.arena.gate - 6 : this.checkpointX);
+    this.respawnAll(this.continueX);
   }
 
   animateHero(p, dt) {
@@ -5419,6 +5428,7 @@ class Game {
   startBoss() {
     this.bossStarted = true;
     const A = this.L.arena;
+    this.checkpointX = Math.max(this.checkpointX, A.gate - 6);   // reaching the boss counts as a checkpoint
     this.lock = { x1: A.x1, x2: A.x2 };
     for (const e of this.enemies) if (e.ambient) e.state = 'sink';
     this.gateSolid = { x1: A.gate - 0.3, x2: A.gate + 0.3, y1: 0, y2: 12 };
@@ -6834,11 +6844,11 @@ function playerConfigs() {
   ];
 }
 
-function loadLevel(i) {
+function loadLevel(i, resume = null) {
   run.level = i;
   run.startScore = run.score;
   makeScene(i);
-  game = new Game({ world, scene, camera, music, ui, sparks, chunks, run, players: playerConfigs() });
+  game = new Game({ world, scene, camera, music, ui, sparks, chunks, run, players: playerConfigs(), resume });
   window.rnrz.game = game;
   only(null);
   show('hud', true); show('hud-p2', game.coop);
@@ -6882,13 +6892,14 @@ function endLevel(g, clear) {
   // What can go on a board: a clear time for this gig (speed run), and the score at the end of a run.
   const final = !clear || last;
   const time = s.time;
-  pending = { score: final && scoreSavedFor !== run, speed: clear && !run.encore, time, level: run.level };
-  shareInfo = clear ? { kind: 'speed', level: run.level, time, score: run.score } : { kind: 'score', level: run.level, score: run.score };
-  $('share').textContent = clear ? 'Challenge a friend (time)' : 'Challenge a friend (score)';
+  pending = { score: final && scoreSavedFor !== run, speed: clear && !run.encore && !g.resumed, time, level: run.level };   // a continued gig's clock isn't a real speed run
+  continueX = clear ? null : g.continueX ?? null;
+  shareInfo = clear && !g.resumed ? { kind: 'speed', level: run.level, time, score: run.score } : { kind: 'score', level: run.level, score: run.score };
+  $('share').textContent = clear && !g.resumed ? 'Challenge a friend (time)' : 'Challenge a friend (score)';
   show('share-text', false);
   show('hs', false);
   offerSave(time);
-  $('over-next').textContent = clear ? (last ? 'Continue' : 'Next gig') : 'Continue (score resets)';
+  $('over-next').textContent = clear ? (last ? 'Continue' : 'Next gig') : 'Continue from checkpoint';
   show('over-encore', clear && run.diffKey === 'hard' && !run.encore);
   show('over-again', clear);
   $('over-again').textContent = 'Replay gig';
@@ -6898,6 +6909,7 @@ function endLevel(g, clear) {
 }
 
 let pending = null;
+let continueX = null;
 /** Decide whether to show the initials entry, and say what it will be saved to. */
 async function offerSave(time) {
   const P = pending, lvl = P.level;
@@ -6951,9 +6963,9 @@ $('over-next').addEventListener('click', () => {
     if (next < LEVELS.length) showComic(comicKey, () => showMap(next));
     else showComic(comicKey, toTitle);
   } else {
-    // Continue after a game over: back to the start of this gig, score wiped
+    // Continue after a game over: back to the last checkpoint of this gig, score wiped
     run.score = 0; run.lives = run.diff.lives;
-    loadLevel(run.level);
+    loadLevel(run.level, continueX);
   }
 });
 $('over-again').addEventListener('click', () => { run.score = run.startScore; loadLevel(run.level); });
