@@ -71,11 +71,11 @@ function arm(parent, x, y, wide, upperMat, foreMat, fistMat) {
 // ---------------------------------------------------------------------------
 // Heroes: 'punk' (guitar), 'drummer', 'bassist'. Same skeleton, different look.
 export const HEROES = {
-  punk: { name: 'The Punk', weapon: 'pick', jump: 14.5, blurb: 'Guitar picks. All-rounder.' },
-  drummer: { name: 'The Drummer', weapon: 'sticks', jump: 15.5, blurb: 'Drumsticks in a spread. Jumps higher.' },
-  bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14, blurb: 'Boomerang vinyl. Solo hits harder.' },
-  singer: { name: 'The Singer', weapon: 'notes', jump: 14.5, blurb: 'Fires musical notes that weave up and down.' },
-  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14, blurb: 'Lobs heavy spanners: slow, but they hit twice as hard.' },
+  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks. All-rounder.' },
+  drummer: { name: 'The Drummer', weapon: 'sticks', jump: 16, blurb: 'Drumsticks in a spread. Jumps higher.' },
+  bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14.6, blurb: 'Boomerang vinyl. Solo hits harder.' },
+  singer: { name: 'The Singer', weapon: 'notes', jump: 15, blurb: 'Fires musical notes that weave up and down.' },
+  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Lobs heavy spanners: slow, but they hit twice as hard.' },
 };
 
 export function makeHero(kind = 'punk') {

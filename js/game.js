@@ -186,6 +186,9 @@ export class Game {
         const tol = l.mover ? 0.25 : 0.02;
         if (a.vy <= 0 && prevY >= l.y - tol && a.y <= l.y && a.x > l.x1 - a.w * 0.6 && a.x < l.x2 + a.w * 0.6) {
           a.y = l.y; a.vy = 0; a.onGround = true; a.standing = l;
+        } else if (a.landGrace && a.vy > -1 && a.vy < 3.5 && a.y < l.y && a.y > l.y - 0.4 && a.x > l.x1 && a.x < l.x2) {
+          // Players only: at the top of a jump and just short of a ledge, pull yourself up onto it
+          a.y = l.y; a.vy = 0; a.onGround = true; a.standing = l;
         }
       }
     }
@@ -1298,7 +1301,7 @@ export class Game {
       colors: [model.mats[0].color.getHex(), 0x0d0d10],
     });
     e.box = () => {
-      const h = e.state === 'charge' || e.state === 'windup' ? e.h * 0.6 : e.h * 0.95;
+      const h = e.state === 'charge' || e.state === 'windup' ? e.h * 0.5 : e.h * 0.95;   // head down: low enough to jump over
       return { x1: e.x - e.w, x2: e.x + e.w, y1: e.y, y2: e.y + h };
     };
     e.center = () => ({ x: e.x, y: e.y + e.h * 0.5 });
