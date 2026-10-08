@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#0c0a14"/><circle cx="256" cy="256" r="216" fill="#2a1a46"/>
+<g fill="#ff2e88"><polygon points="176,190 216,190 196,120"/><polygon points="216,190 256,190 236,80"/><polygon points="256,190 296,190 276,55"/><polygon points="296,190 336,190 316,80"/><polygon points="336,190 376,190 356,120"/></g>
+<rect x="146" y="186" width="220" height="214" fill="#7d9a5a"/><rect x="186" y="250" width="50" height="40" fill="#d9ff3a"/><rect x="276" y="250" width="50" height="40" fill="#d9ff3a"/>
+<rect x="196" y="330" width="120" height="30" fill="#0c0a14"/></svg>

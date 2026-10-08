@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Rock 'n' Roll Zombies</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0c0a14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bungee&family=Rubik:wght@500;700&display=swap">
@@ -72,6 +79,7 @@
       <div class="opt" id="opt-char2-wrap" hidden><span class="label">Player 2</span><div class="seg" id="opt-char2"></div></div>
       <div class="opt"><span class="label">Gig</span><div class="seg" id="opt-level"></div><p class="blurb" id="level-blurb"></p></div>
       <div class="opt"><span class="label">Settings</span><div class="seg toggles">
+        <button id="tg-full">Full screen</button>
         <button id="tg-flash">Flashing: On</button><button id="tg-shake">Shake: On</button><button id="tg-sound">Soundcheck: On</button></div></div>
     </div>
     <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button></div>
@@ -138,6 +146,7 @@
     <button id="resume" class="btn">Resume</button>
     <div id="pause-help" class="cheat"></div>
     <div class="row-btns">
+      <button id="p-full" class="btn small">Full screen</button>
       <button id="quality" class="btn small">Graphics: High</button>
       <button id="p-flash" class="btn small">Flashing: On</button>
       <button id="p-shake" class="btn small">Shake: On</button>
@@ -187,9 +196,10 @@
 <!-- Touch controls -->
 <div id="touch" hidden>
   <div class="pad-l">
-    <button data-k="left" aria-label="Left">&#9664;</button>
-    <div class="ud"><button data-k="up" aria-label="Climb up">&#9650;</button><button data-k="down" aria-label="Crouch or climb down">&#9660;</button></div>
-    <button data-k="right" aria-label="Right">&#9654;</button>
+    <button data-k="up" class="up" aria-label="Climb up">&#9650;</button>
+    <button data-k="left" class="lf" aria-label="Left">&#9664;</button>
+    <button data-k="down" class="dn" aria-label="Crouch or climb down">&#9660;</button>
+    <button data-k="right" class="rt" aria-label="Right">&#9654;</button>
   </div>
   <div class="pad-r">
     <button data-k="special" class="sp">SOLO</button>

@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Rock 'n' Roll Zombies</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0c0a14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bungee&family=Rubik:wght@500;700&display=swap">
@@ -129,17 +136,24 @@ h2 { font-size: clamp(36px, 6vw, 72px); text-shadow: 4px 4px 0 var(--pink); }
 
 /* Touch controls */
 #touch { position: fixed; inset: 0; pointer-events: none; }
+/* Touch controls: sized from the screen's short side so they stay small on phones,
+   see-through so the game shows behind them, tucked into the bottom corners. */
+#touch { --b: clamp(38px, 11vmin, 64px); }
 #touch button {
-  pointer-events: auto; touch-action: none; border: 3px solid rgba(243,236,224,.5); background: rgba(12,10,20,.35);
-  color: var(--ink); font-family: var(--hud); border-radius: 50%; width: 72px; height: 72px; font-size: 22px;
+  pointer-events: auto; touch-action: none; border: 2px solid rgba(243,236,224,.32); background: rgba(12,10,20,.16);
+  color: rgba(243,236,224,.8); font-family: var(--hud); border-radius: 50%;
+  width: var(--b); height: var(--b); font-size: calc(var(--b) * .3); padding: 0;
+  -webkit-tap-highlight-color: transparent; user-select: none;
 }
-#touch button.down { background: rgba(255,46,136,.45); border-color: var(--pink); }
-.pad-l, .pad-r { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 12px; align-items: flex-end; }
-.pad-l { left: 20px; }
-.pad-r { right: 20px; }
-#touch .big { width: 92px; height: 92px; font-size: 15px; }
-#touch .big.j { margin-bottom: 40px; }
-#touch .sp { width: 64px; height: 64px; font-size: 12px; align-self: flex-start; border-color: var(--pink); }
+#touch button.down { background: rgba(255,46,136,.4); border-color: var(--pink); color: #fff; }
+.pad-l, .pad-r { position: absolute; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 4px; }
+.pad-l { left: calc(10px + env(safe-area-inset-left, 0px)); grid-template-areas: ". up ." "lf dn rt"; }
+.pad-l .up { grid-area: up; } .pad-l .lf { grid-area: lf; } .pad-l .dn { grid-area: dn; } .pad-l .rt { grid-area: rt; }
+.pad-l .up, .pad-l .dn { width: calc(var(--b) * .8); height: calc(var(--b) * .8); justify-self: center; align-self: center; }
+.pad-r { right: calc(10px + env(safe-area-inset-right, 0px)); grid-template-areas: "sp sp" "t j"; align-items: end; gap: 6px; }
+#touch .big { width: calc(var(--b) * 1.2); height: calc(var(--b) * 1.2); font-size: calc(var(--b) * .2); }
+#touch .t { grid-area: t; } #touch .j { grid-area: j; margin-bottom: calc(var(--b) * .35); }
+#touch .sp { grid-area: sp; justify-self: center; width: calc(var(--b) * .85); height: calc(var(--b) * .85); font-size: calc(var(--b) * .17); border-color: rgba(255,46,136,.55); }
 /* Pause button: top middle, above everything in play */
 .pausebtn {
   position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
@@ -259,8 +273,17 @@ h3.sub { margin: 4px 0 0; }
 
 .scores li.empty { list-style: none; margin-left: -28px; text-align: center; color: var(--dim); }
 
-#touch .ud { display: flex; flex-direction: column; gap: 8px; }
-#touch .ud button { width: 60px; height: 60px; }
+/* Phones in landscape: smaller HUD so it doesn't crowd the play area */
+@media (max-height: 480px) {
+  .hud-left, .hud-right { font-size: 12px; gap: 3px; top: calc(6px + env(safe-area-inset-top, 0px)); }
+  .hud-left { left: calc(10px + env(safe-area-inset-left, 0px)); }
+  .hud-right { right: calc(10px + env(safe-area-inset-right, 0px)); }
+  .band { display: none; }
+  #beatbar { bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: min(200px, 30vw); }
+  .pausebtn { width: 36px; height: 36px; top: calc(4px + env(safe-area-inset-top, 0px)); }
+  #hint { top: calc(56px + env(safe-area-inset-top, 0px)); font-size: 12px; padding: 6px 10px; }
+  #banner { font-size: clamp(26px, 8vh, 48px); top: 22%; }
+}
 
 </style>
 <script type="importmap">
@@ -327,6 +350,7 @@ h3.sub { margin: 4px 0 0; }
       <div class="opt" id="opt-char2-wrap" hidden><span class="label">Player 2</span><div class="seg" id="opt-char2"></div></div>
       <div class="opt"><span class="label">Gig</span><div class="seg" id="opt-level"></div><p class="blurb" id="level-blurb"></p></div>
       <div class="opt"><span class="label">Settings</span><div class="seg toggles">
+        <button id="tg-full">Full screen</button>
         <button id="tg-flash">Flashing: On</button><button id="tg-shake">Shake: On</button><button id="tg-sound">Soundcheck: On</button></div></div>
     </div>
     <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button></div>
@@ -388,6 +412,7 @@ h3.sub { margin: 4px 0 0; }
     <button id="resume" class="btn">Resume</button>
     <div id="pause-help" class="cheat"></div>
     <div class="row-btns">
+      <button id="p-full" class="btn small">Full screen</button>
       <button id="quality" class="btn small">Graphics: High</button>
       <button id="p-flash" class="btn small">Flashing: On</button>
       <button id="p-shake" class="btn small">Shake: On</button>
@@ -437,9 +462,10 @@ h3.sub { margin: 4px 0 0; }
 <!-- Touch controls -->
 <div id="touch" hidden>
   <div class="pad-l">
-    <button data-k="left" aria-label="Left">&#9664;</button>
-    <div class="ud"><button data-k="up" aria-label="Climb up">&#9650;</button><button data-k="down" aria-label="Crouch or climb down">&#9660;</button></div>
-    <button data-k="right" aria-label="Right">&#9654;</button>
+    <button data-k="up" class="up" aria-label="Climb up">&#9650;</button>
+    <button data-k="left" class="lf" aria-label="Left">&#9664;</button>
+    <button data-k="down" class="dn" aria-label="Crouch or climb down">&#9660;</button>
+    <button data-k="right" class="rt" aria-label="Right">&#9654;</button>
   </div>
   <div class="pad-r">
     <button data-k="special" class="sp">SOLO</button>
@@ -5031,8 +5057,31 @@ function newRun(level) {
   scoreSavedFor = null;
 }
 
+// Full screen (and landscape on phones). Must be called from a tap/click.
+function goFullscreen(on = true) {
+  const el = document.documentElement;
+  try {
+    if (on && !document.fullscreenElement) {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      const p = req && req.call(el, { navigationUI: 'hide' });
+      if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+    } else if (!on && document.fullscreenElement) document.exitFullscreen?.();
+  } catch {}
+}
+const toggleFull = () => goFullscreen(!document.fullscreenElement);
+function syncFull() {
+  const label = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+  $('tg-full').textContent = label; $('p-full').textContent = label;
+}
+document.addEventListener('fullscreenchange', syncFull);
+$('tg-full').addEventListener('click', toggleFull);
+$('p-full').addEventListener('click', toggleFull);
+// Installed as an app it's already full screen; in a browser, hide the button if the device can't do it.
+if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) { $('tg-full').hidden = true; $('p-full').hidden = true; }
+
 function startFromTitle() {
   if (state !== 'title') return;
+  if (usingTouch() || matchMedia('(pointer: coarse)').matches) goFullscreen(true);
   if (!music.ctx) music.start(); else music.resume();
   newRun(sel.level);
   if (sel.level === 0) showComic('intro', () => loadLevel(0));
@@ -5374,8 +5423,9 @@ function tick(raw) {
   const live = game ? game.players.filter((p) => !p.dead && !p.out) : [];
   const height = !live.length ? 0 : live.length === 1 ? live[0].y : live.reduce((a, p) => a + p.y, 0) / live.length;
   camLift += (Math.max(0, height - 1.2) * 0.9 - camLift) * Math.min(1, dt * 4);
-  let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy + camLift, pz = camDist;
-  camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25 + camLift, 0);
+  const touchLift = usingTouch() ? -1.1 : 0;   // touch: show the action higher, above the thumb buttons
+  let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy + camLift + touchLift, pz = camDist;
+  camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25 + camLift + touchLift, 0);
   if (game && game.cine) {
     // Boss intro: swing in close on the boss, then back out
     const c = game.cine, k = Math.sin(Math.min(1, c.t / c.dur) * Math.PI);

@@ -379,8 +379,31 @@ function newRun(level) {
   scoreSavedFor = null;
 }
 
+// Full screen (and landscape on phones). Must be called from a tap/click.
+function goFullscreen(on = true) {
+  const el = document.documentElement;
+  try {
+    if (on && !document.fullscreenElement) {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      const p = req && req.call(el, { navigationUI: 'hide' });
+      if (p && p.then) p.then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+    } else if (!on && document.fullscreenElement) document.exitFullscreen?.();
+  } catch {}
+}
+const toggleFull = () => goFullscreen(!document.fullscreenElement);
+function syncFull() {
+  const label = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+  $('tg-full').textContent = label; $('p-full').textContent = label;
+}
+document.addEventListener('fullscreenchange', syncFull);
+$('tg-full').addEventListener('click', toggleFull);
+$('p-full').addEventListener('click', toggleFull);
+// Installed as an app it's already full screen; in a browser, hide the button if the device can't do it.
+if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) { $('tg-full').hidden = true; $('p-full').hidden = true; }
+
 function startFromTitle() {
   if (state !== 'title') return;
+  if (usingTouch() || matchMedia('(pointer: coarse)').matches) goFullscreen(true);
   if (!music.ctx) music.start(); else music.resume();
   newRun(sel.level);
   if (sel.level === 0) showComic('intro', () => loadLevel(0));
@@ -722,8 +745,9 @@ function tick(raw) {
   const live = game ? game.players.filter((p) => !p.dead && !p.out) : [];
   const height = !live.length ? 0 : live.length === 1 ? live[0].y : live.reduce((a, p) => a + p.y, 0) / live.length;
   camLift += (Math.max(0, height - 1.2) * 0.9 - camLift) * Math.min(1, dt * 4);
-  let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy + camLift, pz = camDist;
-  camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25 + camLift, 0);
+  const touchLift = usingTouch() ? -1.1 : 0;   // touch: show the action higher, above the thumb buttons
+  let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy + camLift + touchLift, pz = camDist;
+  camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25 + camLift + touchLift, 0);
   if (game && game.cine) {
     // Boss intro: swing in close on the boss, then back out
     const c = game.cine, k = Math.sin(Math.min(1, c.t / c.dur) * Math.PI);
