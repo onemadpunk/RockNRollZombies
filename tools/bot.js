@@ -75,6 +75,9 @@ export function installBot({ mute = true } = {}) {
       if (f.kind === 'rubble' && Math.abs(f.x - p.x) < 1.2) move = p.x < f.x ? -1 : 1;
       else if (f.kind !== 'wave' && f.vy < 0 && Math.abs(f.x - p.x) < 1.8 && f.y > p.y) move = p.x < f.x ? -1 : 1;
       if (f.kind === 'wave' && Math.sign(f.vx) === Math.sign(p.x - f.x) && Math.abs(f.x - p.x) < 2.4) jump = true;
+      if (f.kind === 'scream' && Math.sign(f.vx) === Math.sign(p.x - f.x) && Math.abs(f.x - p.x) < 2.6) {
+        if (f.band === 'high') { down = true; move = 0; } else jump = true;
+      }
     }
     if (boss && boss.kind === 'bouncer') {
       if (boss.state === 'windup' || boss.state === 'charge') {
@@ -84,6 +87,7 @@ export function installBot({ mute = true } = {}) {
       }
       if (boss.state === 'walk' && Math.abs(boss.x - p.x) < 3 && p.y < 1) { move = p.x < boss.x ? -1 : 1; if (p.x < 201.5 || p.x > 220.5) jump = true; }
     }
+    if (boss && boss.kind === 'banshee' && boss.state === 'float' && Math.abs(boss.x - p.x) < 2.2) move = p.x < boss.x ? -1 : 1;
     if (boss && boss.kind === 'gargoyle') {
       if (boss.state === 'screech' || boss.state === 'dive') {
         // run away from where it will land
@@ -92,6 +96,8 @@ export function installBot({ mute = true } = {}) {
       } else if (boss.state === 'ground' && Math.abs(boss.x - p.x) < 2.2) move = p.x < boss.x ? -1 : 1;
     }
 
+    // jump over campfires
+    for (const fx of G.level.campfires || []) if (p.onGround && move !== 0 && (fx - p.x) * move > 0.4 && Math.abs(fx - p.x) < 1.6) { jump = true; bot.jumpHold = 30; bot.jumpDir = move; }
     if (move > 0 && p.onGround && !(p.standing && p.standing.mover)) {
       if (!groundAt(p.x + 0.45) && p.y < 0.5 && groundAt(p.x - 0.3)) {
         const end = nextGroundStart(p.x);
@@ -123,6 +129,7 @@ export function installBot({ mute = true } = {}) {
     if (p.solo >= 100 && (live.filter((e) => Math.abs(e.x - p.x) < 8 && e.kind !== 'bird').length >= 3 || (boss && boss.hittable() && boss.y < 3))) solo = true;
     set('ArrowRight', move > 0); set('ArrowLeft', move < 0);
     set('Space', jump || (!p.onGround && p.vy > 0 && held.has('Space')));
+    if (down) { set('ArrowRight', false); set('ArrowLeft', false); }
     set('ArrowDown', down); set('KeyC', solo);
   };
 

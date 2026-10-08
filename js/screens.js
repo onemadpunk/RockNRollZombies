@@ -77,7 +77,12 @@ export const COMICS = {
   ],
   after1: [
     { art: 'bassfree', text: "The bassist is back! Three down. The band's getting back together." },
-    { art: 'festival', text: 'Next: the Haunted Festival, where the Banshee Diva has the singer. Coming soon...' },
+    { art: 'festival', text: 'Next stop: the Haunted Festival, where the Banshee Diva is holding the singer.' },
+    { art: 'van', text: 'Pack the van. Wellies on.' },
+  ],
+  after2: [
+    { art: 'bassfree', text: 'The singer is back, and the whole band is together again!' },
+    { art: 'devil', text: "But the Devil isn't done. He's heading for the Highway to Hell. Coming soon..." },
   ],
 };
 

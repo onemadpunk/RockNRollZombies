@@ -68,6 +68,35 @@ const SONGS = {
     { r: [50, 50], s: 'chug', l: [74, _, 81, 80, 79, _, 77, 75] },
     { r: [53, 52], s: 'chug', l: [80, 79, 78, 77, 76, 75, 74, _] },
   ],
+  // ---- Level 3 ----
+  festival: [
+    { r: [43, 43], s: 'skank', l: [67, _, 71, 74, 72, 71, 69, _] },
+    { r: [48, 48], s: 'skank', l: [72, _, 76, 79, 76, 74, 72, _] },
+    { r: [43, 43], s: 'skank', l: [71, 69, 67, _, 74, _, 71, _] },
+    { r: [50, 50], s: 'skank', l: [74, _, 72, 71, 69, _, 67, _] },
+    { r: [52, 52], s: 'skank', l: [76, _, 79, 76, 74, _, 72, _] },
+    { r: [48, 48], s: 'skank', l: [72, 74, 76, _, 79, _, 76, _] },
+    { r: [43, 43], s: 'skank', l: [74, _, 71, _, 67, _, 71, _] },
+    { r: [50, 50], s: 'chug', l: [74, 72, 71, 69, 67, _, _, _] },
+  ],
+  funfair: [
+    { r: [50, 50], s: 'boogie', l: [74, _, 77, _, 81, 80, 81, _] },
+    { r: [46, 46], s: 'boogie', l: [70, _, 74, _, 77, 76, 77, _] },
+    { r: [45, 45], s: 'boogie', l: [76, _, 73, _, 69, _, 73, 76] },
+    { r: [50, 49], s: 'chug', l: [74, 73, 74, _, 77, _, 74, _] },
+  ],
+  surge: [
+    { r: [40, 40], s: 'drive', l: [76, 79, 81, 79, 76, _, 74, 76] },
+    { r: [43, 43], s: 'drive', l: [79, 81, 83, 81, 79, _, 76, 79] },
+    { r: [45, 45], s: 'drive', l: [81, _, 79, _, 76, _, 74, _] },
+    { r: [47, 47], s: 'drive', l: [83, _, 81, _, 79, 78, 76, _] },
+  ],
+  boss3: [
+    { r: [49, 49], s: 'half', l: [73, 76, 80, _, 81, 80, 76, _] },
+    { r: [45, 45], s: 'half', l: [76, 81, 85, _, 84, 81, 76, _] },
+    { r: [42, 42], s: 'chug', l: [78, _, 81, 78, 76, _, 73, _] },
+    { r: [44, 44], s: 'chug', l: [80, 78, 76, 75, 73, _, 68, _] },
+  ],
   boss: [
     { r: [40, 40], s: 'half', l: [64, 65, 64, _, 64, 65, 67, _] },
     { r: [41, 41], s: 'half', l: [65, 64, 65, _, 65, 67, 68, _] },
@@ -229,12 +258,18 @@ export class Music {
       case 'half':
         if (pos === 0 || pos === 8) this.chord(t, f, true, 1, G, 1.0);
         break;
+      case 'skank':
+        // ska: short bright stabs on the off-beats
+        if (pos % 4 === 2) this.chord(t, f * 2, true, 0.7, G, 0.09);
+        break;
       case 'boogie':
         // Chuck Berry boogie: root+5th, root+6th, alternating on the 8ths
         if (pos % 2 === 0) this.chord(t, f, pos % 4 === 0, pos % 4 === 0 ? 0.85 : 0.6, G, 0.16, pos % 4 === 0 ? BOOGIE5 : BOOGIE6);
         break;
     }
-    if (bar.s === 'boogie') {
+    if (bar.s === 'skank') {
+      if (pos % 4 === 0) this.bass(t, mtof(root - 12) * [1, 1.4983, 1.3348, 1.4983][pos / 4]);
+    } else if (bar.s === 'boogie') {
       // walking bass: root, 3rd, 5th, 6th on the quarters
       if (pos % 4 === 0) this.bass(t, mtof(root - 12) * [1, 1.2599, 1.4983, 1.6818][pos / 4]);
     } else if (pos % 2 === 0 || bar.s === 'drive') this.bass(t, mtof(root - 12));
@@ -428,6 +463,20 @@ export class Music {
     this.noise(t, 0.25, 'highpass', 3000, 1, 0.6, this.sfx);
     [2400, 3100, 2700].forEach((f, i) => this.tone('sine', f, f * 0.9, 0.12, 0.08, i * 0.03));
   }
+  sScream() {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    for (const [f0, f1, v] of [[600, 1500, 0.12], [610, 1520, 0.1], [1200, 2900, 0.05]]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + 0.5); o.frequency.exponentialRampToValueAtTime(f1 * 0.9, t + 1.2);
+      const vib = ctx.createOscillator(); vib.frequency.value = 9; const vg = ctx.createGain(); vg.gain.value = 40; vib.connect(vg).connect(o.frequency);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.15); g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 1.2;
+      o.connect(bp).connect(g).connect(this.sfx); o.start(t); vib.start(t); o.stop(t + 1.25); vib.stop(t + 1.25);
+    }
+  }
+  sBoing() { if (this.ctx) { this.tone('sine', 180, 520, 0.25, 0.4); this.tone('triangle', 90, 260, 0.3, 0.2); } }
+  sCreak() { this.ctx && this.noise(this.t, 0.35, 'bandpass', 700, 8, 0.4, this.sfx, 400); }
   sSqueak() { this.ctx && this.tone('square', 1800, 2600, 0.08, 0.05); }
   sScreech() {
     if (!this.ctx) return;

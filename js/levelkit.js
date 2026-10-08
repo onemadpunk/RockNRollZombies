@@ -2,7 +2,7 @@
 // amps, lanterns, and the common collision/query API every level returns.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeAmp, makeJukebox } from './models.js';
+import { makeAmp, makeJukebox, makeGondola } from './models.js';
 
 export function rng(seed) {
   return () => {
@@ -140,15 +140,39 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
     const a = L.ground[i][1], b = L.ground[i + 1][0];
     B.add(GEO.box, pitMat, mat4((a + b) / 2, -6.9, -0.5, 0, 0, 0, b - a, 12, 6));
   }
-  for (const [a, b, h] of L.blocks || []) solids.push({ x1: a, x2: b, y1: 0, y2: h });
+  for (const [a, b, h, type] of L.blocks || []) solids.push({ x1: a, x2: b, y1: 0, y2: h, bounce: type === 'bounce' });
+  // Mud: slows you down (shiny brown strip on the ground)
+  const mudMat = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.25, metalness: 0.1 });
+  for (const [a, b] of L.mud || []) B.add(GEO.box, mudMat, mat4((a + b) / 2, 0.01, -0.5, 0, 0, 0, b - a, 0.04, 5.8));
   for (const [a, b, y] of L.ledges) {
     const w = b - a, cx = (a + b) / 2;
     B.add(GEO.box, ledgeMat, mat4(cx, y - 0.15, -0.2, 0, 0, 0, w, 0.3, 1.6));
     if (pillarMat) B.add(GEO.cyl4, pillarMat, mat4(cx, (y - 0.3) / 2, -0.9, 0, Math.PI / 4, 0, 0.6, y - 0.3, 0.6));
     ledges.push({ x1: a, x2: b, y, dx: 0, dy: 0 });
   }
-  const movers = (L.movers || []).map((m) => {
-    const mesh = makeMover(m.w);
+  // Ferris wheels: each car is a moving platform that circles once every 16 beats
+  const wheels = (L.wheels || []).map((w) => {
+    const hub = new THREE.Group();
+    hub.position.set(w.x, w.y, -0.9);
+    const steel = new THREE.MeshStandardMaterial({ color: 0xc8ccd8, roughness: 0.35, metalness: 0.8 });
+    const bulbs = new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffb040, emissiveIntensity: 2 });
+    hub.add(new THREE.Mesh(new THREE.TorusGeometry(w.r, 0.08, 6, 48), steel));
+    hub.add(new THREE.Mesh(new THREE.TorusGeometry(w.r * 0.55, 0.05, 6, 32), steel));
+    for (let k = 0; k < w.n * 2; k++) {
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, w.r, 0.06), steel);
+      sp.rotation.z = (k / (w.n * 2)) * Math.PI * 2; sp.position.set(Math.sin(-sp.rotation.z) * w.r / 2, Math.cos(sp.rotation.z) * w.r / 2, 0);
+      hub.add(sp);
+    }
+    for (let k = 0; k < 24; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), bulbs); const a = (k / 24) * Math.PI * 2; b.position.set(Math.cos(a) * w.r, Math.sin(a) * w.r, 0.1); hub.add(b); }
+    scene.add(hub);
+    // A-frame legs
+    for (const sx of [-1, 1]) B.add(GEO.box, steel, mat4(w.x + sx * w.r * 0.35, w.y / 2, -1.6, 0, 0, sx * 0.32, 0.18, w.y * 1.07, 0.18));
+    return { ...w, hub };
+  });
+  const moverDefs = [...(L.movers || [])];
+  for (const w of wheels) for (let k = 0; k < w.n; k++) moverDefs.push({ kind: 'wheel', wheel: w, phase: (k / w.n) * Math.PI * 2, w: w.w, x: w.x, y: w.y });
+  const movers = moverDefs.map((m) => {
+    const mesh = m.kind === 'wheel' ? makeGondola(m.w) : makeMover(m.w);
     scene.add(mesh);
     const ledge = { x1: m.x - m.w / 2, x2: m.x + m.w / 2, y: m.y, dx: 0, dy: 0, mover: true };
     ledges.push(ledge);
@@ -203,18 +227,25 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
     },
     onSolidTop(x) { return (L.blocks || []).some(([a, b]) => x > a && x < b) || (L.amps || []).some(([ax]) => Math.abs(x - ax) < 0.7); },
     stormAt() { return 0; },
+    mudAt(x) { return (L.mud || []).some(([a, b]) => x > a && x < b); },
+    campfires: L.campfires || [],
     strike() {},
     updateMovers(beat) {
       for (const m of movers) {
         const Lg = m.ledge;
         let x = m.x, y = m.y;
         if (m.kind === 'bob') y = m.y + m.amp * (0.5 - 0.5 * Math.cos((beat / 4) * Math.PI * 2));
+        else if (m.kind === 'wheel') {
+          const W = m.wheel, a = (beat / 16) * Math.PI * 2 + m.phase;
+          x = W.x + W.r * Math.cos(a); y = W.y + W.r * Math.sin(a) - 1.1;   // car floor hangs below its pivot
+          W.hub.rotation.z = (beat / 16) * Math.PI * 2;
+        }
         else x = m.x + m.amp * Math.sin((beat / 8) * Math.PI * 2);
         const nx1 = x - m.w / 2;
         Lg.dx = nx1 - Lg.x1; Lg.dy = y - Lg.y;
         if (Math.abs(Lg.dx) > 1 || Math.abs(Lg.dy) > 1) { Lg.dx = 0; Lg.dy = 0; }
         Lg.x1 = nx1; Lg.x2 = x + m.w / 2; Lg.y = y;
-        m.mesh.position.set(x, y, 0);
+        m.mesh.position.set(x, y, m.kind === 'wheel' ? -0.3 : 0);
         if (m.chain) m.chain.position.set(x - 0.6, y + 5, -0.1);
       }
     },

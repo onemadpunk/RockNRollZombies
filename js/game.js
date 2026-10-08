@@ -2,7 +2,7 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeFlightCase,
+  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
@@ -17,6 +17,7 @@ export const WEAPONS = {
   sticks: { name: 'DRUMSTICKS',     max: 6, cd: 0.3 },
   vinyl:  { name: 'VINYL',          max: 1, cd: 0.2 },
   flame:  { name: 'FLAMING GUITAR', max: 1, cd: 0.35 },
+  notes:  { name: 'NOTES',          max: 4, cd: 0.18 },
 };
 const PLAYER_COLORS = [0xff2e88, 0x2fa8ff];
 
@@ -199,6 +200,9 @@ export class Game {
     this.updateFoeShots(dt);
     this.updateCrates(dt);
     this.updateDummies(dt);
+    for (const fx of this.level.campfires) if (Math.abs(fx - this.camX) < this.halfW + 2) {
+      this.sparks.emit({ x: fx + rand(-0.3, 0.3), y: 0.25 }, { n: 2, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 0.6, up: 2.8, life: 0.5, size: 0.12, gravity: -3, intensity: 1.8, spread: 0.4 });
+    }
     this.updatePickups(dt);
     this.updateDebris(dt);
     this.updateAmbush(dt);
@@ -235,6 +239,20 @@ export class Game {
     if (this.ambush.state === 'active' && this.ambush.queue.length) this.spawnAmbushMember(this.ambush.queue.shift());
     for (const e of this.enemies) e.onBeat && !e.dead && e.onBeat(i);
     if (i % 4 === 0 && this.level.stormAt(this.camX) > 0.6 && Math.random() < 0.3) this.ui.lightning();
+    // Porta-loos: every couple of bars a zombie bursts out of a nearby one
+    // a beat of warning first: the door rattles
+    if (!quiet && i % 8 === 3) for (const lx of this.L.loos || []) if (Math.abs(lead.x - lx) < 11 && Math.abs(lead.x - lx) > 3) {
+      this.music.sCreak();
+      this.chunks.emit({ x: lx, y: 1.2 }, { n: 6, color: [0x2a5ab0, 0xe8e8e8], speed: 2, up: 1, life: 0.4, size: 0.07 });
+    }
+    if (!quiet && i % 8 === 4) for (const lx of this.L.loos || []) {
+      if (Math.abs(lead.x - lx) < 11 && Math.abs(lead.x - lx) > 3 && this.enemies.filter((e) => e.ambient && !e.dead).length < zone.max + 1) {
+        const z = this.spawnZombie('walker', lx);
+        z.state = 'walk'; z.ambient = true; z.model.root.position.y = 0;
+        this.music.sCreak();
+        this.chunks.emit({ x: lx, y: 1 }, { n: 8, color: [0x2a5ab0, 0xe8e8e8], speed: 3, up: 2, life: 0.5, size: 0.08 });
+      }
+    }
   }
 
   spawnAmbient(zone, lead) {
@@ -294,7 +312,9 @@ export class Game {
     const accel = p.onGround ? 70 : 42;
     if (p.soloT > 0 || this.cine) p.vx *= 0.8;
     else if (ctrl) {
-      const goal = target * RUN;
+      const inMud = p.onGround && this.level.mudAt(p.x);
+      const goal = target * RUN * (inMud ? 0.5 : 1);
+      if (inMud && Math.abs(p.vx) > 1 && Math.random() < 0.2) this.chunks.emit({ x: p.x, y: 0.05 }, { n: 1, color: 0x3a2618, speed: 1.5, up: 1.5, life: 0.4, size: 0.08 });
       p.vx += Math.sign(goal - p.vx) * Math.min(Math.abs(goal - p.vx), accel * dt);
     }
 
@@ -313,7 +333,7 @@ export class Game {
         popup('AMPED!', 'beat', { x: p.x, y: p.y + 2.4 }, this.camera);
         this.ui.shake(0.25);
       } else {
-        p.vy = p.jumpV;
+        p.vy = p.jumpV * (this.level.mudAt(p.x) ? 0.85 : 1);
         M.sJump();
         if (p.standing && p.standing.amp) popup('Jump on the beat!', 'info', { x: p.x, y: p.y + 2.4 }, this.camera);
       }
@@ -342,6 +362,14 @@ export class Game {
     if (p.onGround && p.standing && 'y2' in p.standing && !p.standing.amp &&
         (this.level.onGround(p.x - 0.8) || p.y > 0.5) && (this.level.onGround(p.x + 0.8) || p.y > 0.5)) { p.safeX = p.x; p.safeY = p.y; }
     if (p.y < -5) this.fellInPit(p);
+    // Haunted bouncy castle: always bounces you; land on the beat for a sky-high one
+    if (p.onGround && p.standing && p.standing.bounce) {
+      const big = this.music.onBeat(this.D.beatWindow + 0.03);
+      p.vy = big ? 20.5 : 13.5; p.onGround = false; p.jumpCut = true;
+      this.music.sBoing();
+      if (big) { popup('BOING!', 'beat', { x: p.x, y: p.y + 2.4 }, this.camera); this.addSolo(p, 4); }
+    }
+    for (const fx of this.level.campfires) if (Math.abs(p.x - fx) < 0.55 && p.y < 0.7) this.hurt(p, fx);
 
     if (!this.secretFound && p.y > 5.5 && p.onGround && !this.bossStarted) {
       this.secretFound = true; this.run.score += 500;
@@ -513,6 +541,7 @@ export class Game {
       if (p.char === 'drummer') { mk(p.face * 11, 9); mk(p.face * 12.5, 6); mk(p.face * 14, 3); }   // the drummer fans three
       else { mk(p.face * 11, 8); mk(p.face * 12.5, 5); }
     } else if (p.weapon === 'flame') mk(p.face * 9.5, 7.5);
+    else if (p.weapon === 'notes') { mk(p.face * 13, 0); const s = this.shots[this.shots.length - 1]; s.baseY = s.y; s.t = 0; s.life = 1.1; }
     else mk(p.face * 15, 0);
 
     if (power) {
@@ -610,6 +639,7 @@ export class Game {
       const p = s.owner;
       s.life -= dt;
       if (s.type === 'pick') s.mesh.rotation.z += dt * 20;
+      else if (s.type === 'notes') { s.t += dt; s.vy = 0; s.y = s.baseY + Math.sin(s.t * 11) * 0.55; s.mesh.rotation.z = Math.sin(s.t * 11) * 0.3; }
       else if (s.type === 'sticks' || s.type === 'flame') {
         s.vy -= 24 * dt;
         s.mesh.rotation.z -= dt * 14 * Math.sign(s.vx);
@@ -649,7 +679,7 @@ export class Game {
           s.hits.add(e);
           this.damage(e, s);
           if (s.type === 'flame') { s.life = 0; this.spawnFire(e.x, Math.max(0, e.y), s.power); break; }
-          if (s.type !== 'vinyl' && !(s.power && s.type === 'pick')) { s.life = 0; break; }
+          if (s.type !== 'vinyl' && s.type !== 'notes' && !(s.power && s.type === 'pick')) { s.life = 0; break; }
         }
       }
       if (this.dummies) for (const d of this.dummies) {
@@ -726,6 +756,7 @@ export class Game {
   damage(e, s) {
     let dmg = s.dmg;
     if (e.dizzy > 0) dmg *= 2;
+    else if (e.kind === 'banshee') dmg *= 0.5;   // her ghostly aura soaks hits until she's out of breath
     e.hp -= dmg;
     e.flash = 0.08;
     this.music.sHit();
@@ -928,6 +959,7 @@ export class Game {
         case 'bird': this.updateBird(e, dt); break;
         case 'bouncer': this.updateBouncer(e, dt); break;
         case 'gargoyle': this.updateGargoyle(e, dt); break;
+        case 'banshee': this.updateBanshee(e, dt); break;
       }
       if (e.dead) continue;
       if (e.model.mats) for (const m of e.model.mats) m.emissive.setHex(e.flash > 0 ? 0xffffff : e.angry ? 0x400000 : 0x000000);
@@ -1140,6 +1172,7 @@ export class Game {
       if (kind === 'ghost') e = this.spawnGhost(x, 1.5);
       else if (kind === 'crawler') e = this.spawnCrawler(x);
       else if (kind === 'rat') e = this.spawnRat(x);
+      else if (kind === 'diver') { e = this.spawnZombie('pogo', x); e.state = 'walk'; e.y = 8; e.model.root.position.y = 8; e.vy = -2; }
       else e = this.spawnZombie(kind, x);
       e.pit = true; e.life = 0;
       return;
@@ -1184,7 +1217,7 @@ export class Game {
 
   spawnBoss() {
     if (!this.bossStarted || this.boss || !this.alive.length) return;
-    const e = this.L.boss === 'gargoyle' ? this.spawnGargoyle() : this.spawnBouncer();
+    const e = this.L.boss === 'gargoyle' ? this.spawnGargoyle() : this.L.boss === 'banshee' ? this.spawnBanshee() : this.spawnBouncer();
     e.boss = true;
     e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
     this.boss = e;
@@ -1435,6 +1468,112 @@ export class Game {
     this.foeShots.push({ kind: 'marker', x, y: 0, vx: 0, vy: 0, life, mesh: mark, w: 0, h: 0 });
   }
 
+  // ---- The Banshee Diva -------------------------------------------------------------------
+  spawnBanshee() {
+    const model = makeBanshee();
+    const A = this.L.arena;
+    const x = A.x2 - 4;
+    model.root.position.set(x, 0.7, 0);
+    const e = this.base('banshee', model, x, 0.7, {
+      w: 0.6, h: 3.2, hp: 80, points: 20000, face: -1, state: 'float', moves: ['scream', 'highnote', 'scream', 'summon'], mi: 0, act: 0, camY: 3,
+      colors: [0xd8f0e8, 0x9affd8],
+    });
+    e.center = () => ({ x: e.x, y: e.y + 1.8 });
+    e.box = () => ({ x1: e.x - e.w, x2: e.x + e.w, y1: e.y + 0.3, y2: e.y + e.h });
+    e.hittable = () => e.state !== 'highnote' || e.y < 2;
+    e.harmful = () => e.state === 'float' || e.state === 'inhale';
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (this.cine) return;
+      if (e.state === 'inhale' && e.t > 0.7) { this.bansheeScream(e); return; }
+      if (e.state !== 'float' || i % 4 !== 0 || e.t < 1.5) return;
+      const mv = e.moves[e.mi++ % e.moves.length];
+      e.t = 0; e.act = 0;
+      if (mv === 'scream' || mv === 'scream2') {
+        e.state = 'inhale'; e.screamKind = mv;
+        e.face = this.target(e.x).x < e.x ? -1 : 1;
+        popup(mv === 'scream2' ? 'HIGH THEN LOW! Duck, then jump' : 'SCREAM! DUCK!', 'beat', { x: e.x, y: e.y + e.h + 0.5 }, this.camera);
+      } else e.state = mv;
+    };
+    this.music.sScream();
+    return e;
+  }
+
+  bansheeScream(e) {
+    const send = (band, delay) => setTimeout(() => {
+      if (e.dead || !this.boss) return;
+      this.music.sScream();
+      const g = new THREE.Group();
+      const mat = new THREE.MeshBasicMaterial({ color: band === 'high' ? 0x9affd8 : 0xff8ac8, transparent: true, opacity: 0.75, toneMapped: false, side: THREE.DoubleSide, depthWrite: false });
+      for (let k = 0; k < 3; k++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45 + k * 0.12, 0.05, 6, 24, Math.PI), mat);
+        ring.rotation.z = e.face > 0 ? -Math.PI / 2 : Math.PI / 2; ring.position.x = -e.face * k * 0.25; g.add(ring);
+      }
+      const y0 = band === 'high' ? 1.65 : 0.4;
+      g.position.set(e.x + e.face * 0.8, y0, 0.2);
+      this.scene.add(g);
+      // high band: y 1.15-2.2 (duck under it) · low band: y 0-0.8 (jump over it)
+      this.foeShots.push({ kind: 'scream', band, x: e.x + e.face * 0.8, y: y0, vx: e.face * 9.5, vy: 0, life: 3, mesh: g, w: 0.4, h: 0 });
+      this.ui.shake(0.2);
+    }, delay);
+    send('high', 0);
+    if (e.screamKind === 'scream2') send('low', this.music.spb * 1000 * 1.5);
+    e.state = 'scream'; e.t = 0;
+  }
+
+  updateBanshee(e, dt) {
+    const R = e.model.root, Z = e.model, A = this.L.arena;
+    const p = this.target(e.x);
+    let wantY = 0.7 + Math.sin(e.t * 2.2) * 0.25, armUp = -0.3, mouth = 1;
+    if (e.state === 'float') {
+      // hover a few steps away from the nearest player
+      const side = e.x > p.x ? 1 : -1;
+      const tx = Math.min(Math.max(p.x + side * 4, A.x1 + 1), A.x2 - 1);
+      e.x += Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x), (e.angry ? 3 : 2.1) * dt);
+      e.face = p.x < e.x ? -1 : 1;
+    } else if (e.state === 'inhale') {
+      armUp = -2.6; mouth = 1 + e.t * 2;
+      if (Math.random() < 0.5) this.sparks.emit({ x: e.x, y: e.y + 3 }, { n: 1, color: 0x9affd8, speed: 2, up: 0, life: 0.4, size: 0.07, gravity: 0, intensity: 2 });
+    } else if (e.state === 'scream') {
+      armUp = -2.9; mouth = 3;
+      if (e.t > (e.screamKind === 'scream2' ? 1.2 : 0.7)) {
+        e.state = 'tired'; e.t = 0; e.dizzy = e.angry ? 1.6 : 2.2;
+        popup('OUT OF BREATH! Double damage', 'info', { x: e.x, y: e.y + e.h + 0.4 }, this.camera);
+      }
+    } else if (e.state === 'tired') {
+      wantY = 0.15; armUp = 0.2; mouth = 0.6;
+      if (e.t > (e.angry ? 1.6 : 2.2)) { e.state = 'float'; e.t = 0; }
+    } else if (e.state === 'highnote') {
+      wantY = 3.6; armUp = -2.9; mouth = 2.5;
+      if (!e.act && e.t > 0.6) {
+        e.act = 1;
+        this.music.sScream();
+        this.ui.banner('High note!', 'Stage lights falling');
+        const n = e.angry ? 5 : 3;
+        for (let k = 0; k < n; k++) this.rubble(Math.min(Math.max(p.x + rand(-4, 4), A.x1 + 1), A.x2 - 1), k * 0.3);
+      }
+      if (e.t > 2.6) { e.state = 'float'; e.t = 0; }
+    } else if (e.state === 'summon') {
+      armUp = -2.2; mouth = 1.5;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        const ghosts = this.enemies.filter((z) => z.kind === 'ghost' && !z.dead).length;
+        for (let k = ghosts; k < 2; k++) this.spawnGhost(A.x1 + 2 + Math.random() * (A.x2 - A.x1 - 4), 1.2);
+        this.ui.banner('Backing singers!', '');
+      }
+      if (e.t > 1.2) { e.state = 'float'; e.t = 0; }
+    }
+    e.y += (wantY - e.y) * Math.min(1, dt * 3);
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += ((e.face > 0 ? 0.6 : -0.6) - R.rotation.y) * Math.min(1, dt * 6);
+    Z.armL.rotation.x += (armUp - Z.armL.rotation.x) * Math.min(1, dt * 10);
+    Z.armR.rotation.x += (armUp + 0.2 - Z.armR.rotation.x) * Math.min(1, dt * 10);
+    Z.mouth.scale.y += (mouth - Z.mouth.scale.y) * Math.min(1, dt * 12);
+    Z.body.rotation.z = Math.sin(e.t * 1.7) * 0.05;
+    if (e.dizzy > 0 && Math.random() < 0.3) this.sparks.emit({ x: e.x + Math.sin(e.t * 9) * 0.6, y: e.y + e.h }, { n: 1, color: 0xffc94a, speed: 0.5, up: 0, life: 0.4, size: 0.1, gravity: 0, intensity: 2 });
+    if (e.angry && e.moves[0] === 'scream') e.moves = ['scream2', 'highnote', 'scream2', 'summon'];
+  }
+
   rubble(x, delay) {
     // warning marker on the ground first, then the chunk drops
     const mark = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 24), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
@@ -1484,6 +1623,15 @@ export class Game {
         continue;
       }
       if (f.kind === 'marker') { f.mesh.material.opacity = 0.35 + Math.abs(Math.sin(f.life * 10)) * 0.55; continue; }
+      if (f.kind === 'scream') {
+        f.x += f.vx * dt;
+        f.mesh.position.x = f.x;
+        f.mesh.scale.setScalar(1 + Math.sin(f.life * 25) * 0.08);
+        if (f.x < A.x1 - 1 || f.x > A.x2 + 1) f.life = 0;
+        const [lo, hi] = f.band === 'high' ? [1.15, 2.2] : [0, 0.8];
+        for (const p of this.players) if (!p.dead && Math.abs(p.x - f.x) < 0.5 && p.y < hi && p.y + p.h > lo) this.hurt(p, f.x - f.vx);
+        continue;
+      }
       if (f.kind === 'rubble' && f.wait > 0) {
         f.wait -= dt;
         f.mark.material.opacity = 0.4 + Math.abs(Math.sin(f.wait * 14)) * 0.5;
@@ -1537,8 +1685,9 @@ export class Game {
     for (const f of this.foeShots) f.life = 0;
     this.rescued = this.L.rescue;
     setTimeout(() => {
-      const who = { drummer: 'Drummer', bassist: 'Bassist' }[this.L.rescue] || 'Bandmate';
-      this.ui.banner(`${who} rescued!`, this.L.rescue === 'drummer' ? 'The beat is back for good' : 'The low end is back');
+      const who = { drummer: 'Drummer', bassist: 'Bassist', singer: 'Singer' }[this.L.rescue] || 'Bandmate';
+      const sub = { drummer: 'The beat is back for good', bassist: 'The low end is back', singer: 'The band has a voice again' }[this.L.rescue] || '';
+      this.ui.banner(`${who} rescued!`, sub);
       this.music.setLayer('beat', true);
     }, 1200);
     setTimeout(() => this.ui.levelClear(this), 5600);
