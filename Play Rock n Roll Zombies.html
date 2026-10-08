@@ -441,19 +441,20 @@ h3.sub { margin: 4px 0 0; }
     <table class="ctl">
       <tr><th></th><th>1 player</th><th>2P: player 1</th><th>2P: player 2</th><th>Pad</th><th>Touch</th></tr>
       <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td><td>Drag on the left side</td></tr>
-      <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td><td>JUMP</td></tr>
-      <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td><td>THROW</td></tr>
+      <tr><td>Jump</td><td>Space / Z / W</td><td>W</td><td>&uarr;</td><td>A</td><td>JUMP</td></tr>
+      <tr><td>Throw</td><td>X / J</td><td>Space</td><td>Right Ctrl / &frasl; / Num 0</td><td>X / B</td><td>THROW</td></tr>
       <tr><td>Climb ladder</td><td>Up / W, Down / S</td><td>W / S</td><td>&uarr; &darr;</td><td>D-pad up / down</td><td>Drag up / down</td></tr>
       <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td><td>Drag down</td></tr>
       <tr><td>Drop off a ledge</td><td>Down + Jump</td><td>S + W</td><td>&darr; + &uarr;</td><td>Down + A</td><td>Drag down + JUMP</td></tr>
-      <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td><td>SOLO</td></tr>
+      <tr><td>Solo</td><td>C / L</td><td>Left Shift / Q</td><td>Right Shift / Num 1</td><td>Y / LB</td><td>SOLO</td></tr>
       <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td><td>II (top middle)</td></tr>
       <tr><td>Enter a secret door</td><td>Up / W</td><td>W</td><td>&uarr;</td><td>D-pad up</td><td>Drag up</td></tr>
     </table>
     <p class="tip"><b>Special moves:</b> Drummer: press Jump again in the air to double jump. Singer: hold Jump while falling to glide.
       Bassist: press Down while running to slide tackle. Roadie: walk into a crew barricade to barge through it.
       Secret areas hide behind cracked walls: look for a faint light in the cracks, then shoot.</p>
-    <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).
+    <p class="tip">2 players on one keyboard: player 1 keeps to the left end, player 2 to the right end, so your hands don't bump.
+      Two controllers (pad 1 and pad 2) are even better.
       On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
     <button class="btn back">Back</button>
   </div>
@@ -1383,13 +1384,16 @@ const KEYS_SOLO = {
   jump: ['Space', 'KeyZ', 'KeyW', 'ArrowUp'], throw: ['KeyX', 'KeyJ', 'KeyK'],
   special: ['KeyC', 'KeyL', 'ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'], start: ['Enter'],
 };
+// Two players on one keyboard: each keeps to their own end so hands don't collide in the middle.
+// Player 1 plays one-handed on the left (WASD, thumb on Space, pinky on Left Shift),
+// player 2 on the right (arrows, Right Ctrl / Right Shift beside them, or the number pad).
 const KEYS_P1 = {
-  left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], jump: ['KeyW', 'Space'], throw: ['KeyF'], special: ['KeyG'],
-  pause: ['Escape', 'KeyP'], start: ['Enter'],
+  left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], jump: ['KeyW'], throw: ['Space'], special: ['ShiftLeft', 'KeyQ'],
+  pause: ['Escape'], start: ['Enter'],
 };
 const KEYS_P2 = {
   left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'], jump: ['ArrowUp'],
-  throw: ['KeyK', 'Numpad0'], special: ['KeyL', 'Numpad1'], pause: [], start: [],
+  throw: ['ControlRight', 'Slash', 'Numpad0'], special: ['ShiftRight', 'Numpad1'], pause: [], start: [],
 };
 const ALL_CODES = new Set(Object.values({ ...KEYS_SOLO }).flat().concat(Object.values(KEYS_P1).flat(), Object.values(KEYS_P2).flat()));
 
@@ -4948,6 +4952,7 @@ class Game {
     if (p.climb) { this.climbStep(p, dt); return; }
     p.doorCd = (p.doorCd || 0) - dt;
     if (ctrl && p.onGround && p.doorCd <= 0) this.doorCheck(p, inp);
+    if (p.doorCd > 0.3) p.buffer = 0;   // up doubles as jump on some layouts: no hop after a door
     const left = ctrl && inp.held.left, right = ctrl && inp.held.right;
     p.crouch = ctrl && inp.held.down && p.onGround;
     p.h = p.crouch ? 1.1 : 1.8;
@@ -7058,6 +7063,23 @@ const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.Ha
 const composer = new EffectComposer(renderer, rt);
 const renderPass = new RenderPass(new THREE.Scene(), camera);
 composer.addPass(renderPass);
+// Comic-book ink outlines (experimental, off): darkens edges found in the rendered image
+const ink = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, texel: { value: new THREE.Vector2(1 / innerWidth, 1 / innerHeight) }, strength: { value: 0.9 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform vec2 texel; uniform float strength; varying vec2 vUv;
+    float L(vec2 o) { vec3 c = texture2D(tDiffuse, vUv + o * texel * 2.0).rgb; return log(1.0 + dot(c, vec3(0.299, 0.587, 0.114)) * 4.0); }
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float tl = L(vec2(-1, 1)), t = L(vec2(0, 1)), tr = L(vec2(1, 1)), l = L(vec2(-1, 0)), r = L(vec2(1, 0)), bl = L(vec2(-1, -1)), b = L(vec2(0, -1)), br = L(vec2(1, -1));
+      float gx = (tr + 2.0 * r + br) - (tl + 2.0 * l + bl), gy = (tl + 2.0 * t + tr) - (bl + 2.0 * b + br);
+      float edge = smoothstep(0.25, 0.7, length(vec2(gx, gy)));
+      gl_FragColor = vec4(c * (1.0 - edge * strength), 1.0);
+    }`,
+});
+ink.enabled = false;
+composer.addPass(ink);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.55, 0.8);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -7155,6 +7177,7 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  ink.uniforms.texel.value.set(1 / renderer.domElement.width, 1 / renderer.domElement.height);
 }
 addEventListener('resize', resize);
 
@@ -7242,7 +7265,7 @@ function renderTitle() {
   });
   $('diff-blurb').textContent = D[sel.diff].blurb;
   for (const b of $('opt-players').children) b.classList.toggle('on', +b.dataset.v === sel.players);
-  $('players-blurb').textContent = sel.players === 1 ? 'Keyboard, controller or touch.' : 'Two keyboards halves or two controllers. Shared lives.';
+  $('players-blurb').textContent = sel.players === 1 ? 'Keyboard, controller or touch.' : 'P1: WASD, Space throws, Left Shift solo. P2: arrows, Right Ctrl throws, Right Shift solo. Or two controllers. Shared lives.';
   const unlocked = save.unlocked.characters;
   const chars = Object.keys(HEROES).map((k) => ({ label: HEROES[k].name.replace('The ', ''), value: k, locked: unlocked.includes(k) ? null : 'Rescue them to unlock' }));
   segButtons($('opt-char'), chars, sel.char, (v) => { sel.char = v; renderTitle(); placeTitleHero(); });
@@ -7759,6 +7782,7 @@ const camLook = new THREE.Vector3();
 
 window.rnrz = { game, music, camera, quality, gpu, loadLevel: (i) => { newRun(i); loadLevel(i); }, get run() { return run; } };
 window.rnrz.tick = (d) => tick(d);
+window.rnrz.ink = (on) => { ink.enabled = on; };   // experiment: comic ink outlines
 
 function frame() {
   if (crashed) return;

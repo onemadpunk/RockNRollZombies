@@ -46,6 +46,23 @@ const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.Ha
 const composer = new EffectComposer(renderer, rt);
 const renderPass = new RenderPass(new THREE.Scene(), camera);
 composer.addPass(renderPass);
+// Comic-book ink outlines (experimental, off): darkens edges found in the rendered image
+const ink = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, texel: { value: new THREE.Vector2(1 / innerWidth, 1 / innerHeight) }, strength: { value: 0.9 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform vec2 texel; uniform float strength; varying vec2 vUv;
+    float L(vec2 o) { vec3 c = texture2D(tDiffuse, vUv + o * texel * 2.0).rgb; return log(1.0 + dot(c, vec3(0.299, 0.587, 0.114)) * 4.0); }
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float tl = L(vec2(-1, 1)), t = L(vec2(0, 1)), tr = L(vec2(1, 1)), l = L(vec2(-1, 0)), r = L(vec2(1, 0)), bl = L(vec2(-1, -1)), b = L(vec2(0, -1)), br = L(vec2(1, -1));
+      float gx = (tr + 2.0 * r + br) - (tl + 2.0 * l + bl), gy = (tl + 2.0 * t + tr) - (bl + 2.0 * b + br);
+      float edge = smoothstep(0.25, 0.7, length(vec2(gx, gy)));
+      gl_FragColor = vec4(c * (1.0 - edge * strength), 1.0);
+    }`,
+});
+ink.enabled = false;
+composer.addPass(ink);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.55, 0.8);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -143,6 +160,7 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  ink.uniforms.texel.value.set(1 / renderer.domElement.width, 1 / renderer.domElement.height);
 }
 addEventListener('resize', resize);
 
@@ -230,7 +248,7 @@ function renderTitle() {
   });
   $('diff-blurb').textContent = D[sel.diff].blurb;
   for (const b of $('opt-players').children) b.classList.toggle('on', +b.dataset.v === sel.players);
-  $('players-blurb').textContent = sel.players === 1 ? 'Keyboard, controller or touch.' : 'Two keyboards halves or two controllers. Shared lives.';
+  $('players-blurb').textContent = sel.players === 1 ? 'Keyboard, controller or touch.' : 'P1: WASD, Space throws, Left Shift solo. P2: arrows, Right Ctrl throws, Right Shift solo. Or two controllers. Shared lives.';
   const unlocked = save.unlocked.characters;
   const chars = Object.keys(HEROES).map((k) => ({ label: HEROES[k].name.replace('The ', ''), value: k, locked: unlocked.includes(k) ? null : 'Rescue them to unlock' }));
   segButtons($('opt-char'), chars, sel.char, (v) => { sel.char = v; renderTitle(); placeTitleHero(); });
@@ -747,6 +765,7 @@ const camLook = new THREE.Vector3();
 
 window.rnrz = { game, music, camera, quality, gpu, loadLevel: (i) => { newRun(i); loadLevel(i); }, get run() { return run; } };
 window.rnrz.tick = (d) => tick(d);
+window.rnrz.ink = (on) => { ink.enabled = on; };   // experiment: comic ink outlines
 
 function frame() {
   if (crashed) return;

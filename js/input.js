@@ -100,13 +100,16 @@ export const KEYS_SOLO = {
   jump: ['Space', 'KeyZ', 'KeyW', 'ArrowUp'], throw: ['KeyX', 'KeyJ', 'KeyK'],
   special: ['KeyC', 'KeyL', 'ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'], start: ['Enter'],
 };
+// Two players on one keyboard: each keeps to their own end so hands don't collide in the middle.
+// Player 1 plays one-handed on the left (WASD, thumb on Space, pinky on Left Shift),
+// player 2 on the right (arrows, Right Ctrl / Right Shift beside them, or the number pad).
 export const KEYS_P1 = {
-  left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], jump: ['KeyW', 'Space'], throw: ['KeyF'], special: ['KeyG'],
-  pause: ['Escape', 'KeyP'], start: ['Enter'],
+  left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], jump: ['KeyW'], throw: ['Space'], special: ['ShiftLeft', 'KeyQ'],
+  pause: ['Escape'], start: ['Enter'],
 };
 export const KEYS_P2 = {
   left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'], jump: ['ArrowUp'],
-  throw: ['KeyK', 'Numpad0'], special: ['KeyL', 'Numpad1'], pause: [], start: [],
+  throw: ['ControlRight', 'Slash', 'Numpad0'], special: ['ShiftRight', 'Numpad1'], pause: [], start: [],
 };
 const ALL_CODES = new Set(Object.values({ ...KEYS_SOLO }).flat().concat(Object.values(KEYS_P1).flat(), Object.values(KEYS_P2).flat()));
 

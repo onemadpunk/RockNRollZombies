@@ -362,6 +362,7 @@ export class Game {
     if (p.climb) { this.climbStep(p, dt); return; }
     p.doorCd = (p.doorCd || 0) - dt;
     if (ctrl && p.onGround && p.doorCd <= 0) this.doorCheck(p, inp);
+    if (p.doorCd > 0.3) p.buffer = 0;   // up doubles as jump on some layouts: no hop after a door
     const left = ctrl && inp.held.left, right = ctrl && inp.held.right;
     p.crouch = ctrl && inp.held.down && p.onGround;
     p.h = p.crouch ? 1.1 : 1.8;
