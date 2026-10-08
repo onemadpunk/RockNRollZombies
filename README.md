@@ -6,7 +6,7 @@ A Ghosts 'n Goblins-style 2.5D platformer where the music is the game clock. The
 to Hell: play five gigs, rescue your bandmates and win your soul back in a guitar duel.
 
 ## Play it
-- **Online:** https://onemadpunk.github.io/RockNRollZombies/
+- **Online:** https://rocknrollzombies.com/
 - **Install as an app:** tap **Install app** on the title screen (Android/Chrome), or in Safari tap
   Share → **Add to Home Screen** (iPhone). Open it once with a signal and it plays offline after that.
   Scores set offline go to the world scoreboard the next time you're online.

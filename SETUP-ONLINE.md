@@ -14,10 +14,12 @@ Two parts: **GitHub Pages** hosts the game (free), and **Supabase** stores the w
 
 Whenever the game changes: open GitHub Desktop, write a short summary, click **Commit to main**, then **Push origin**. The site updates a minute later.
 
-### Optional: use rocknrollzombies.com
+### Use rocknrollzombies.com (set up)
 
-1. In the repo's **Settings → Pages → Custom domain**, type `rocknrollzombies.com` and save. Tick **Enforce HTTPS** once it's offered.
-2. In **GoDaddy → DNS** for rocknrollzombies.com, add:
+The `CNAME` file in the repo tells GitHub Pages the game lives at rocknrollzombies.com.
+
+1. In **GoDaddy → rocknrollzombies.com → DNS**: remove any **Forwarding**, delete the existing **A** record for `@`
+   (GoDaddy's "Parked" one), then add:
 
    | Type | Name | Value |
    |---|---|---|
@@ -25,10 +27,11 @@ Whenever the game changes: open GitHub Desktop, write a short summary, click **C
    | A | @ | 185.199.109.153 |
    | A | @ | 185.199.110.153 |
    | A | @ | 185.199.111.153 |
-   | CNAME | www | YOUR-USERNAME.github.io |
+   | CNAME | www | onemadpunk.github.io |
 
-   Delete any existing **A** record for `@` that points somewhere else (GoDaddy's "Parked" one).
-3. DNS can take up to an hour.
+2. Push the repo, then in **Settings → Pages** check **Custom domain** says `rocknrollzombies.com`.
+   Once the DNS check passes, tick **Enforce HTTPS** (the certificate can take up to a few hours).
+3. The old `onemadpunk.github.io/RockNRollZombies/` address redirects to the new one automatically.
 
 ---
 
