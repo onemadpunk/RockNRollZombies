@@ -1,7 +1,7 @@
 // Level 2: The Back Alley Dive Bar.
 import * as THREE from 'three';
 import { makeScaffold } from './models.js';
-import { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel } from './levelkit.js';
+import { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel, surface } from './levelkit.js';
 import { makeGate } from './level1.js';
 
 // Zones: 1 Back alley (0-44) · 2 Fire escapes (44-80) · 3 The dive bar (80-121)
@@ -81,6 +81,9 @@ function buildAlley(scene, quality) {
   const winDark = M(0x101018, { roughness: 0.3 });
   const bottleCols = [0x3a8a3a, 0x8a5a1a, 0x2a4a8a].map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, roughness: 0.2 }));
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(asphalt, 'tarmac', 3); surface(concrete, 'concrete', 3); surface(tar, 'tarmac', 2); surface(brick, 'brick', 3, 1.5); surface(brick2, 'brick', 3, 1.5);
+  surface(brick3, 'brick', 3, 1.5); surface(wood, 'wood', 2); surface(metal, 'metal', 2, 0.6); surface(dumpster, 'metal', 2, 0.7);
   const world = baseLevel(scene, L, { soil: concrete, top: asphalt, pitMat: dark, ledgeMat: iron, pillarMat: null, makeMover: makeScaffold, lanternColor: 0xffc070 });
   const { B, onGround } = world;
   const BG = new Batch();

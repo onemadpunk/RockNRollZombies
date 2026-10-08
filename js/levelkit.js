@@ -44,6 +44,100 @@ export function canvasTex(w, h, draw) {
   return t;
 }
 
+// ---- Surface textures ----------------------------------------------------------------------
+// Scenery boxes are merged and have no UVs, so the texture is projected from world position
+// (top faces use x/z, side faces x/y or z/y). That keeps bricks the same size on any wall.
+// Textures are greyscale detail around 0.74 so they shade the material's own colour.
+const SURF_TEX = {};
+function surfaceTex(kind) {
+  if (SURF_TEX[kind]) return SURF_TEX[kind];
+  const r = rng(kind.length * 977 + kind.charCodeAt(0));
+  const S = 256;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  const grey = (v, a = 1) => `rgba(${v | 0},${v | 0},${v | 0},${a})`;
+  const speckle = (n, lo, hi, size = 1.5) => { for (let i = 0; i < n; i++) { g.fillStyle = grey(lo + r() * (hi - lo), 0.5); g.fillRect(r() * S, r() * S, size, size); } };
+  const blotch = (n, lo, hi, rad) => {
+    for (let i = 0; i < n; i++) {
+      const x = r() * S, y = r() * S, rr = rad * (0.5 + r());
+      const gr = g.createRadialGradient(x, y, 0, x, y, rr);
+      gr.addColorStop(0, grey(lo + r() * (hi - lo), 0.35)); gr.addColorStop(1, grey(190, 0));
+      g.fillStyle = gr;
+      for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { g.save(); g.translate(dx, dy); g.fillRect(x - rr, y - rr, rr * 2, rr * 2); g.restore(); }
+    }
+  };
+  const crack = (n, v) => {
+    g.strokeStyle = grey(v, 0.6); g.lineWidth = 1;
+    for (let i = 0; i < n; i++) { g.beginPath(); let x = r() * S, y = r() * S; g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 40; y += (r() - 0.5) * 40; g.lineTo(x, y); } g.stroke(); }
+  };
+  g.fillStyle = grey(190); g.fillRect(0, 0, S, S);
+  if (kind === 'brick' || kind === 'stone') {
+    const bw = kind === 'brick' ? 64 : 128, bh = kind === 'brick' ? 32 : 64, mortar = kind === 'brick' ? 4 : 5;
+    g.fillStyle = grey(kind === 'brick' ? 105 : 115); g.fillRect(0, 0, S, S);
+    for (let y = 0; y < S; y += bh) {
+      const off = (y / bh) % 2 ? bw / 2 : 0;
+      for (let x = -bw; x < S + bw; x += bw) {
+        g.fillStyle = grey(165 + r() * 50);
+        const jx = kind === 'stone' ? (r() - 0.5) * 6 : 0;
+        g.fillRect(x + off + mortar / 2 + jx, y + mortar / 2, bw - mortar, bh - mortar);
+      }
+    }
+    speckle(2500, 120, 230); crack(kind === 'stone' ? 6 : 2, 90);
+  } else if (kind === 'wood') {
+    for (let y = 0; y < S; y += 32) {
+      g.fillStyle = grey(165 + r() * 40); g.fillRect(0, y, S, 30);
+      g.fillStyle = grey(80); g.fillRect(0, y + 30, S, 2);
+      g.strokeStyle = grey(130, 0.5);
+      for (let k = 0; k < 5; k++) { g.beginPath(); const yy = y + 3 + r() * 24; g.moveTo(0, yy); for (let x = 0; x <= S; x += 16) g.lineTo(x, yy + Math.sin(x * 0.05 + k) * 2); g.stroke(); }
+      for (let n = 0; n < 2; n++) { g.fillStyle = grey(70, 0.8); g.fillRect(r() * S, y + 12, 2, 2); }   // nail heads
+    }
+  } else if (kind === 'tarmac' || kind === 'concrete') {
+    blotch(40, 150, 225, 40);
+    speckle(kind === 'tarmac' ? 9000 : 4000, 110, 250, kind === 'tarmac' ? 1.5 : 1);
+    crack(kind === 'tarmac' ? 4 : 3, 100);
+    if (kind === 'concrete') { g.fillStyle = grey(120, 0.7); g.fillRect(0, 0, S, 2); g.fillRect(0, 0, 2, S); }
+  } else if (kind === 'grass' || kind === 'dirt') {
+    blotch(50, 140, 230, 30);
+    if (kind === 'grass') {
+      for (let i = 0; i < 2500; i++) { g.strokeStyle = grey(120 + r() * 120, 0.5); g.beginPath(); const x = r() * S, y = r() * S; g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y - 3 - r() * 5); g.stroke(); }
+    } else { speckle(3000, 110, 240, 2); for (let i = 0; i < 60; i++) { g.fillStyle = grey(200 + r() * 50, 0.8); g.beginPath(); g.arc(r() * S, r() * S, 1 + r() * 2.5, 0, 7); g.fill(); } }
+  } else if (kind === 'rock') {
+    blotch(60, 120, 240, 36); speckle(4000, 100, 240); crack(14, 70);
+  } else if (kind === 'fabric') {
+    for (let i = 0; i < S; i += 3) { g.fillStyle = grey(165, 0.6); g.fillRect(i, 0, 1, S); g.fillStyle = grey(215, 0.4); g.fillRect(0, i, S, 1); }
+    blotch(15, 150, 215, 50);
+  } else if (kind === 'metal') {
+    for (let x = 0; x < S; x += 2) { g.fillStyle = grey(170 + r() * 40, 0.5); g.fillRect(x, 0, 1, S); }
+    blotch(25, 110, 200, 30);   // rust and grime
+    for (let x = 0; x < S; x += 64) { g.fillStyle = grey(110); g.fillRect(x, 0, 2, S); for (let y = 8; y < S; y += 32) { g.fillStyle = grey(225); g.fillRect(x + 6, y, 2, 2); } }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  SURF_TEX[kind] = t;
+  return t;
+}
+
+/** Give a scenery material a world-projected surface texture. scale = world units per tile. */
+export function surface(mat, kind, scale = 2, amount = 1) {
+  const tex = surfaceTex(kind);
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uSurf = { value: tex }; sh.uniforms.uSurfScale = { value: scale }; sh.uniforms.uSurfAmt = { value: amount };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSurfP;\nvarying vec3 vSurfN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurfP = (modelMatrix * vec4(position, 1.0)).xyz;\nvSurfN = normalize(mat3(modelMatrix) * normal);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uSurf;\nuniform float uSurfScale, uSurfAmt;\nvarying vec3 vSurfP;\nvarying vec3 vSurfN;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        vec3 sAn = abs(vSurfN);
+        vec2 sUv = sAn.y > 0.6 ? vSurfP.xz : (sAn.x > sAn.z ? vSurfP.zy : vSurfP.xy);
+        vec3 sTex = texture2D(uSurf, sUv / uSurfScale).rgb;
+        diffuseColor.rgb *= mix(vec3(1.0), sTex * 1.35, uSurfAmt);`);
+  };
+  mat.customProgramCacheKey = () => 'surface';
+  return mat;
+}
+
 export const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
   cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 12),

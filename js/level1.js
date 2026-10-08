@@ -1,7 +1,7 @@
 // Level 1: The Graveyard Gig.
 import * as THREE from 'three';
 import { makeCoffin } from './models.js';
-import { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel } from './levelkit.js';
+import { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel, surface } from './levelkit.js';
 
 // Zones: 1 Cemetery gates (0-40) · 2 Open graves (40-80) · 3 Churchyard (80-121)
 //        4 The storm (121-166) · 5 Mosh pit (166-196) · Boss arena (200-222)
@@ -71,6 +71,9 @@ function buildGraveyard(scene, quality) {
   const hellGlow = new THREE.MeshStandardMaterial({ color: 0xff3020, emissive: 0xff2010, emissiveIntensity: 3, fog: false });
   const doorDark = M(0x07060a, { roughness: 1 }), planks = M(0x3a2a22);
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(stoneA, 'stone', 2.4, 1.4); surface(stoneB, 'stone', 2.4, 1.4); surface(cryptMat, 'stone', 2.4, 1.4); surface(mossy, 'rock', 3);
+  surface(soil, 'dirt', 3); surface(grass, 'grass', 2); surface(bark, 'wood', 1.5, 0.6); surface(planks, 'wood', 2); surface(hill, 'rock', 12, 0.5);
   const world = baseLevel(scene, L, { soil, top: grass, pitMat: doorDark, ledgeMat: stoneA, pillarMat: stoneB, makeMover: makeCoffin });
   const { B, onGround } = world;
   const BG = new Batch();

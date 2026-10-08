@@ -1,6 +1,6 @@
 // Level 5: Hell's Stadium. The final gig.
 import * as THREE from 'three';
-import { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } from './levelkit.js';
+import { rng, Batch, mat4, GEO, textPanel, sky, baseLevel, surface } from './levelkit.js';
 import { makeGate } from './level1.js';
 
 // Zones: 1 Gates of Hell (0-46) · 2 The Bleachers (46-100) · 3 The Mosh Pit (100-150) · 4 Backstage (150-198) · Boss (200-222)
@@ -83,6 +83,8 @@ function buildStadium(scene, quality) {
   const soulMat = new THREE.MeshStandardMaterial({ color: 0xc8d6ff, emissive: 0x6a7cff, emissiveIntensity: 1.2 });
   const floodMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff0d0, emissiveIntensity: 3 });
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(basalt, 'rock', 3); surface(soil, 'dirt', 3); surface(conc, 'concrete', 3); surface(steel, 'metal', 2, 0.4);
   const world = baseLevel(scene, L, { soil, top: basalt, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: steel, makeMover: makeHellSlab, lanternColor: 0xff6a2a });
   const { B, onGround } = world;
   const BG = new Batch();

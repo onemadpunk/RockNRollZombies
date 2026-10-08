@@ -2351,6 +2351,100 @@ function canvasTex(w, h, draw) {
   return t;
 }
 
+// ---- Surface textures ----------------------------------------------------------------------
+// Scenery boxes are merged and have no UVs, so the texture is projected from world position
+// (top faces use x/z, side faces x/y or z/y). That keeps bricks the same size on any wall.
+// Textures are greyscale detail around 0.74 so they shade the material's own colour.
+const SURF_TEX = {};
+function surfaceTex(kind) {
+  if (SURF_TEX[kind]) return SURF_TEX[kind];
+  const r = rng(kind.length * 977 + kind.charCodeAt(0));
+  const S = 256;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  const grey = (v, a = 1) => `rgba(${v | 0},${v | 0},${v | 0},${a})`;
+  const speckle = (n, lo, hi, size = 1.5) => { for (let i = 0; i < n; i++) { g.fillStyle = grey(lo + r() * (hi - lo), 0.5); g.fillRect(r() * S, r() * S, size, size); } };
+  const blotch = (n, lo, hi, rad) => {
+    for (let i = 0; i < n; i++) {
+      const x = r() * S, y = r() * S, rr = rad * (0.5 + r());
+      const gr = g.createRadialGradient(x, y, 0, x, y, rr);
+      gr.addColorStop(0, grey(lo + r() * (hi - lo), 0.35)); gr.addColorStop(1, grey(190, 0));
+      g.fillStyle = gr;
+      for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { g.save(); g.translate(dx, dy); g.fillRect(x - rr, y - rr, rr * 2, rr * 2); g.restore(); }
+    }
+  };
+  const crack = (n, v) => {
+    g.strokeStyle = grey(v, 0.6); g.lineWidth = 1;
+    for (let i = 0; i < n; i++) { g.beginPath(); let x = r() * S, y = r() * S; g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 40; y += (r() - 0.5) * 40; g.lineTo(x, y); } g.stroke(); }
+  };
+  g.fillStyle = grey(190); g.fillRect(0, 0, S, S);
+  if (kind === 'brick' || kind === 'stone') {
+    const bw = kind === 'brick' ? 64 : 128, bh = kind === 'brick' ? 32 : 64, mortar = kind === 'brick' ? 4 : 5;
+    g.fillStyle = grey(kind === 'brick' ? 105 : 115); g.fillRect(0, 0, S, S);
+    for (let y = 0; y < S; y += bh) {
+      const off = (y / bh) % 2 ? bw / 2 : 0;
+      for (let x = -bw; x < S + bw; x += bw) {
+        g.fillStyle = grey(165 + r() * 50);
+        const jx = kind === 'stone' ? (r() - 0.5) * 6 : 0;
+        g.fillRect(x + off + mortar / 2 + jx, y + mortar / 2, bw - mortar, bh - mortar);
+      }
+    }
+    speckle(2500, 120, 230); crack(kind === 'stone' ? 6 : 2, 90);
+  } else if (kind === 'wood') {
+    for (let y = 0; y < S; y += 32) {
+      g.fillStyle = grey(165 + r() * 40); g.fillRect(0, y, S, 30);
+      g.fillStyle = grey(80); g.fillRect(0, y + 30, S, 2);
+      g.strokeStyle = grey(130, 0.5);
+      for (let k = 0; k < 5; k++) { g.beginPath(); const yy = y + 3 + r() * 24; g.moveTo(0, yy); for (let x = 0; x <= S; x += 16) g.lineTo(x, yy + Math.sin(x * 0.05 + k) * 2); g.stroke(); }
+      for (let n = 0; n < 2; n++) { g.fillStyle = grey(70, 0.8); g.fillRect(r() * S, y + 12, 2, 2); }   // nail heads
+    }
+  } else if (kind === 'tarmac' || kind === 'concrete') {
+    blotch(40, 150, 225, 40);
+    speckle(kind === 'tarmac' ? 9000 : 4000, 110, 250, kind === 'tarmac' ? 1.5 : 1);
+    crack(kind === 'tarmac' ? 4 : 3, 100);
+    if (kind === 'concrete') { g.fillStyle = grey(120, 0.7); g.fillRect(0, 0, S, 2); g.fillRect(0, 0, 2, S); }
+  } else if (kind === 'grass' || kind === 'dirt') {
+    blotch(50, 140, 230, 30);
+    if (kind === 'grass') {
+      for (let i = 0; i < 2500; i++) { g.strokeStyle = grey(120 + r() * 120, 0.5); g.beginPath(); const x = r() * S, y = r() * S; g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y - 3 - r() * 5); g.stroke(); }
+    } else { speckle(3000, 110, 240, 2); for (let i = 0; i < 60; i++) { g.fillStyle = grey(200 + r() * 50, 0.8); g.beginPath(); g.arc(r() * S, r() * S, 1 + r() * 2.5, 0, 7); g.fill(); } }
+  } else if (kind === 'rock') {
+    blotch(60, 120, 240, 36); speckle(4000, 100, 240); crack(14, 70);
+  } else if (kind === 'fabric') {
+    for (let i = 0; i < S; i += 3) { g.fillStyle = grey(165, 0.6); g.fillRect(i, 0, 1, S); g.fillStyle = grey(215, 0.4); g.fillRect(0, i, S, 1); }
+    blotch(15, 150, 215, 50);
+  } else if (kind === 'metal') {
+    for (let x = 0; x < S; x += 2) { g.fillStyle = grey(170 + r() * 40, 0.5); g.fillRect(x, 0, 1, S); }
+    blotch(25, 110, 200, 30);   // rust and grime
+    for (let x = 0; x < S; x += 64) { g.fillStyle = grey(110); g.fillRect(x, 0, 2, S); for (let y = 8; y < S; y += 32) { g.fillStyle = grey(225); g.fillRect(x + 6, y, 2, 2); } }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  SURF_TEX[kind] = t;
+  return t;
+}
+
+/** Give a scenery material a world-projected surface texture. scale = world units per tile. */
+function surface(mat, kind, scale = 2, amount = 1) {
+  const tex = surfaceTex(kind);
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uSurf = { value: tex }; sh.uniforms.uSurfScale = { value: scale }; sh.uniforms.uSurfAmt = { value: amount };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSurfP;\nvarying vec3 vSurfN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurfP = (modelMatrix * vec4(position, 1.0)).xyz;\nvSurfN = normalize(mat3(modelMatrix) * normal);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uSurf;\nuniform float uSurfScale, uSurfAmt;\nvarying vec3 vSurfP;\nvarying vec3 vSurfN;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        vec3 sAn = abs(vSurfN);
+        vec2 sUv = sAn.y > 0.6 ? vSurfP.xz : (sAn.x > sAn.z ? vSurfP.zy : vSurfP.xy);
+        vec3 sTex = texture2D(uSurf, sUv / uSurfScale).rgb;
+        diffuseColor.rgb *= mix(vec3(1.0), sTex * 1.35, uSurfAmt);`);
+  };
+  mat.customProgramCacheKey = () => 'surface';
+  return mat;
+}
+
 const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
   cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
@@ -2663,7 +2757,7 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
   return api;
 }
 
-Object.assign(__m, { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel });
+Object.assign(__m, { rng, Batch, mat4, canvasTex, surface, GEO, textPanel, sky, baseLevel });
 }
 
 // ---- level1.js ----
@@ -2671,7 +2765,7 @@ Object.assign(__m, { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel
 // Level 1: The Graveyard Gig.
 
 const { makeCoffin } = __m;
-const { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel } = __m;
+const { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel, surface } = __m;
 
 // Zones: 1 Cemetery gates (0-40) · 2 Open graves (40-80) · 3 Churchyard (80-121)
 //        4 The storm (121-166) · 5 Mosh pit (166-196) · Boss arena (200-222)
@@ -2741,6 +2835,9 @@ function buildGraveyard(scene, quality) {
   const hellGlow = new THREE.MeshStandardMaterial({ color: 0xff3020, emissive: 0xff2010, emissiveIntensity: 3, fog: false });
   const doorDark = M(0x07060a, { roughness: 1 }), planks = M(0x3a2a22);
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(stoneA, 'stone', 2.4, 1.4); surface(stoneB, 'stone', 2.4, 1.4); surface(cryptMat, 'stone', 2.4, 1.4); surface(mossy, 'rock', 3);
+  surface(soil, 'dirt', 3); surface(grass, 'grass', 2); surface(bark, 'wood', 1.5, 0.6); surface(planks, 'wood', 2); surface(hill, 'rock', 12, 0.5);
   const world = baseLevel(scene, L, { soil, top: grass, pitMat: doorDark, ledgeMat: stoneA, pillarMat: stoneB, makeMover: makeCoffin });
   const { B, onGround } = world;
   const BG = new Batch();
@@ -2992,7 +3089,7 @@ Object.assign(__m, { LEVEL1, makeGate, makeRain, makeBolt });
 // Level 2: The Back Alley Dive Bar.
 
 const { makeScaffold } = __m;
-const { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel } = __m;
+const { rng, Batch, mat4, canvasTex, GEO, textPanel, sky, baseLevel, surface } = __m;
 const { makeGate } = __m;
 
 // Zones: 1 Back alley (0-44) · 2 Fire escapes (44-80) · 3 The dive bar (80-121)
@@ -3072,6 +3169,9 @@ function buildAlley(scene, quality) {
   const winDark = M(0x101018, { roughness: 0.3 });
   const bottleCols = [0x3a8a3a, 0x8a5a1a, 0x2a4a8a].map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, roughness: 0.2 }));
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(asphalt, 'tarmac', 3); surface(concrete, 'concrete', 3); surface(tar, 'tarmac', 2); surface(brick, 'brick', 3, 1.5); surface(brick2, 'brick', 3, 1.5);
+  surface(brick3, 'brick', 3, 1.5); surface(wood, 'wood', 2); surface(metal, 'metal', 2, 0.6); surface(dumpster, 'metal', 2, 0.7);
   const world = baseLevel(scene, L, { soil: concrete, top: asphalt, pitMat: dark, ledgeMat: iron, pillarMat: null, makeMover: makeScaffold, lanternColor: 0xffc070 });
   const { B, onGround } = world;
   const BG = new Batch();
@@ -3239,7 +3339,7 @@ Object.assign(__m, { LEVEL2 });
 {
 // Level 3: The Haunted Festival.
 
-const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } = __m;
+const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel, surface } = __m;
 const { makeGate } = __m;
 
 // Zones: 1 Car park field (0-42) · 2 Campsite (42-96) · 3 Funfair (96-148) · 4 Main stage (148-196) · Boss (200-222)
@@ -3322,6 +3422,9 @@ function buildFestival(scene, quality) {
   const bulbPink = new THREE.MeshStandardMaterial({ color: 0xff8ac8, emissive: 0xff2e88, emissiveIntensity: 2 });
   const water = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.1, metalness: 0.3, emissive: 0x0a1a3a });
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(grass, 'grass', 2); surface(soil, 'dirt', 3); surface(planks, 'wood', 2);
+  for (const c of [canvasA, canvasB, canvasC, canvasD]) surface(c, 'fabric', 1.5, 0.6);
   const world = baseLevel(scene, L, { soil, top: grass, pitMat: dark, ledgeMat: planks, pillarMat: steel, makeMover: makeRaft, lanternColor: 0xffb040 });
   const { B, onGround } = world;
   const BG = new Batch();
@@ -3439,7 +3542,7 @@ Object.assign(__m, { LEVEL3 });
 {
 // Level 4: The Highway to Hell.
 
-const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } = __m;
+const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel, surface } = __m;
 const { makeGate } = __m;
 const { makeDiscoBall } = __m;
 
@@ -3525,6 +3628,8 @@ function buildHighway(scene, quality) {
   const lava = new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a0a, emissiveIntensity: 2.2, roughness: 0.6 });
   const neonRed = new THREE.MeshStandardMaterial({ color: 0xff4a4a, emissive: 0xff1a1a, emissiveIntensity: 2.4 });
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(sand, 'dirt', 3); surface(tar, 'tarmac', 3); surface(rust, 'metal', 2); surface(conc, 'concrete', 3); surface(burnt, 'metal', 2, 0.6); surface(steel, 'metal', 2, 0.4);
   const world = baseLevel(scene, L, { soil: sand, top: tar, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: null, makeMover: makeRoadSlab, lanternColor: 0xff8a3a });
   const { B, onGround } = world;
   const BG = new Batch();
@@ -3684,7 +3789,7 @@ Object.assign(__m, { LEVEL4 });
 {
 // Level 5: Hell's Stadium. The final gig.
 
-const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } = __m;
+const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel, surface } = __m;
 const { makeGate } = __m;
 
 // Zones: 1 Gates of Hell (0-46) · 2 The Bleachers (46-100) · 3 The Mosh Pit (100-150) · 4 Backstage (150-198) · Boss (200-222)
@@ -3767,6 +3872,8 @@ function buildStadium(scene, quality) {
   const soulMat = new THREE.MeshStandardMaterial({ color: 0xc8d6ff, emissive: 0x6a7cff, emissiveIntensity: 1.2 });
   const floodMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff0d0, emissiveIntensity: 3 });
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(basalt, 'rock', 3); surface(soil, 'dirt', 3); surface(conc, 'concrete', 3); surface(steel, 'metal', 2, 0.4);
   const world = baseLevel(scene, L, { soil, top: basalt, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: steel, makeMover: makeHellSlab, lanternColor: 0xff6a2a });
   const { B, onGround } = world;
   const BG = new Batch();

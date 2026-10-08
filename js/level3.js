@@ -1,6 +1,6 @@
 // Level 3: The Haunted Festival.
 import * as THREE from 'three';
-import { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } from './levelkit.js';
+import { rng, Batch, mat4, GEO, textPanel, sky, baseLevel, surface } from './levelkit.js';
 import { makeGate } from './level1.js';
 
 // Zones: 1 Car park field (0-42) · 2 Campsite (42-96) · 3 Funfair (96-148) · 4 Main stage (148-196) · Boss (200-222)
@@ -83,6 +83,9 @@ function buildFestival(scene, quality) {
   const bulbPink = new THREE.MeshStandardMaterial({ color: 0xff8ac8, emissive: 0xff2e88, emissiveIntensity: 2 });
   const water = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.1, metalness: 0.3, emissive: 0x0a1a3a });
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(grass, 'grass', 2); surface(soil, 'dirt', 3); surface(planks, 'wood', 2);
+  for (const c of [canvasA, canvasB, canvasC, canvasD]) surface(c, 'fabric', 1.5, 0.6);
   const world = baseLevel(scene, L, { soil, top: grass, pitMat: dark, ledgeMat: planks, pillarMat: steel, makeMover: makeRaft, lanternColor: 0xffb040 });
   const { B, onGround } = world;
   const BG = new Batch();

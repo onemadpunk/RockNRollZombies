@@ -1,6 +1,6 @@
 // Level 4: The Highway to Hell.
 import * as THREE from 'three';
-import { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } from './levelkit.js';
+import { rng, Batch, mat4, GEO, textPanel, sky, baseLevel, surface } from './levelkit.js';
 import { makeGate } from './level1.js';
 import { makeDiscoBall } from './models.js';
 
@@ -86,6 +86,8 @@ function buildHighway(scene, quality) {
   const lava = new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a0a, emissiveIntensity: 2.2, roughness: 0.6 });
   const neonRed = new THREE.MeshStandardMaterial({ color: 0xff4a4a, emissive: 0xff1a1a, emissiveIntensity: 2.4 });
 
+  // surface textures: bricks, stone, wood grain, tarmac...
+  surface(sand, 'dirt', 3); surface(tar, 'tarmac', 3); surface(rust, 'metal', 2); surface(conc, 'concrete', 3); surface(burnt, 'metal', 2, 0.6); surface(steel, 'metal', 2, 0.4);
   const world = baseLevel(scene, L, { soil: sand, top: tar, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: null, makeMover: makeRoadSlab, lanternColor: 0xff8a3a });
   const { B, onGround } = world;
   const BG = new Batch();
