@@ -5206,6 +5206,7 @@ $('reload').addEventListener('click', () => location.reload());
 const clock = new THREE.Clock();
 let t = 0;
 let camDist = 13.5;
+let camLift = 0;   // camera rises when players climb high
 let perfT = 0, perfN = 0, perfChecked = false;
 const camLook = new THREE.Vector3();
 
@@ -5264,8 +5265,12 @@ function tick(raw) {
   shakeAmt = Math.max(0, shakeAmt - dt * 1.8);
   const sx = (Math.random() - 0.5) * shakeAmt * 0.6, sy = (Math.random() - 0.5) * shakeAmt * 0.6;
   const zoomOut = camDist - 13.5;
-  let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy, pz = camDist;
-  camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25, 0);
+  // Rise with the player on high ledges (in co-op, follow the pair's average so nobody drops off the bottom).
+  const live = game ? game.players.filter((p) => !p.dead && !p.out) : [];
+  const height = !live.length ? 0 : live.length === 1 ? live[0].y : live.reduce((a, p) => a + p.y, 0) / live.length;
+  camLift += (Math.max(0, height - 1.2) * 0.9 - camLift) * Math.min(1, dt * 4);
+  let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy + camLift, pz = camDist;
+  camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25 + camLift, 0);
   if (game && game.cine) {
     // Boss intro: swing in close on the boss, then back out
     const c = game.cine, k = Math.sin(Math.min(1, c.t / c.dur) * Math.PI);
