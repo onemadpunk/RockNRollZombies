@@ -25,7 +25,7 @@ export const LEVEL2 = {
            [169.5, 174, 10.3],                                        // water tower catwalk (secret)
            [200.3, 202.8, 4.8], [219.2, 221.7, 4.8], [206, 209, 2.8], [213, 216, 2.8]],
   // Up/Down at a ladder to climb. One up every building's left wall, so a fall is a setback, not a death.
-  ladders: [
+  ladders: [{ x: 40.05, y1: 0, y2: 3.4 },
     { x: 50.5, y1: 0, y2: 3.0 }, { x: 54.6, y1: 3.0, y2: 6.0 }, { x: 67.6, y1: 0, y2: 7.0 },
     { x: 129.6, y1: 0, y2: 4.5 }, { x: 143.6, y1: 0, y2: 6.0 }, { x: 155.6, y1: 0, y2: 4.5 },
     { x: 165.6, y1: 0, y2: 7.0 }, { x: 179.6, y1: 0, y2: 5.0 }, { x: 170.3, y1: 7.0, y2: 10.3 },
@@ -49,6 +49,8 @@ export const LEVEL2 = {
     { x: 38, theme: 'cellar', name: 'THE CELLAR', loot: ['gold', 'life', 'gold'] },
     { x: 83.5, theme: 'staff', name: 'STAFF ONLY', loot: ['jacket', 'gold', 'flame'], guards: [['walker', 2], ['rat', 2]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[40.5, 41.3, 3.4]],
   checkpoint: 92,
   soundcheck: null,
   ambush: {

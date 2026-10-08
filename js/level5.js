@@ -26,7 +26,7 @@ export const LEVEL5 = {
     { kind: 'slide', x: 98.5, y: 0, amp: 1.6, w: 2.6 },
   ],
   // Up the floodlight gantry from the top of the stand
-  ladders: [{ x: 77.4, y1: 4.8, y2: 9.0 }],
+  ladders: [{ x: 148.75, y1: 0, y2: 3.4 }, { x: 77.4, y1: 4.8, y2: 9.0 }],
   // On-beat super jumps up to the speaker stacks
   amps: [[118, 0.95], [139, 0.95]],
   crates: [
@@ -43,6 +43,8 @@ export const LEVEL5 = {
     { x: 37, theme: 'green', name: 'THE GREEN ROOM', loot: ['gold', 'life', 'gold'] },
     { x: 135, theme: 'vault', name: "THE DEVIL'S VAULT", loot: ['gold', 'gold', 'life'], guards: [['ghost', 2], ['walker', 2]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[149.2, 150, 3.4]],
   checkpoint: 104,
   soundcheck: null,
   ambush: {

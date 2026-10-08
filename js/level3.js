@@ -23,7 +23,7 @@ export const LEVEL3 = {
   movers: [{ kind: 'slide', x: 69.5, y: 0, amp: 2.0, w: 2.9 }],
   // Ride a car up and jump off near the top for the secret ledge
   wheels: [{ x: 108, y: 6.4, r: 4.2, n: 6, w: 1.8 }],
-  ladders: [],
+  ladders: [{ x: 144.15, y1: 0, y2: 3.4 }],
   amps: [],
   crates: [
     { x: 14, loot: 'sticks' }, { x: 49, loot: 'gold' }, { x: 84, loot: 'jacket' }, { x: 115, y: 8.5, loot: 'life' },
@@ -40,6 +40,8 @@ export const LEVEL3 = {
     { x: 33.5, theme: 'tent', name: 'THE VIP TENT', loot: ['gold', 'life', 'gold'] },
     { x: 75.5, theme: 'lost', name: 'LOST PROPERTY', loot: ['jacket', 'gold', 'sticks'], guards: [['pogo', 2], ['walker', 1]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[144.6, 145.4, 3.4]],
   checkpoint: 120,
   soundcheck: null,
   ambush: {

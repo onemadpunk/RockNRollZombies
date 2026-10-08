@@ -448,7 +448,11 @@ h3.sub { margin: 4px 0 0; }
       <tr><td>Drop off a ledge</td><td>Down + Jump</td><td>S + W</td><td>&darr; + &uarr;</td><td>Down + A</td><td>Drag down + JUMP</td></tr>
       <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td><td>SOLO</td></tr>
       <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td><td>II (top middle)</td></tr>
+      <tr><td>Enter a secret door</td><td>Up / W</td><td>W</td><td>&uarr;</td><td>D-pad up</td><td>Drag up</td></tr>
     </table>
+    <p class="tip"><b>Special moves:</b> Drummer: press Jump again in the air to double jump. Singer: hold Jump while falling to glide.
+      Bassist: press Down while running to slide tackle. Roadie: walk into a crew barricade to barge through it.
+      Secret areas hide behind cracked walls: look for a faint light in the cracks, then shoot.</p>
     <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).
       On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
     <button class="btn back">Back</button>
@@ -459,6 +463,7 @@ h3.sub { margin: 4px 0 0; }
   <div class="title-inner">
     <h2>High scores</h2>
     <div class="seg" id="board-tabs"></div>
+    <div class="seg" id="hero-tabs" hidden></div>
     <div class="seg" id="score-tabs"><button data-t="world" class="on">World</button><button data-t="local">This device</button></div>
     <p class="tip" id="score-note"></p>
     <ol id="score-list" class="scores"></ol>
@@ -1506,11 +1511,11 @@ function arm(parent, x, y, wide, upperMat, foreMat, fistMat) {
 // ---------------------------------------------------------------------------
 // Heroes: 'punk' (guitar), 'drummer', 'bassist'. Same skeleton, different look.
 const HEROES = {
-  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks. All-rounder.' },
-  drummer: { name: 'The Drummer', weapon: 'sticks', jump: 16, blurb: 'Drumsticks in a spread. Jumps higher.' },
-  bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14.6, blurb: 'Boomerang vinyl. Solo hits harder.' },
-  singer: { name: 'The Singer', weapon: 'notes', jump: 15, blurb: 'Fires musical notes that weave up and down.' },
-  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Lobs heavy spanners: slow, but they hit twice as hard.' },
+  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks, the fastest throws. The all-rounder.' },
+  drummer: { name: 'The Drummer', weapon: 'sticks', jump: 16, blurb: 'Drumsticks in a spread. DOUBLE JUMP: press Jump again in the air.' },
+  bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14.6, blurb: 'Boomerang vinyl. SLIDE TACKLE: press Down while running.' },
+  singer: { name: 'The Singer', weapon: 'notes', jump: 15, blurb: 'Notes that weave up and down. GLIDE: hold Jump while falling.' },
+  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Heavy spanners, double damage. BARGE: walks straight through crew barricades.' },
 };
 
 function makeHero(kind = 'punk') {
@@ -2644,6 +2649,27 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
     solids.push(s);
     return { ...a, x, solid: s };
   });
+  // Crew barricades: solid, with a ladder up the near side. The Roadie barges straight through.
+  const barricades = (L.barricades || []).map(([a, b, h]) => {
+    const solid = { x1: a, x2: b, y1: 0, y2: h };
+    solids.push(solid);
+    const g = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 });
+    const stripe = new THREE.MeshStandardMaterial({ color: 0xffc94a, roughness: 0.6, emissive: 0x2a1a00 });
+    const blk = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6 });
+    const w = b - a, cx = (a + b) / 2;
+    for (let y = 0.25; y < h; y += 0.55) {
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.45, 1.8), wood); plank.position.set(cx, y, -0.4); plank.castShadow = plank.receiveShadow = true; g.add(plank);
+    }
+    for (let i = 0; i < 5; i++) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.06, h * 0.5, 0.3), i % 2 ? blk : stripe);
+      st.position.set(cx - w / 2 - 0.02, h * 0.55, 0.15 - i * 0.3 + 0.6); st.rotation.x = 0.6; g.add(st);
+    }
+    const sign = textPanel('CREW ONLY', { w: 1.6, h: 0.45, color: '#ffc94a', bg: '#141416' });
+    sign.position.set(cx, h * 0.6, 0.52); g.add(sign);
+    scene.add(g);
+    return { solid, mesh: g, x: cx, broken: false };
+  });
   // Ladders: iron rails + rungs, climbable from y1 up to y2
   const ladderMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.5, metalness: 0.7 });
   const ladders = (L.ladders || []).map(({ x, y1 = 0, y2 }) => {
@@ -2666,7 +2692,7 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
   const dummy = new THREE.Object3D();
 
   const api = {
-    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders,
+    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders, barricades,
     /** Height of the top solid surface at x (street, roof, crate...), or null over a pit. */
     surfaceAt(x) {
       let top = null;
@@ -2904,6 +2930,9 @@ const LEVEL1 = {
     { x: 18, theme: 'crypt', name: 'THE CRYPT', loot: ['gold', 'life', 'gold'] },
     { x: 92, theme: 'bonecellar', name: 'THE BONE CELLAR', loot: ['jacket', 'gold', 'vinyl'], guards: [['crawler', 2], ['walker', 1]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[82.5, 83.3, 3.4]],
+  ladders: [{ x: 82.05, y1: 0, y2: 3.4 }],
   checkpoint: 110,
   soundcheck: [9.5, 12, 14.5],
   storm: [121, 135],
@@ -3219,7 +3248,7 @@ const LEVEL2 = {
            [169.5, 174, 10.3],                                        // water tower catwalk (secret)
            [200.3, 202.8, 4.8], [219.2, 221.7, 4.8], [206, 209, 2.8], [213, 216, 2.8]],
   // Up/Down at a ladder to climb. One up every building's left wall, so a fall is a setback, not a death.
-  ladders: [
+  ladders: [{ x: 40.05, y1: 0, y2: 3.4 },
     { x: 50.5, y1: 0, y2: 3.0 }, { x: 54.6, y1: 3.0, y2: 6.0 }, { x: 67.6, y1: 0, y2: 7.0 },
     { x: 129.6, y1: 0, y2: 4.5 }, { x: 143.6, y1: 0, y2: 6.0 }, { x: 155.6, y1: 0, y2: 4.5 },
     { x: 165.6, y1: 0, y2: 7.0 }, { x: 179.6, y1: 0, y2: 5.0 }, { x: 170.3, y1: 7.0, y2: 10.3 },
@@ -3243,6 +3272,8 @@ const LEVEL2 = {
     { x: 38, theme: 'cellar', name: 'THE CELLAR', loot: ['gold', 'life', 'gold'] },
     { x: 83.5, theme: 'staff', name: 'STAFF ONLY', loot: ['jacket', 'gold', 'flame'], guards: [['walker', 2], ['rat', 2]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[40.5, 41.3, 3.4]],
   checkpoint: 92,
   soundcheck: null,
   ambush: {
@@ -3473,7 +3504,7 @@ const LEVEL3 = {
   movers: [{ kind: 'slide', x: 69.5, y: 0, amp: 2.0, w: 2.9 }],
   // Ride a car up and jump off near the top for the secret ledge
   wheels: [{ x: 108, y: 6.4, r: 4.2, n: 6, w: 1.8 }],
-  ladders: [],
+  ladders: [{ x: 144.15, y1: 0, y2: 3.4 }],
   amps: [],
   crates: [
     { x: 14, loot: 'sticks' }, { x: 49, loot: 'gold' }, { x: 84, loot: 'jacket' }, { x: 115, y: 8.5, loot: 'life' },
@@ -3490,6 +3521,8 @@ const LEVEL3 = {
     { x: 33.5, theme: 'tent', name: 'THE VIP TENT', loot: ['gold', 'life', 'gold'] },
     { x: 75.5, theme: 'lost', name: 'LOST PROPERTY', loot: ['jacket', 'gold', 'sticks'], guards: [['pogo', 2], ['walker', 1]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[144.6, 145.4, 3.4]],
   checkpoint: 120,
   soundcheck: null,
   ambush: {
@@ -3686,7 +3719,7 @@ const LEVEL4 = {
     { kind: 'bob', x: 81, y: 0.1, amp: 1.8, w: 2.4 },
   ],
   // Up the billboard, and up onto the overhead road sign
-  ladders: [{ x: 29.4, y1: 0, y2: 6.5 }, { x: 145.6, y1: 0, y2: 5.6 }],
+  ladders: [{ x: 94.55, y1: 0, y2: 3.4 }, { x: 29.4, y1: 0, y2: 6.5 }, { x: 145.6, y1: 0, y2: 5.6 }],
   amps: [],
   crates: [
     { x: 12, loot: 'sticks' }, { x: 31.2, y: 6.5, loot: 'life' }, { x: 59, loot: 'gold' }, { x: 90, loot: 'jacket' },
@@ -3703,6 +3736,8 @@ const LEVEL4 = {
     { x: 15, theme: 'kitchen', name: 'THE DINER KITCHEN', loot: ['gold', 'life', 'gold'] },
     { x: 118.5, theme: 'tunnel', name: "SMUGGLERS' TUNNEL", loot: ['jacket', 'gold', 'sticks'], guards: [['walker', 2], ['rat', 2]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[95, 95.8, 3.4]],
   checkpoint: 100,
   soundcheck: null,
   ambush: {
@@ -3936,7 +3971,7 @@ const LEVEL5 = {
     { kind: 'slide', x: 98.5, y: 0, amp: 1.6, w: 2.6 },
   ],
   // Up the floodlight gantry from the top of the stand
-  ladders: [{ x: 77.4, y1: 4.8, y2: 9.0 }],
+  ladders: [{ x: 148.75, y1: 0, y2: 3.4 }, { x: 77.4, y1: 4.8, y2: 9.0 }],
   // On-beat super jumps up to the speaker stacks
   amps: [[118, 0.95], [139, 0.95]],
   crates: [
@@ -3953,6 +3988,8 @@ const LEVEL5 = {
     { x: 37, theme: 'green', name: 'THE GREEN ROOM', loot: ['gold', 'life', 'gold'] },
     { x: 135, theme: 'vault', name: "THE DEVIL'S VAULT", loot: ['gold', 'gold', 'life'], guards: [['ghost', 2], ['walker', 2]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[149.2, 150, 3.4]],
   checkpoint: 104,
   soundcheck: null,
   ambush: {
@@ -4474,14 +4511,14 @@ async function get(q) {
  * board: 'score' for the high-score table, or a level number (1, 2...) for that gig's fastest clears.
  * Cached for 30 seconds. Throws if offline/unreachable.
  */
-export async function worldTop(board = 'score', limit = 20, fresh = false) {
+export async function worldTop(board = 'score', limit = 20, fresh = false, hero = null) {
   if (!online()) throw new Error('not connected');
-  const key = String(board);
+  const key = `${board}|${hero || ''}`;
   if (!fresh && cache && cache.key === key && performance.now() - cacheAt < 30000) return cache.rows;
   const cols = 'select=name,score,time_s,level,diff,hero,created_at';
   const rows = board === 'score'
     ? await get(`${cols}&kind=eq.score&order=score.desc,created_at.asc&limit=${limit}`)
-    : await get(`${cols}&kind=eq.speed&level=eq.${board}&order=time_s.asc,created_at.asc&limit=${limit}`);
+    : await get(`${cols}&kind=eq.speed&level=eq.${board}${hero ? `&hero=eq.${encodeURIComponent(hero)}` : ''}&order=time_s.asc,created_at.asc&limit=${limit}`);
   cache = { key, rows };
   cacheAt = performance.now();
   return rows;
@@ -4949,6 +4986,39 @@ class Game {
     }
     if (!inp.held.jump && p.vy > 4 && !p.jumpCut && !inp.fullJump) { p.vy *= 0.5; p.jumpCut = true; }
 
+    // ---- Character moves ----
+    if (p.onGround) p.airJump = true;
+    // Drummer: double jump
+    if (p.char === 'drummer' && ctrl && !p.onGround && p.buffer > 0 && p.coyote <= 0 && p.airJump) {
+      p.airJump = false; p.buffer = 0; p.vy = 13; p.jumpCut = false;
+      M.sJump();
+      this.sparks.emit({ x: p.x, y: p.y + 0.1 }, { n: 16, color: [0x2fa8ff, 0xffffff], speed: 4, up: -1, life: 0.35, size: 0.07, gravity: 2, intensity: 2 });
+    }
+    // Singer: hold Jump while falling to glide
+    p.gliding = p.char === 'singer' && ctrl && !p.onGround && inp.held.jump && p.vy < -2.2;
+    if (p.gliding) {
+      p.vy = -2.2;
+      if (Math.random() < 0.25) this.sparks.emit({ x: p.x - p.face * 0.3, y: p.y + 1.4 }, { n: 1, color: [0xff8ac8, 0x9affd8], speed: 0.6, up: -0.5, life: 0.6, size: 0.09, gravity: 0, intensity: 2 });
+    }
+    // Bassist: Down while running = slide tackle (low, fast, bowls zombies over, can't be hurt)
+    p.slideCd = (p.slideCd || 0) - dt;
+    if (p.char === 'bassist' && ctrl && p.onGround && inp.pressed.down && Math.abs(p.vx) > 3 && p.slideCd <= 0 && !(p.slideT > 0)) {
+      p.slideT = 0.38; p.slideDir = Math.sign(p.vx); p.slideCd = 0.8; p.slideHits = new Set();
+      M.sThrow();
+    }
+    if (p.slideT > 0) {
+      p.slideT -= dt;
+      p.vx = p.slideDir * 13; p.face = p.slideDir; p.h = 0.8; p.crouch = true;
+      if (Math.random() < 0.7) this.chunks.emit({ x: p.x - p.slideDir * 0.4, y: p.y + 0.05 }, { n: 1, color: [0x6a5a50, 0x8a7a70], speed: 2, up: 1.5, life: 0.35, size: 0.08 });
+      const me = { x1: p.x - 0.5, x2: p.x + 0.5, y1: p.y, y2: p.y + 0.9 };
+      for (const e of this.enemies) {
+        if (e.dead || p.slideHits.has(e) || !e.hittable() || !overlap(e.box(), me)) continue;
+        p.slideHits.add(e);
+        this.damage(e, { dmg: 2, x: e.x, y: p.y + 0.4, vx: p.slideDir, power: false, owner: p, r: 0.3 });
+        this.ui.shake(0.15);
+      }
+    }
+
     const W = WEAPONS[p.weapon];
     const mine = this.shots.filter((s) => s.owner === p).length;
     if (ctrl && inp.pressed.throw && p.cd <= 0 && mine < W.max) this.throwWeapon(p);
@@ -4958,6 +5028,11 @@ class Game {
     }
 
     this.move(p, dt);
+    if (p.hitWall) {
+      const b = (this.level.barricades || []).find((q) => !q.broken && p.y < q.solid.y2 - 0.1 && Math.abs(p.x - (p.face > 0 ? q.solid.x1 - p.w : q.solid.x2 + p.w)) < 0.1);
+      if (b && p.char === 'roadie') this.smashBarricade(b);
+      else if (b && !b.hinted) { b.hinted = true; popup('Climb the ladder: UP (the Roadie barges through!)', 'info', { x: b.x, y: b.solid.y2 + 1 }, this.camera); }
+    }
     const minX = this.camX - this.halfW + 0.4;
     if (p.x < minX) { p.x = minX; p.vx = Math.max(0, p.vx); }
     if (this.coop) { const maxX = this.camX + this.halfW - 0.4; if (p.x > maxX) { p.x = maxX; p.vx = Math.min(0, p.vx); } }
@@ -5093,6 +5168,10 @@ class Game {
         armL = near === 'L' ? spin : -1.2; armR = near === 'R' ? spin : -1.2; elL = elR = 0;
       }
       P.head.rotation.x = Math.sin(this.t * 25) * 0.3;
+    } else if (p.slideT > 0) {
+      legL = -1.4; legR = -1.2; kneeL = 0.2; kneeR = 0.4; armL = armR = -1.0; elL = elR = -0.3; bodyY = -0.55; lean = -0.7;
+    } else if (p.gliding) {
+      legL = -0.3; legR = 0.2; kneeL = 0.4; kneeR = 0.3; armL = armR = -1.57; elL = elR = 0; lean = 0.15;
     } else if (p.crouch) {
       legL = legR = -1.25; kneeL = kneeR = 1.7; armL = armR = -0.7; elL = elR = -0.8; bodyY = -0.35; lean = 0.25;
     } else if (!p.onGround) {
@@ -5221,7 +5300,7 @@ class Game {
   }
 
   hurt(p, fromX) {
-    if (p.dead || p.out || p.inv > 0 || this.bossDone) return;
+    if (p.dead || p.out || p.inv > 0 || this.bossDone || p.slideT > 0) return;
     p.combo = 0;
     p.climb = null;
     if (p.armor > 0) {
@@ -5346,6 +5425,17 @@ class Game {
       }
     }
     this.shots = this.shots.filter((s) => { if (s.life > 0) return true; this.scene.remove(s.mesh); return false; });
+  }
+
+  smashBarricade(b) {
+    b.broken = true;
+    const S = this.level.solids;
+    S.splice(S.indexOf(b.solid), 1);
+    this.scene.remove(b.mesh);
+    this.music.sStomp(); this.music.sCrate();
+    this.ui.shake(0.6);
+    this.chunks.emit({ x: b.x, y: b.solid.y2 / 2 }, { n: 50, color: [0x6a4a2a, 0xffc94a, 0x141416], speed: 8, up: 5, life: 1.1, size: 0.16 });
+    popup('BARGED THROUGH!', 'beat', { x: b.x, y: b.solid.y2 + 1 }, this.camera);
   }
 
   // ---- Secret areas -------------------------------------------------------------------------
@@ -7186,7 +7276,7 @@ for (const b of $('score-tabs').children) b.addEventListener('click', () => { sc
 for (const b of document.querySelectorAll('.back')) b.addEventListener('click', toTitle);
 
 // ---- Scoreboards: high score + fastest clear per gig, world or this device ----------------
-let scoreSrc = 'world', board = 'score';
+let scoreSrc = 'world', board = 'score', heroFilter = null;   // heroFilter: a character's name on the speed boards, or null for everyone
 let lastSaved = null;   // highlight your own entry
 function boardTabs() {
   const el = $('board-tabs');
@@ -7216,15 +7306,30 @@ function fillScores(rows) {
     list.append(li);
   }
 }
-const localRows = () => (board === 'score' ? save.scores : save.times[board - 1] || []);
+const localRows = () => (board === 'score' ? save.scores : (save.times[board - 1] || []).filter((r) => !heroFilter || r.hero === heroFilter));
+// Speed boards can be filtered by character: everyone has moves that are fastest somewhere
+function heroTabs() {
+  const el = $('hero-tabs');
+  el.hidden = board === 'score';
+  el.innerHTML = '';
+  for (const name of [null, ...Object.values(HEROES).map((h) => h.name.replace('The ', ''))]) {
+    const b = document.createElement('button');
+    b.textContent = name || 'Everyone';
+    b.classList.toggle('on', name === heroFilter);
+    b.addEventListener('click', () => { heroFilter = name; renderScores(); });
+    el.append(b);
+  }
+}
 async function renderScores() {
   boardTabs();
+  heroTabs();
   for (const b of $('score-tabs').children) b.classList.toggle('on', b.dataset.t === scoreSrc);
   const what = board === 'score' ? 'scores' : 'clear times';
   if (scoreSrc === 'local') { $('score-note').textContent = `Best ${what} on this device.`; fillScores(localRows()); return; }
   if (!online()) { $('score-note').textContent = 'The world scoreboard is not connected yet. Showing this device.'; fillScores(localRows()); return; }
   $('score-note').textContent = 'Loading the world scoreboard…';
-  try { fillScores(await worldTop(board, 20, true)); $('score-note').textContent = `Top 20 ${what} from everyone who plays.`; }
+  const hero = board === 'score' ? null : heroFilter;
+  try { fillScores(await worldTop(board, 20, true, hero)); $('score-note').textContent = hero ? `Top 20 ${what} as the ${hero}.` : `Top 20 ${what} from everyone who plays.`; }
   catch { $('score-note').textContent = "Couldn't reach the world scoreboard. Showing this device."; fillScores(localRows()); }
 }
 

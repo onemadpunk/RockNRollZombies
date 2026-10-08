@@ -39,6 +39,9 @@ export const LEVEL1 = {
     { x: 18, theme: 'crypt', name: 'THE CRYPT', loot: ['gold', 'life', 'gold'] },
     { x: 92, theme: 'bonecellar', name: 'THE BONE CELLAR', loot: ['jacket', 'gold', 'vinyl'], guards: [['crawler', 2], ['walker', 1]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[82.5, 83.3, 3.4]],
+  ladders: [{ x: 82.05, y1: 0, y2: 3.4 }],
   checkpoint: 110,
   soundcheck: [9.5, 12, 14.5],
   storm: [121, 135],

@@ -7,7 +7,7 @@ export function installBot({ mute = true } = {}) {
   const M = rnrz.music;
   if (mute && M.musicBus) { M.master.gain.value = 0; }
   const held = new Set();
-  for (const c of ['ArrowRight', 'ArrowLeft', 'Space', 'ArrowDown', 'KeyX', 'KeyC']) dispatchEvent(new KeyboardEvent('keyup', { code: c }));
+  for (const c of ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'Space', 'ArrowDown', 'KeyX', 'KeyC']) dispatchEvent(new KeyboardEvent('keyup', { code: c }));
   const set = (code, on) => {
     if (on && !held.has(code)) { held.add(code); dispatchEvent(new KeyboardEvent('keydown', { code })); }
     else if (!on && held.has(code)) { held.delete(code); dispatchEvent(new KeyboardEvent('keyup', { code })); }
@@ -136,6 +136,12 @@ export function installBot({ mute = true } = {}) {
       if (Math.abs(L.dx) > 0.001) { if (end - L.x2 < 0.4) move = 1; }
       else if (end - p.x <= 3.6) { jump = true; move = 1; }
     }
+    // crew barricades: climb the ladder up the near side, then carry on over the top
+    let up = false;
+    const bar = (G.level.barricades || []).find((b) => !b.broken && b.solid.x1 - p.x < 1.2 && b.solid.x1 - p.x > -0.1 && p.y < b.solid.y2 - 0.1);
+    const lad = G.level.ladders.find((l) => Math.abs(l.x - p.x) < 0.6 && p.y < l.y2 - 0.05);
+    if (p.climb || (bar && lad)) { up = true; jump = false; move = p.climb ? 0 : move; }
+    set('ArrowUp', up);
     if (!p.onGround && bot.jumpHold > 0) move = bot.jumpDir || 1;
     if (jump && p.onGround && move > 0) { bot.jumpHold = 40; bot.jumpDir = 1; }
     bot.jumpHold--;

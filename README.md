@@ -40,7 +40,9 @@ Each rescued bandmate becomes playable. Each gig hides three platinum records.
 - **Throw on the beat** for double damage and a combo. The ring at your feet flashes on the beat.
 - **Guitar solo:** on-beat throws fill the SOLO meter; when full, wipe out everything on screen.
 - **Checkpoints:** the jukebox (and each zone on Easy/Normal). Continue after a Game Over starts from your last checkpoint.
-- **Scoreboards:** high scores and fastest clear time per gig, on this device and worldwide. Share a challenge link with a friend.
+- **Scoreboards:** high scores and fastest clear time per gig, on this device and worldwide (filter the fastest times by character). Share a challenge link with a friend.
+- **Special moves:** Drummer double jump (Jump in the air), Singer glide (hold Jump while falling), Bassist slide tackle (Down while running), Roadie barges through crew barricades. The Punk throws fastest.
+- **Secret areas:** two per gig, behind cracked walls with a faint light in the cracks. Shoot the wall, then Up at the door.
 
 ## Working on the code
 The game code lives in `js/`. After changing anything, rebuild the double-clickable file:

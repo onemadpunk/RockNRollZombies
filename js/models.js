@@ -71,11 +71,11 @@ function arm(parent, x, y, wide, upperMat, foreMat, fistMat) {
 // ---------------------------------------------------------------------------
 // Heroes: 'punk' (guitar), 'drummer', 'bassist'. Same skeleton, different look.
 export const HEROES = {
-  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks. All-rounder.' },
-  drummer: { name: 'The Drummer', weapon: 'sticks', jump: 16, blurb: 'Drumsticks in a spread. Jumps higher.' },
-  bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14.6, blurb: 'Boomerang vinyl. Solo hits harder.' },
-  singer: { name: 'The Singer', weapon: 'notes', jump: 15, blurb: 'Fires musical notes that weave up and down.' },
-  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Lobs heavy spanners: slow, but they hit twice as hard.' },
+  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks, the fastest throws. The all-rounder.' },
+  drummer: { name: 'The Drummer', weapon: 'sticks', jump: 16, blurb: 'Drumsticks in a spread. DOUBLE JUMP: press Jump again in the air.' },
+  bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14.6, blurb: 'Boomerang vinyl. SLIDE TACKLE: press Down while running.' },
+  singer: { name: 'The Singer', weapon: 'notes', jump: 15, blurb: 'Notes that weave up and down. GLIDE: hold Jump while falling.' },
+  roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Heavy spanners, double damage. BARGE: walks straight through crew barricades.' },
 };
 
 export function makeHero(kind = 'punk') {

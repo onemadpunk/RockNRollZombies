@@ -325,6 +325,27 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
     solids.push(s);
     return { ...a, x, solid: s };
   });
+  // Crew barricades: solid, with a ladder up the near side. The Roadie barges straight through.
+  const barricades = (L.barricades || []).map(([a, b, h]) => {
+    const solid = { x1: a, x2: b, y1: 0, y2: h };
+    solids.push(solid);
+    const g = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 });
+    const stripe = new THREE.MeshStandardMaterial({ color: 0xffc94a, roughness: 0.6, emissive: 0x2a1a00 });
+    const blk = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6 });
+    const w = b - a, cx = (a + b) / 2;
+    for (let y = 0.25; y < h; y += 0.55) {
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.45, 1.8), wood); plank.position.set(cx, y, -0.4); plank.castShadow = plank.receiveShadow = true; g.add(plank);
+    }
+    for (let i = 0; i < 5; i++) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(0.06, h * 0.5, 0.3), i % 2 ? blk : stripe);
+      st.position.set(cx - w / 2 - 0.02, h * 0.55, 0.15 - i * 0.3 + 0.6); st.rotation.x = 0.6; g.add(st);
+    }
+    const sign = textPanel('CREW ONLY', { w: 1.6, h: 0.45, color: '#ffc94a', bg: '#141416' });
+    sign.position.set(cx, h * 0.6, 0.52); g.add(sign);
+    scene.add(g);
+    return { solid, mesh: g, x: cx, broken: false };
+  });
   // Ladders: iron rails + rungs, climbable from y1 up to y2
   const ladderMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.5, metalness: 0.7 });
   const ladders = (L.ladders || []).map(({ x, y1 = 0, y2 }) => {
@@ -347,7 +368,7 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
   const dummy = new THREE.Object3D();
 
   const api = {
-    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders,
+    L, solids, ledges, movers, amps, juke, lanterns, B, onGround, lanternMat, ladders, barricades,
     /** Height of the top solid surface at x (street, roof, crate...), or null over a pit. */
     surfaceAt(x) {
       let top = null;

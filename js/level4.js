@@ -28,7 +28,7 @@ export const LEVEL4 = {
     { kind: 'bob', x: 81, y: 0.1, amp: 1.8, w: 2.4 },
   ],
   // Up the billboard, and up onto the overhead road sign
-  ladders: [{ x: 29.4, y1: 0, y2: 6.5 }, { x: 145.6, y1: 0, y2: 5.6 }],
+  ladders: [{ x: 94.55, y1: 0, y2: 3.4 }, { x: 29.4, y1: 0, y2: 6.5 }, { x: 145.6, y1: 0, y2: 5.6 }],
   amps: [],
   crates: [
     { x: 12, loot: 'sticks' }, { x: 31.2, y: 6.5, loot: 'life' }, { x: 59, loot: 'gold' }, { x: 90, loot: 'jacket' },
@@ -45,6 +45,8 @@ export const LEVEL4 = {
     { x: 15, theme: 'kitchen', name: 'THE DINER KITCHEN', loot: ['gold', 'life', 'gold'] },
     { x: 118.5, theme: 'tunnel', name: "SMUGGLERS' TUNNEL", loot: ['jacket', 'gold', 'sticks'], guards: [['walker', 2], ['rat', 2]] },
   ],
+  // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
+  barricades: [[95, 95.8, 3.4]],
   checkpoint: 100,
   soundcheck: null,
   ambush: {

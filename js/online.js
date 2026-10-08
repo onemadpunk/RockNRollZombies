@@ -33,14 +33,14 @@ async function get(q) {
  * board: 'score' for the high-score table, or a level number (1, 2...) for that gig's fastest clears.
  * Cached for 30 seconds. Throws if offline/unreachable.
  */
-export async function worldTop(board = 'score', limit = 20, fresh = false) {
+export async function worldTop(board = 'score', limit = 20, fresh = false, hero = null) {
   if (!online()) throw new Error('not connected');
-  const key = String(board);
+  const key = `${board}|${hero || ''}`;
   if (!fresh && cache && cache.key === key && performance.now() - cacheAt < 30000) return cache.rows;
   const cols = 'select=name,score,time_s,level,diff,hero,created_at';
   const rows = board === 'score'
     ? await get(`${cols}&kind=eq.score&order=score.desc,created_at.asc&limit=${limit}`)
-    : await get(`${cols}&kind=eq.speed&level=eq.${board}&order=time_s.asc,created_at.asc&limit=${limit}`);
+    : await get(`${cols}&kind=eq.speed&level=eq.${board}${hero ? `&hero=eq.${encodeURIComponent(hero)}` : ''}&order=time_s.asc,created_at.asc&limit=${limit}`);
   cache = { key, rows };
   cacheAt = performance.now();
   return rows;

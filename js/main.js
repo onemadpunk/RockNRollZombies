@@ -264,7 +264,7 @@ for (const b of $('score-tabs').children) b.addEventListener('click', () => { sc
 for (const b of document.querySelectorAll('.back')) b.addEventListener('click', toTitle);
 
 // ---- Scoreboards: high score + fastest clear per gig, world or this device ----------------
-let scoreSrc = 'world', board = 'score';
+let scoreSrc = 'world', board = 'score', heroFilter = null;   // heroFilter: a character's name on the speed boards, or null for everyone
 let lastSaved = null;   // highlight your own entry
 function boardTabs() {
   const el = $('board-tabs');
@@ -294,15 +294,30 @@ function fillScores(rows) {
     list.append(li);
   }
 }
-const localRows = () => (board === 'score' ? save.scores : save.times[board - 1] || []);
+const localRows = () => (board === 'score' ? save.scores : (save.times[board - 1] || []).filter((r) => !heroFilter || r.hero === heroFilter));
+// Speed boards can be filtered by character: everyone has moves that are fastest somewhere
+function heroTabs() {
+  const el = $('hero-tabs');
+  el.hidden = board === 'score';
+  el.innerHTML = '';
+  for (const name of [null, ...Object.values(HEROES).map((h) => h.name.replace('The ', ''))]) {
+    const b = document.createElement('button');
+    b.textContent = name || 'Everyone';
+    b.classList.toggle('on', name === heroFilter);
+    b.addEventListener('click', () => { heroFilter = name; renderScores(); });
+    el.append(b);
+  }
+}
 async function renderScores() {
   boardTabs();
+  heroTabs();
   for (const b of $('score-tabs').children) b.classList.toggle('on', b.dataset.t === scoreSrc);
   const what = board === 'score' ? 'scores' : 'clear times';
   if (scoreSrc === 'local') { $('score-note').textContent = `Best ${what} on this device.`; fillScores(localRows()); return; }
   if (!online()) { $('score-note').textContent = 'The world scoreboard is not connected yet. Showing this device.'; fillScores(localRows()); return; }
   $('score-note').textContent = 'Loading the world scoreboard…';
-  try { fillScores(await worldTop(board, 20, true)); $('score-note').textContent = `Top 20 ${what} from everyone who plays.`; }
+  const hero = board === 'score' ? null : heroFilter;
+  try { fillScores(await worldTop(board, 20, true, hero)); $('score-note').textContent = hero ? `Top 20 ${what} as the ${hero}.` : `Top 20 ${what} from everyone who plays.`; }
   catch { $('score-note').textContent = "Couldn't reach the world scoreboard. Showing this device."; fillScores(localRows()); }
 }
 

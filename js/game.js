@@ -400,6 +400,39 @@ export class Game {
     }
     if (!inp.held.jump && p.vy > 4 && !p.jumpCut && !inp.fullJump) { p.vy *= 0.5; p.jumpCut = true; }
 
+    // ---- Character moves ----
+    if (p.onGround) p.airJump = true;
+    // Drummer: double jump
+    if (p.char === 'drummer' && ctrl && !p.onGround && p.buffer > 0 && p.coyote <= 0 && p.airJump) {
+      p.airJump = false; p.buffer = 0; p.vy = 13; p.jumpCut = false;
+      M.sJump();
+      this.sparks.emit({ x: p.x, y: p.y + 0.1 }, { n: 16, color: [0x2fa8ff, 0xffffff], speed: 4, up: -1, life: 0.35, size: 0.07, gravity: 2, intensity: 2 });
+    }
+    // Singer: hold Jump while falling to glide
+    p.gliding = p.char === 'singer' && ctrl && !p.onGround && inp.held.jump && p.vy < -2.2;
+    if (p.gliding) {
+      p.vy = -2.2;
+      if (Math.random() < 0.25) this.sparks.emit({ x: p.x - p.face * 0.3, y: p.y + 1.4 }, { n: 1, color: [0xff8ac8, 0x9affd8], speed: 0.6, up: -0.5, life: 0.6, size: 0.09, gravity: 0, intensity: 2 });
+    }
+    // Bassist: Down while running = slide tackle (low, fast, bowls zombies over, can't be hurt)
+    p.slideCd = (p.slideCd || 0) - dt;
+    if (p.char === 'bassist' && ctrl && p.onGround && inp.pressed.down && Math.abs(p.vx) > 3 && p.slideCd <= 0 && !(p.slideT > 0)) {
+      p.slideT = 0.38; p.slideDir = Math.sign(p.vx); p.slideCd = 0.8; p.slideHits = new Set();
+      M.sThrow();
+    }
+    if (p.slideT > 0) {
+      p.slideT -= dt;
+      p.vx = p.slideDir * 13; p.face = p.slideDir; p.h = 0.8; p.crouch = true;
+      if (Math.random() < 0.7) this.chunks.emit({ x: p.x - p.slideDir * 0.4, y: p.y + 0.05 }, { n: 1, color: [0x6a5a50, 0x8a7a70], speed: 2, up: 1.5, life: 0.35, size: 0.08 });
+      const me = { x1: p.x - 0.5, x2: p.x + 0.5, y1: p.y, y2: p.y + 0.9 };
+      for (const e of this.enemies) {
+        if (e.dead || p.slideHits.has(e) || !e.hittable() || !overlap(e.box(), me)) continue;
+        p.slideHits.add(e);
+        this.damage(e, { dmg: 2, x: e.x, y: p.y + 0.4, vx: p.slideDir, power: false, owner: p, r: 0.3 });
+        this.ui.shake(0.15);
+      }
+    }
+
     const W = WEAPONS[p.weapon];
     const mine = this.shots.filter((s) => s.owner === p).length;
     if (ctrl && inp.pressed.throw && p.cd <= 0 && mine < W.max) this.throwWeapon(p);
@@ -409,6 +442,11 @@ export class Game {
     }
 
     this.move(p, dt);
+    if (p.hitWall) {
+      const b = (this.level.barricades || []).find((q) => !q.broken && p.y < q.solid.y2 - 0.1 && Math.abs(p.x - (p.face > 0 ? q.solid.x1 - p.w : q.solid.x2 + p.w)) < 0.1);
+      if (b && p.char === 'roadie') this.smashBarricade(b);
+      else if (b && !b.hinted) { b.hinted = true; popup('Climb the ladder: UP (the Roadie barges through!)', 'info', { x: b.x, y: b.solid.y2 + 1 }, this.camera); }
+    }
     const minX = this.camX - this.halfW + 0.4;
     if (p.x < minX) { p.x = minX; p.vx = Math.max(0, p.vx); }
     if (this.coop) { const maxX = this.camX + this.halfW - 0.4; if (p.x > maxX) { p.x = maxX; p.vx = Math.min(0, p.vx); } }
@@ -544,6 +582,10 @@ export class Game {
         armL = near === 'L' ? spin : -1.2; armR = near === 'R' ? spin : -1.2; elL = elR = 0;
       }
       P.head.rotation.x = Math.sin(this.t * 25) * 0.3;
+    } else if (p.slideT > 0) {
+      legL = -1.4; legR = -1.2; kneeL = 0.2; kneeR = 0.4; armL = armR = -1.0; elL = elR = -0.3; bodyY = -0.55; lean = -0.7;
+    } else if (p.gliding) {
+      legL = -0.3; legR = 0.2; kneeL = 0.4; kneeR = 0.3; armL = armR = -1.57; elL = elR = 0; lean = 0.15;
     } else if (p.crouch) {
       legL = legR = -1.25; kneeL = kneeR = 1.7; armL = armR = -0.7; elL = elR = -0.8; bodyY = -0.35; lean = 0.25;
     } else if (!p.onGround) {
@@ -672,7 +714,7 @@ export class Game {
   }
 
   hurt(p, fromX) {
-    if (p.dead || p.out || p.inv > 0 || this.bossDone) return;
+    if (p.dead || p.out || p.inv > 0 || this.bossDone || p.slideT > 0) return;
     p.combo = 0;
     p.climb = null;
     if (p.armor > 0) {
@@ -797,6 +839,17 @@ export class Game {
       }
     }
     this.shots = this.shots.filter((s) => { if (s.life > 0) return true; this.scene.remove(s.mesh); return false; });
+  }
+
+  smashBarricade(b) {
+    b.broken = true;
+    const S = this.level.solids;
+    S.splice(S.indexOf(b.solid), 1);
+    this.scene.remove(b.mesh);
+    this.music.sStomp(); this.music.sCrate();
+    this.ui.shake(0.6);
+    this.chunks.emit({ x: b.x, y: b.solid.y2 / 2 }, { n: 50, color: [0x6a4a2a, 0xffc94a, 0x141416], speed: 8, up: 5, life: 1.1, size: 0.16 });
+    popup('BARGED THROUGH!', 'beat', { x: b.x, y: b.solid.y2 + 1 }, this.camera);
   }
 
   // ---- Secret areas -------------------------------------------------------------------------
