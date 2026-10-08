@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Rock 'n' Roll Zombies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bungee&family=Rubik:wght@500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="game"></div>
+<div id="vignette"></div>
+<div id="flash"></div>
+<div id="letterbox" hidden><div class="bar top"></div><div class="bar bottom"></div><div id="bosscard"><div class="nm"></div><div class="tg"></div></div></div>
+
+<!-- In-game HUD -->
+<div id="hud" hidden>
+  <div class="hud-left">
+    <div class="score"><span class="label">Score</span> <span id="score">0</span> <span class="timer" id="timer">0:00.00</span></div>
+    <div class="row">
+      <span class="label">Lives</span> <span id="lives">3</span>
+      <span class="sep">|</span>
+      <span id="armor" class="armor on">JACKET ON</span>
+      <span class="sep">|</span>
+      <span class="cashv" id="cash">$0</span>
+    </div>
+    <div class="row p2" id="hud-p2" hidden></div>
+  </div>
+  <div class="hud-right">
+    <div class="row"><span class="label">Weapon</span> <span id="weapon">PICKS</span></div>
+    <div class="band" id="band">
+      <span data-layer="guitar" class="on">GUITAR</span>
+      <span data-layer="bass" class="on">BASS</span>
+      <span data-layer="beat">BEAT</span>
+      <span data-layer="lead">LEAD</span>
+    </div>
+    <div class="combo"><span class="label">On-beat combo</span> <span id="combo">0</span></div>
+    <div class="solo" id="solo"><span class="label">Solo</span><div class="meter"><div id="solofill"></div></div><span id="solokey">C</span></div>
+  </div>
+  <div id="zone" hidden></div>
+  <div id="hint" hidden></div>
+  <div id="beatbar"><div class="center"></div><div class="mk l"></div><div class="mk r"></div></div>
+  <div id="bossbar" hidden><div class="name" id="bossname">THE BOUNCER</div><div class="track"><div id="bossfill"></div></div></div>
+</div>
+
+<div id="popups"></div>
+<div id="banner" hidden></div>
+
+<!-- Title -->
+<div id="title" class="screen">
+  <div class="title-inner wide">
+    <h1>Rock 'n' Roll<br><span>Zombies</span></h1>
+    <p id="challenge" class="challenge" hidden></p>
+    <button id="start" class="btn">Play</button>
+    <div class="opts">
+      <div class="opt"><span class="label">Difficulty</span><div class="seg" id="opt-diff"></div><p class="blurb" id="diff-blurb"></p></div>
+      <div class="opt"><span class="label">Players</span><div class="seg" id="opt-players">
+        <button data-v="1" class="on">1 player</button><button data-v="2">2 players</button></div>
+        <p class="blurb" id="players-blurb">Keyboard, controller or touch.</p></div>
+      <div class="opt"><span class="label" id="char-label">Character</span><div class="seg" id="opt-char"></div><p class="blurb" id="char-blurb"></p></div>
+      <div class="opt" id="opt-char2-wrap" hidden><span class="label">Player 2</span><div class="seg" id="opt-char2"></div></div>
+      <div class="opt"><span class="label">Gig</span><div class="seg" id="opt-level"></div><p class="blurb" id="level-blurb"></p></div>
+      <div class="opt"><span class="label">Settings</span><div class="seg toggles">
+        <button id="tg-flash">Flashing: On</button><button id="tg-shake">Shake: On</button><button id="tg-sound">Soundcheck: On</button></div></div>
+    </div>
+    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button></div>
+    <p id="loading" class="tip">Loading&hellip;</p>
+    <script>
+      // Opened by double-clicking index.html? Browsers block the game code there.
+      if (location.protocol === 'file:') document.getElementById('loading').innerHTML =
+        '<b style="color:#ff2e88">Don\'t open this file directly.</b> Double-click <b>Play Rock n Roll Zombies.html</b> instead.';
+    </script>
+  </div>
+</div>
+
+<div id="controls" class="screen" hidden>
+  <div class="title-inner">
+    <h2>Controls</h2>
+    <table class="ctl">
+      <tr><th></th><th>1 player</th><th>2P: player 1</th><th>2P: player 2</th><th>Pad</th></tr>
+      <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td></tr>
+      <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td></tr>
+      <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td></tr>
+      <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td></tr>
+      <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td></tr>
+      <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td></tr>
+    </table>
+    <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).</p>
+    <button class="btn back">Back</button>
+  </div>
+</div>
+
+<div id="scores" class="screen" hidden>
+  <div class="title-inner">
+    <h2>High scores</h2>
+    <div class="seg" id="board-tabs"></div>
+    <div class="seg" id="score-tabs"><button data-t="world" class="on">World</button><button data-t="local">This device</button></div>
+    <p class="tip" id="score-note"></p>
+    <ol id="score-list" class="scores"></ol>
+    <button class="btn back">Back</button>
+  </div>
+</div>
+
+<div id="comic" class="screen" hidden>
+  <div class="title-inner wide">
+    <div id="panels" class="panels"></div>
+    <button id="comic-next" class="btn">Continue</button>
+  </div>
+</div>
+
+<div id="map" class="screen" hidden>
+  <div class="title-inner wide">
+    <h2>The tour</h2>
+    <div id="mapsvg"></div>
+    <h3 class="sub">Merch stand</h3>
+    <div id="shop" class="shop"></div>
+    <button id="map-go" class="btn">Next gig</button>
+  </div>
+</div>
+
+<div id="pause" class="screen" hidden>
+  <div class="title-inner">
+    <h2>Paused</h2>
+    <button id="resume" class="btn">Resume</button>
+    <div class="row-btns">
+      <button id="quality" class="btn small">Graphics: High</button>
+      <button id="p-flash" class="btn small">Flashing: On</button>
+      <button id="p-shake" class="btn small">Shake: On</button>
+    </div>
+    <button id="quit" class="btn small">Quit to title</button>
+  </div>
+</div>
+
+<div id="over" class="screen" hidden>
+  <div class="title-inner">
+    <h2 id="over-title">Game Over</h2>
+    <p id="over-text" class="sub"></p>
+    <div id="rank" hidden><div class="grade" id="grade">A</div><dl id="stats"></dl></div>
+    <p id="unlock" class="unlock" hidden></p>
+    <form id="hs" class="hs" hidden>
+      <p class="hs-title" id="hs-title">New high score! Enter your initials</p>
+      <div class="initials" id="initials" tabindex="0" aria-label="Initials: use up and down to change a letter, left and right to move, Enter to save">
+        <div class="slot" data-i="0"><button type="button" class="up" aria-label="Next letter">&#9650;</button><span>A</span><button type="button" class="dn" aria-label="Previous letter">&#9660;</button></div>
+        <div class="slot" data-i="1"><button type="button" class="up" aria-label="Next letter">&#9650;</button><span>A</span><button type="button" class="dn" aria-label="Previous letter">&#9660;</button></div>
+        <div class="slot" data-i="2"><button type="button" class="up" aria-label="Next letter">&#9650;</button><span>A</span><button type="button" class="dn" aria-label="Previous letter">&#9660;</button></div>
+      </div>
+      <p class="tip" id="hs-where"></p>
+      <button class="btn small" id="hs-save">Save</button>
+    </form>
+    <div class="row-btns">
+      <button id="share" class="btn small">Share score</button>
+    </div>
+    <textarea id="share-text" class="share-text" rows="3" readonly hidden></textarea>
+    <div class="row-btns">
+      <button id="over-next" class="btn">Continue</button>
+      <button id="over-encore" class="btn small" hidden>Encore (harder)</button>
+      <button id="over-again" class="btn small">Try again</button>
+      <button id="over-title-btn" class="btn small">Title</button>
+    </div>
+  </div>
+</div>
+
+<div id="error" class="screen" hidden>
+  <div class="title-inner">
+    <h2>Something broke</h2>
+    <p class="tip">Take a photo or screenshot of this and send it to Claude.</p>
+    <pre></pre>
+    <button id="reload" class="btn">Reload</button>
+  </div>
+</div>
+
+<!-- Touch controls -->
+<div id="touch" hidden>
+  <div class="pad-l">
+    <button data-k="left" aria-label="Left">&#9664;</button>
+    <button data-k="down" aria-label="Crouch">&#9660;</button>
+    <button data-k="right" aria-label="Right">&#9654;</button>
+  </div>
+  <div class="pad-r">
+    <button data-k="special" class="sp">SOLO</button>
+    <button data-k="throw" class="big t">THROW</button>
+    <button data-k="jump" class="big j">JUMP</button>
+  </div>
+  <button data-k="pause" class="pz" aria-label="Pause">II</button>
+</div>
+
+<script>
+  // Catch load errors too (before the game code is running).
+  addEventListener('error', (e) => {
+    const el = document.getElementById('error');
+    if (!el || !el.hidden) return;
+    el.querySelector('pre').textContent = (e.message || 'Unknown error') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
+    el.hidden = false;
+  });
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
