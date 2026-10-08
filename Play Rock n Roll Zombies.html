@@ -5492,13 +5492,14 @@ class Game {
     this.stats.kills++;
     const combo = owner ? owner.combo : 0;
     const mult = 1 + Math.min(3, Math.floor(combo / 5));
-    const pts = e.points * (power ? 2 : 1) * mult;
+    // Bosses are a flat reward: one lucky on-beat combo hit shouldn't outweigh the whole gig
+    const pts = e.boss ? e.points : e.points * (power ? 2 : 1) * mult;
     this.run.score += pts;
     this.run.cash += e.boss ? 100 : 1;
     if (owner) this.addSolo(owner, power ? 6 : 2);
     this.hitStop = Math.max(this.hitStop, power ? 0.07 : 0.04);
     const c = e.center();
-    popup(mult > 1 ? `+${pts} x${mult}` : `+${pts}`, 'pts', { x: c.x, y: c.y + 0.8 }, this.camera);
+    popup(mult > 1 && !e.boss ? `+${pts} x${mult}` : `+${pts}`, 'pts', { x: c.x, y: c.y + 0.8 }, this.camera);
     if (e.boss) { this.bossDefeated(e); return; }
     if (e.kind === 'ghost') {
       this.scene.remove(e.model.root);
@@ -6766,6 +6767,10 @@ class Game {
     for (const z of this.enemies) if (z !== e) this.killEnemy(z, false);
     for (const f of this.foeShots) f.life = 0;
     this.rescued = this.L.rescue;
+    if (this.stats.deaths === 0) {
+      this.run.score += 10000;
+      setTimeout(() => popup('FLAWLESS GIG! +10000', 'beat', { x: c.x, y: c.y + 2.2 }, this.camera), 600);
+    }
     setTimeout(() => {
       const who = { drummer: 'Drummer', bassist: 'Bassist', singer: 'Singer', roadie: 'Roadie' }[this.L.rescue] || 'Bandmate';
       const sub = { drummer: 'The beat is back for good', bassist: 'The low end is back', singer: 'The band has a voice again', roadie: 'The gear is back on the road' }[this.L.rescue] || '';
