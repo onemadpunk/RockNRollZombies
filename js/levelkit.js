@@ -330,7 +330,7 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
     const solid = { x1: a, x2: b, y1: 0, y2: h };
     solids.push(solid);
     const g = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 });
+    const wood = surface(new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 }), 'wood', 1.5, 1.2);
     const stripe = new THREE.MeshStandardMaterial({ color: 0xffc94a, roughness: 0.6, emissive: 0x2a1a00 });
     const blk = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6 });
     const w = b - a, cx = (a + b) / 2;

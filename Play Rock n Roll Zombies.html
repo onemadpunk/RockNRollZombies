@@ -2658,7 +2658,7 @@ function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, makeMover
     const solid = { x1: a, x2: b, y1: 0, y2: h };
     solids.push(solid);
     const g = new THREE.Group();
-    const wood = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 });
+    const wood = surface(new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.9 }), 'wood', 1.5, 1.2);
     const stripe = new THREE.MeshStandardMaterial({ color: 0xffc94a, roughness: 0.6, emissive: 0x2a1a00 });
     const blk = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6 });
     const w = b - a, cx = (a + b) / 2;
@@ -3308,7 +3308,7 @@ function buildAlley(scene, quality) {
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
   const asphalt = M(0x26262e), concrete = M(0x3a3438), tar = M(0x1d1d24), brick = M(0x5a2e2a), brick2 = M(0x4a3a3a);
   const brick3 = M(0x3a3440), iron = M(0x1a1a20, { roughness: 0.5, metalness: 0.6 }), wood = M(0x3a2418, { roughness: 0.8 });
-  const felt = M(0x1e5a3a), dark = M(0x07060a, { roughness: 1 }), metal = M(0x6a6e78, { roughness: 0.4, metalness: 0.7 });
+  const felt = surface(M(0x1e5a3a), 'fabric', 0.8, 0.6), dark = M(0x07060a, { roughness: 1 }), metal = M(0x6a6e78, { roughness: 0.4, metalness: 0.7 });
   const dumpster = M(0x2a5a3a, { roughness: 0.6, metalness: 0.3 });
   const winLit = new THREE.MeshStandardMaterial({ color: 0xffc070, emissive: 0xffa040, emissiveIntensity: 0.9 });
   const winBlue = new THREE.MeshStandardMaterial({ color: 0x80b0ff, emissive: 0x4070ff, emissiveIntensity: 0.8 });
@@ -3422,7 +3422,7 @@ function buildAlley(scene, quality) {
   }
   for (const [a, b, h, type] of L.blocks) if (type === 'building' && a > 120) B.add(GEO.box, metal, mat4(b - 1.2, h + 1.6, -2.4, 0, 0, 0, 0.05, 3.2, 0.05));   // antennas
   // arena: two stone pillars for the gargoyle's perches
-  const stone = M(0x7d7f8c, { roughness: 0.95 });
+  const stone = surface(M(0x7d7f8c, { roughness: 0.95 }), 'stone', 2, 1.3);
   for (const [a, b, y] of L.ledges.filter(([, , y]) => y > 4.5 && y < 5)) B.add(GEO.box, stone, mat4((a + b) / 2, (y - 0.3) / 2, -0.8, 0, 0, 0, b - a - 0.3, y - 0.3, 1.2));
   for (const [a, b, y] of L.ledges.filter(([a2]) => a2 > 195)) if (y < 4) B.add(GEO.box, iron, mat4((a + b) / 2, y / 2, -0.95, 0, 0, 0, 0.1, y, 0.1));
   world.solids.push({ x1: L.arena.x2, x2: 240, y1: 0, y2: 20 });
@@ -3570,7 +3570,7 @@ function buildFestival(scene, quality) {
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
   const grass = M(0x2a3a1e), soil = M(0x3a2a20), dark = M(0x07060a), planks = M(0x5a4030), steel = M(0x9aa0aa, { roughness: 0.4, metalness: 0.7 });
   const canvasA = M(0xd8c8a0), canvasB = M(0x6a8a5a), canvasC = M(0xa83a3a), canvasD = M(0x3a5a8a);
-  const looBlue = M(0x2a5ab0, { roughness: 0.6 }), looWhite = M(0xe8e8e8, { roughness: 0.6 });
+  const looBlue = surface(M(0x2a5ab0, { roughness: 0.6 }), 'metal', 1.2, 0.5), looWhite = surface(M(0xe8e8e8, { roughness: 0.6 }), 'metal', 1.2, 0.4);
   const bulb = new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffb040, emissiveIntensity: 2.2 });
   const bulbPink = new THREE.MeshStandardMaterial({ color: 0xff8ac8, emissive: 0xff2e88, emissiveIntensity: 2 });
   const water = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.1, metalness: 0.3, emissive: 0x0a1a3a });
@@ -3596,7 +3596,7 @@ function buildFestival(scene, quality) {
       B.add(GEO.box, c, mat4(cx, h - 0.04, -0.4, 0, 0, 0, w * 0.2, 0.08, 2.2));        // ridge you stand on
       B.add(GEO.box, dark, mat4(cx, h * 0.3, 0.72, 0, 0, 0, w * 0.25, h * 0.6, 0.04));   // doorway
     } else {
-      const pink = M(0xff5aa8, { roughness: 0.5 }), yellow = M(0xffd23a, { roughness: 0.5 });
+      const pink = surface(M(0xff5aa8, { roughness: 0.5 }), 'fabric', 1, 0.6), yellow = surface(M(0xffd23a, { roughness: 0.5 }), 'fabric', 1, 0.6);
       B.add(GEO.box, pink, mat4(cx, h / 2, -0.4, 0, 0, 0, w, h, 2.4));
       B.add(GEO.box, yellow, mat4(cx, h + 0.15, -1.4, 0, 0, 0, w, 1.6, 0.3));            // back wall
       for (const x of [a + 0.3, b - 0.3]) {
@@ -3817,14 +3817,14 @@ function buildHighway(scene, quality) {
   for (const [a, b, h, type] of L.blocks) {
     const w = b - a, cx = (a + b) / 2;
     if (type === 'truck') {
-      B.add(GEO.box, M(0xc8c4bc, { roughness: 0.5 }), mat4(a + (w - 1.6) / 2, h / 2 + 0.2, -0.4, 0, 0, 0, w - 1.6, h - 0.4, 2.2));
-      B.add(GEO.box, M(0xa82a2a, { roughness: 0.4, metalness: 0.3 }), mat4(b - 0.75, h / 2, -0.4, 0, 0, 0, 1.5, h, 2.1));
+      B.add(GEO.box, surface(M(0xc8c4bc, { roughness: 0.5 }), 'metal', 1.6, 0.7), mat4(a + (w - 1.6) / 2, h / 2 + 0.2, -0.4, 0, 0, 0, w - 1.6, h - 0.4, 2.2));
+      B.add(GEO.box, surface(M(0xa82a2a, { roughness: 0.4, metalness: 0.3 }), 'metal', 1.6, 0.6), mat4(b - 0.75, h / 2, -0.4, 0, 0, 0, 1.5, h, 2.1));
       B.add(GEO.box, M(0x1a2a3a, { roughness: 0.1 }), mat4(b - 0.05, h * 0.72, -0.4, 0, 0, 0, 0.06, h * 0.32, 1.8));
       for (const x of [a + 0.8, a + 2, b - 2.6, b - 0.8]) B.add(GEO.cyl, burnt, mat4(x, 0.38, 0.75, Math.PI / 2, 0, 0, 0.76, 0.3, 0.76));
       const t = textPanel('HELL FREIGHT', { w: 3.6, h: 0.8, color: '#ff4a4a' });
       t.position.set(a + (w - 1.6) / 2, h * 0.55, 0.72); scene.add(t);
     } else if (type === 'bus') {
-      const purple = M(0x5a2a8a, { roughness: 0.35, metalness: 0.3 });
+      const purple = surface(M(0x5a2a8a, { roughness: 0.35, metalness: 0.3 }), 'metal', 1.6, 0.6);
       B.add(GEO.box, purple, mat4(cx, h / 2 + 0.15, -0.4, 0, 0, 0, w, h - 0.3, 2.3));
       B.add(GEO.box, M(0x1a1a2a, { roughness: 0.1, emissive: 0x200a30 }), mat4(cx, h * 0.68, 0.76, 0, 0, 0, w - 0.6, 0.55, 0.04));
       for (const x of [a + 1, b - 1]) B.add(GEO.cyl, burnt, mat4(x, 0.36, 0.78, Math.PI / 2, 0, 0, 0.72, 0.3, 0.72));
@@ -3867,13 +3867,13 @@ function buildHighway(scene, quality) {
     BG.add(GEO.box, rust, mat4(x, 3.5, -7, 0, 0, 0, 0.2, 7, 0.2));
     BG.add(GEO.box, rust, mat4(x, 6.6, -7, 0, 0, 0, 1.6, 0.12, 0.12));
   }
-  const cactus = M(0x2a4a2a);
+  const cactus = surface(M(0x2a4a2a), 'fabric', 0.6, 0.8);   // ridged
   for (let x = -26; x < 240; x += 7 + r() * 9) {
     const z = -5 - r() * 14, h = 1.4 + r() * 1.6;
     BG.add(GEO.box, cactus, mat4(x, h / 2, z, 0, 0, 0, 0.35, h, 0.35));
     if (r() < 0.7) { BG.add(GEO.box, cactus, mat4(x + 0.35, h * 0.55, z, 0, 0, 0, 0.5, 0.2, 0.2)); BG.add(GEO.box, cactus, mat4(x + 0.55, h * 0.7, z, 0, 0, 0, 0.2, 0.5, 0.2)); }
   }
-  const mesa = M(0x4a2218);
+  const mesa = surface(M(0x4a2218), 'rock', 8, 0.8);
   for (let x = -60; x < 320; x += 30 + r() * 30) {
     const h = 8 + r() * 14, w = 14 + r() * 20;
     BG.add(GEO.box, mesa, mat4(x, h / 2 - 1, -70 - r() * 25, 0, 0, 0, w, h, 10));
@@ -3882,7 +3882,7 @@ function buildHighway(scene, quality) {
 
   // Toll gates before the club
   for (const x of [161, 170, 181, 190]) {
-    B.add(GEO.box, M(0xd8d0c0), mat4(x, 1.3, -3.4, 0, 0, 0, 1.6, 2.6, 1.4));
+    B.add(GEO.box, surface(M(0xd8d0c0), 'concrete', 2), mat4(x, 1.3, -3.4, 0, 0, 0, 1.6, 2.6, 1.4));
     B.add(GEO.box, M(0x1a2a3a, { roughness: 0.1 }), mat4(x, 1.6, -2.68, 0, 0, 0, 1.2, 0.8, 0.04));
     B.add(GEO.box, neonRed, mat4(x, 2.75, -3.4, 0, 0, 0, 1.7, 0.15, 1.5));
   }
@@ -4033,7 +4033,7 @@ function buildStadium(scene, quality) {
   const r = rng(6660);
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
   const basalt = M(0x2a2024), soil = M(0x3a1a14), conc = M(0x4a4048, { roughness: 0.95 }), steel = M(0x8a8a96, { roughness: 0.4, metalness: 0.7 });
-  const seat = M(0x8a1414, { roughness: 0.6 }), dark = M(0x0c0a0e);
+  const seat = surface(M(0x8a1414, { roughness: 0.6 }), 'fabric', 0.6, 0.7), dark = M(0x0c0a0e);
   const lava = new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a0a, emissiveIntensity: 2.2, roughness: 0.6 });
   const fire = new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff5a10, emissiveIntensity: 2.5 });
   const soulMat = new THREE.MeshStandardMaterial({ color: 0xc8d6ff, emissive: 0x6a7cff, emissiveIntensity: 1.2 });

@@ -81,7 +81,7 @@ function buildAlley(scene, quality) {
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
   const asphalt = M(0x26262e), concrete = M(0x3a3438), tar = M(0x1d1d24), brick = M(0x5a2e2a), brick2 = M(0x4a3a3a);
   const brick3 = M(0x3a3440), iron = M(0x1a1a20, { roughness: 0.5, metalness: 0.6 }), wood = M(0x3a2418, { roughness: 0.8 });
-  const felt = M(0x1e5a3a), dark = M(0x07060a, { roughness: 1 }), metal = M(0x6a6e78, { roughness: 0.4, metalness: 0.7 });
+  const felt = surface(M(0x1e5a3a), 'fabric', 0.8, 0.6), dark = M(0x07060a, { roughness: 1 }), metal = M(0x6a6e78, { roughness: 0.4, metalness: 0.7 });
   const dumpster = M(0x2a5a3a, { roughness: 0.6, metalness: 0.3 });
   const winLit = new THREE.MeshStandardMaterial({ color: 0xffc070, emissive: 0xffa040, emissiveIntensity: 0.9 });
   const winBlue = new THREE.MeshStandardMaterial({ color: 0x80b0ff, emissive: 0x4070ff, emissiveIntensity: 0.8 });
@@ -195,7 +195,7 @@ function buildAlley(scene, quality) {
   }
   for (const [a, b, h, type] of L.blocks) if (type === 'building' && a > 120) B.add(GEO.box, metal, mat4(b - 1.2, h + 1.6, -2.4, 0, 0, 0, 0.05, 3.2, 0.05));   // antennas
   // arena: two stone pillars for the gargoyle's perches
-  const stone = M(0x7d7f8c, { roughness: 0.95 });
+  const stone = surface(M(0x7d7f8c, { roughness: 0.95 }), 'stone', 2, 1.3);
   for (const [a, b, y] of L.ledges.filter(([, , y]) => y > 4.5 && y < 5)) B.add(GEO.box, stone, mat4((a + b) / 2, (y - 0.3) / 2, -0.8, 0, 0, 0, b - a - 0.3, y - 0.3, 1.2));
   for (const [a, b, y] of L.ledges.filter(([a2]) => a2 > 195)) if (y < 4) B.add(GEO.box, iron, mat4((a + b) / 2, y / 2, -0.95, 0, 0, 0, 0.1, y, 0.1));
   world.solids.push({ x1: L.arena.x2, x2: 240, y1: 0, y2: 20 });

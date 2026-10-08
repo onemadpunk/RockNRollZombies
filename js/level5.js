@@ -84,7 +84,7 @@ function buildStadium(scene, quality) {
   const r = rng(6660);
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
   const basalt = M(0x2a2024), soil = M(0x3a1a14), conc = M(0x4a4048, { roughness: 0.95 }), steel = M(0x8a8a96, { roughness: 0.4, metalness: 0.7 });
-  const seat = M(0x8a1414, { roughness: 0.6 }), dark = M(0x0c0a0e);
+  const seat = surface(M(0x8a1414, { roughness: 0.6 }), 'fabric', 0.6, 0.7), dark = M(0x0c0a0e);
   const lava = new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a0a, emissiveIntensity: 2.2, roughness: 0.6 });
   const fire = new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff5a10, emissiveIntensity: 2.5 });
   const soulMat = new THREE.MeshStandardMaterial({ color: 0xc8d6ff, emissive: 0x6a7cff, emissiveIntensity: 1.2 });

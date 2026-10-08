@@ -85,7 +85,7 @@ function buildFestival(scene, quality) {
   const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
   const grass = M(0x2a3a1e), soil = M(0x3a2a20), dark = M(0x07060a), planks = M(0x5a4030), steel = M(0x9aa0aa, { roughness: 0.4, metalness: 0.7 });
   const canvasA = M(0xd8c8a0), canvasB = M(0x6a8a5a), canvasC = M(0xa83a3a), canvasD = M(0x3a5a8a);
-  const looBlue = M(0x2a5ab0, { roughness: 0.6 }), looWhite = M(0xe8e8e8, { roughness: 0.6 });
+  const looBlue = surface(M(0x2a5ab0, { roughness: 0.6 }), 'metal', 1.2, 0.5), looWhite = surface(M(0xe8e8e8, { roughness: 0.6 }), 'metal', 1.2, 0.4);
   const bulb = new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffb040, emissiveIntensity: 2.2 });
   const bulbPink = new THREE.MeshStandardMaterial({ color: 0xff8ac8, emissive: 0xff2e88, emissiveIntensity: 2 });
   const water = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.1, metalness: 0.3, emissive: 0x0a1a3a });
@@ -111,7 +111,7 @@ function buildFestival(scene, quality) {
       B.add(GEO.box, c, mat4(cx, h - 0.04, -0.4, 0, 0, 0, w * 0.2, 0.08, 2.2));        // ridge you stand on
       B.add(GEO.box, dark, mat4(cx, h * 0.3, 0.72, 0, 0, 0, w * 0.25, h * 0.6, 0.04));   // doorway
     } else {
-      const pink = M(0xff5aa8, { roughness: 0.5 }), yellow = M(0xffd23a, { roughness: 0.5 });
+      const pink = surface(M(0xff5aa8, { roughness: 0.5 }), 'fabric', 1, 0.6), yellow = surface(M(0xffd23a, { roughness: 0.5 }), 'fabric', 1, 0.6);
       B.add(GEO.box, pink, mat4(cx, h / 2, -0.4, 0, 0, 0, w, h, 2.4));
       B.add(GEO.box, yellow, mat4(cx, h + 0.15, -1.4, 0, 0, 0, w, 1.6, 0.3));            // back wall
       for (const x of [a + 0.3, b - 0.3]) {

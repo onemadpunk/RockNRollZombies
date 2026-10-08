@@ -122,14 +122,14 @@ function buildHighway(scene, quality) {
   for (const [a, b, h, type] of L.blocks) {
     const w = b - a, cx = (a + b) / 2;
     if (type === 'truck') {
-      B.add(GEO.box, M(0xc8c4bc, { roughness: 0.5 }), mat4(a + (w - 1.6) / 2, h / 2 + 0.2, -0.4, 0, 0, 0, w - 1.6, h - 0.4, 2.2));
-      B.add(GEO.box, M(0xa82a2a, { roughness: 0.4, metalness: 0.3 }), mat4(b - 0.75, h / 2, -0.4, 0, 0, 0, 1.5, h, 2.1));
+      B.add(GEO.box, surface(M(0xc8c4bc, { roughness: 0.5 }), 'metal', 1.6, 0.7), mat4(a + (w - 1.6) / 2, h / 2 + 0.2, -0.4, 0, 0, 0, w - 1.6, h - 0.4, 2.2));
+      B.add(GEO.box, surface(M(0xa82a2a, { roughness: 0.4, metalness: 0.3 }), 'metal', 1.6, 0.6), mat4(b - 0.75, h / 2, -0.4, 0, 0, 0, 1.5, h, 2.1));
       B.add(GEO.box, M(0x1a2a3a, { roughness: 0.1 }), mat4(b - 0.05, h * 0.72, -0.4, 0, 0, 0, 0.06, h * 0.32, 1.8));
       for (const x of [a + 0.8, a + 2, b - 2.6, b - 0.8]) B.add(GEO.cyl, burnt, mat4(x, 0.38, 0.75, Math.PI / 2, 0, 0, 0.76, 0.3, 0.76));
       const t = textPanel('HELL FREIGHT', { w: 3.6, h: 0.8, color: '#ff4a4a' });
       t.position.set(a + (w - 1.6) / 2, h * 0.55, 0.72); scene.add(t);
     } else if (type === 'bus') {
-      const purple = M(0x5a2a8a, { roughness: 0.35, metalness: 0.3 });
+      const purple = surface(M(0x5a2a8a, { roughness: 0.35, metalness: 0.3 }), 'metal', 1.6, 0.6);
       B.add(GEO.box, purple, mat4(cx, h / 2 + 0.15, -0.4, 0, 0, 0, w, h - 0.3, 2.3));
       B.add(GEO.box, M(0x1a1a2a, { roughness: 0.1, emissive: 0x200a30 }), mat4(cx, h * 0.68, 0.76, 0, 0, 0, w - 0.6, 0.55, 0.04));
       for (const x of [a + 1, b - 1]) B.add(GEO.cyl, burnt, mat4(x, 0.36, 0.78, Math.PI / 2, 0, 0, 0.72, 0.3, 0.72));
@@ -172,13 +172,13 @@ function buildHighway(scene, quality) {
     BG.add(GEO.box, rust, mat4(x, 3.5, -7, 0, 0, 0, 0.2, 7, 0.2));
     BG.add(GEO.box, rust, mat4(x, 6.6, -7, 0, 0, 0, 1.6, 0.12, 0.12));
   }
-  const cactus = M(0x2a4a2a);
+  const cactus = surface(M(0x2a4a2a), 'fabric', 0.6, 0.8);   // ridged
   for (let x = -26; x < 240; x += 7 + r() * 9) {
     const z = -5 - r() * 14, h = 1.4 + r() * 1.6;
     BG.add(GEO.box, cactus, mat4(x, h / 2, z, 0, 0, 0, 0.35, h, 0.35));
     if (r() < 0.7) { BG.add(GEO.box, cactus, mat4(x + 0.35, h * 0.55, z, 0, 0, 0, 0.5, 0.2, 0.2)); BG.add(GEO.box, cactus, mat4(x + 0.55, h * 0.7, z, 0, 0, 0, 0.2, 0.5, 0.2)); }
   }
-  const mesa = M(0x4a2218);
+  const mesa = surface(M(0x4a2218), 'rock', 8, 0.8);
   for (let x = -60; x < 320; x += 30 + r() * 30) {
     const h = 8 + r() * 14, w = 14 + r() * 20;
     BG.add(GEO.box, mesa, mat4(x, h / 2 - 1, -70 - r() * 25, 0, 0, 0, w, h, 10));
@@ -187,7 +187,7 @@ function buildHighway(scene, quality) {
 
   // Toll gates before the club
   for (const x of [161, 170, 181, 190]) {
-    B.add(GEO.box, M(0xd8d0c0), mat4(x, 1.3, -3.4, 0, 0, 0, 1.6, 2.6, 1.4));
+    B.add(GEO.box, surface(M(0xd8d0c0), 'concrete', 2), mat4(x, 1.3, -3.4, 0, 0, 0, 1.6, 2.6, 1.4));
     B.add(GEO.box, M(0x1a2a3a, { roughness: 0.1 }), mat4(x, 1.6, -2.68, 0, 0, 0, 1.2, 0.8, 0.04));
     B.add(GEO.box, neonRed, mat4(x, 2.75, -3.4, 0, 0, 0, 1.7, 0.15, 1.5));
   }
