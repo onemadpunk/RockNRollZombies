@@ -581,8 +581,9 @@ function pause() {
   state = 'paused'; music.suspend(); only('pause'); showTouch();
   const touch = usingTouch();
   const rows = touch
-    ? [['Move', '◀ ▶'], ['Jump', 'JUMP (hold for higher)'], ['Throw', 'THROW, tap on the beat'], ['Climb', '▲ ▼ at a ladder'],
-       ['Crouch', '▼'], ['Drop off a ledge', '▼ + JUMP'], ['Solo', 'SOLO when the meter is full']]
+    ? [['Move', 'thumb down on the left, drag left / right'], ['Jump', 'JUMP'], ['Throw', 'THROW, tap on the beat'],
+       ['Climb', 'drag up / down at a ladder'], ['Crouch', 'drag down'], ['Drop off a ledge', 'drag down + JUMP'],
+       ['Solo', 'SOLO when the meter is full'], ['Tip', 'slide your thumb between THROW and JUMP']]
     : [['Move', 'Arrows / A D'], ['Jump', 'Space / Z'], ['Throw', 'X / J, on the beat'], ['Climb', 'Up / Down at a ladder'],
        ['Crouch', 'Down / S'], ['Drop off a ledge', 'Down + Jump'], ['Solo', 'C / L'], ['Pad', 'A jump, X throw, Y solo, Start pause']];
   $('pause-help').innerHTML = rows.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('');

@@ -25,18 +25,73 @@ addEventListener('touchstart', () => {
 export const onTouchMode = (f) => listeners.push(f);
 export const usingTouch = () => touchMode;
 
-/** Wire the on-screen buttons once. */
+/**
+ * Touch controls, wired once.
+ * Left side: a floating joystick. Put your thumb down anywhere there and drag to move;
+ *   no small buttons to hit and no lifting your thumb to change direction.
+ * Right side: action buttons you can slide between (whatever button is under a finger is held).
+ */
 export function bindTouch(container) {
-  for (const b of container.querySelectorAll('button[data-k]')) {
-    const k = b.dataset.k;
-    const press = (e) => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); touchHeld.add(k); b.classList.add('down'); };
-    const release = (e) => { e.preventDefault(); touchHeld.delete(k); b.classList.remove('down'); };
-    b.addEventListener('pointerdown', press);
-    b.addEventListener('pointerup', release);
-    b.addEventListener('pointercancel', release);
-    b.addEventListener('lostpointercapture', release);
-    b.addEventListener('contextmenu', (e) => e.preventDefault());
-  }
+  const stickKeys = new Set();
+  const fingers = new Map();          // pointerId -> action key under that finger (action buttons)
+  const rebuild = () => {
+    touchHeld.clear();
+    for (const k of stickKeys) touchHeld.add(k);
+    for (const k of fingers.values()) if (k) touchHeld.add(k);
+    for (const b of container.querySelectorAll('.pad-r button[data-k]')) b.classList.toggle('down', [...fingers.values()].includes(b.dataset.k));
+  };
+
+  // ---- joystick ----
+  const zone = container.querySelector('#stick');
+  const base = zone.querySelector('.base'), knob = zone.querySelector('.knob');
+  let stick = null;   // { id, x, y }
+  const R = () => Math.max(34, base.offsetWidth * 0.42);   // sensitivity matches the circle's size
+  const homeBase = () => { base.style.left = ''; base.style.top = ''; base.classList.remove('active'); knob.style.transform = ''; };
+  zone.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (stick) return;
+    try { zone.setPointerCapture(e.pointerId); } catch {}
+    const r = zone.getBoundingClientRect();
+    stick = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    base.style.left = e.clientX - r.left + 'px'; base.style.top = e.clientY - r.top + 'px';
+    base.classList.add('active');
+  });
+  zone.addEventListener('pointermove', (e) => {
+    if (!stick || e.pointerId !== stick.id) return;
+    e.preventDefault();
+    let dx = e.clientX - stick.x, dy = e.clientY - stick.y;
+    const rad = R(), d = Math.hypot(dx, dy);
+    // follow the thumb if it drifts far, so you never run out of stick
+    if (d > rad * 1.6) { const k = (d - rad * 1.6) / d; stick.x += dx * k; stick.y += dy * k; dx -= dx * k; dy -= dy * k;
+      const r = zone.getBoundingClientRect(); base.style.left = stick.x - r.left + 'px'; base.style.top = stick.y - r.top + 'px'; }
+    const kx = Math.max(-1, Math.min(1, dx / rad)), ky = Math.max(-1, Math.min(1, dy / rad));
+    knob.style.transform = `translate(${kx * rad * 0.6}px, ${ky * rad * 0.6}px)`;
+    stickKeys.clear();
+    if (dx < -rad * 0.25) stickKeys.add('left');
+    if (dx > rad * 0.25) stickKeys.add('right');
+    if (dy < -rad * 0.6 && Math.abs(dy) > Math.abs(dx) * 0.8) stickKeys.add('up');      // climb
+    if (dy > rad * 0.6 && Math.abs(dy) > Math.abs(dx) * 0.8) stickKeys.add('down');     // crouch / climb down
+    rebuild();
+  });
+  const endStick = (e) => { if (!stick || e.pointerId !== stick.id) return; stick = null; stickKeys.clear(); homeBase(); rebuild(); };
+  zone.addEventListener('pointerup', endStick);
+  zone.addEventListener('pointercancel', endStick);
+  zone.addEventListener('lostpointercapture', endStick);
+
+  // ---- action buttons (slide between them) ----
+  const pad = container.querySelector('.pad-r');
+  const keyAt = (x, y) => document.elementFromPoint(x, y)?.closest?.('.pad-r button[data-k]')?.dataset.k || null;
+  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); try { pad.setPointerCapture(e.pointerId); } catch {} fingers.set(e.pointerId, keyAt(e.clientX, e.clientY)); rebuild(); });
+  pad.addEventListener('pointermove', (e) => {
+    if (!fingers.has(e.pointerId)) return;
+    const k = keyAt(e.clientX, e.clientY);
+    if (k !== fingers.get(e.pointerId)) { fingers.set(e.pointerId, k); rebuild(); }
+  });
+  const lift = (e) => { if (fingers.delete(e.pointerId)) rebuild(); };
+  pad.addEventListener('pointerup', lift);
+  pad.addEventListener('pointercancel', lift);
+  pad.addEventListener('lostpointercapture', lift);
+  container.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 export const KEYS_SOLO = {
@@ -92,5 +147,6 @@ export class Controls {
     }
     // On menus, jump or throw also count as "start".
     this.pressed.start = this.pressed.start || this.pressed.jump || this.pressed.throw;
+    this.fullJump = this.touch && touchMode;
   }
 }

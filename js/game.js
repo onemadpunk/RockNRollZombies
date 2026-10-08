@@ -318,7 +318,7 @@ export class Game {
         if (p.standing && p.standing.amp) popup('Jump on the beat!', 'info', { x: p.x, y: p.y + 2.4 }, this.camera);
       }
     }
-    if (!inp.held.jump && p.vy > 4 && !p.jumpCut) { p.vy *= 0.5; p.jumpCut = true; }
+    if (!inp.held.jump && p.vy > 4 && !p.jumpCut && !inp.fullJump) { p.vy *= 0.5; p.jumpCut = true; }
 
     const W = WEAPONS[p.weapon];
     const mine = this.shots.filter((s) => s.owner === p).length;
