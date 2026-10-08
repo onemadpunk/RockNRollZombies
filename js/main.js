@@ -553,8 +553,19 @@ function showMap(next) {
 let mapNext = 1;
 $('map-go').addEventListener('click', () => loadLevel(mapNext));
 
-function pause() { state = 'paused'; music.suspend(); only('pause'); showTouch(); $('resume').focus(); }
+function pause() {
+  state = 'paused'; music.suspend(); only('pause'); showTouch();
+  const touch = usingTouch();
+  const rows = touch
+    ? [['Move', '◀ ▶'], ['Jump', 'JUMP (hold for higher)'], ['Throw', 'THROW, tap on the beat'], ['Climb', '▲ ▼ at a ladder'],
+       ['Crouch', '▼'], ['Drop off a ledge', '▼ + JUMP'], ['Solo', 'SOLO when the meter is full']]
+    : [['Move', 'Arrows / A D'], ['Jump', 'Space / Z'], ['Throw', 'X / J, on the beat'], ['Climb', 'Up / Down at a ladder'],
+       ['Crouch', 'Down / S'], ['Drop off a ledge', 'Down + Jump'], ['Solo', 'C / L'], ['Pad', 'A jump, X throw, Y solo, Start pause']];
+  $('pause-help').innerHTML = rows.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('');
+  $('resume').focus();
+}
 function resume() { state = 'play'; music.resume(); only(null); showTouch(); }
+$('pause-btn').addEventListener('click', () => { if (state === 'play') pause(); else if (state === 'paused') resume(); });
 $('resume').addEventListener('click', resume);
 $('quit').addEventListener('click', () => { music.resume(); toTitle(); });
 $('quality').addEventListener('click', () => { quality.low = !quality.low; applyQuality(); });
@@ -667,6 +678,8 @@ function tick(raw) {
   music.update();
   menuCtrl.update();
   setCapture(state === 'play');
+  const pb = $('pause-btn'), wantPb = state === 'play';
+  if (pb.hidden === wantPb) pb.hidden = !wantPb;
   const frac = music.ctx ? ((music.beatFloat() % 1) + 1) % 1 : 0;
   const pulse = music.ctx && state === 'play' ? Math.exp(-frac * 5) : 0;
 

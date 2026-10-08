@@ -81,7 +81,7 @@ body { font-family: var(--body); -webkit-user-select: none; user-select: none; t
 #beatbar.hit .center { border-color: var(--pink); box-shadow: 0 0 16px var(--pink); }
 #beatbar .mk { position: absolute; top: 5px; width: 6px; height: 12px; background: var(--ink); border-radius: 2px; opacity: .85; }
 
-#bossbar { position: absolute; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, 46vw); text-align: center; }
+#bossbar { position: absolute; left: 50%; top: calc(64px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, 46vw); text-align: center; }
 #bossbar .name { font-size: clamp(12px, 1.5vw, 18px); color: var(--pink); margin-bottom: 4px; }
 #bossbar .track { height: 12px; border: 2px solid var(--ink); background: rgba(0,0,0,.6); }
 #bossfill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--pink), var(--gold)); transition: width .15s; }
@@ -140,7 +140,16 @@ h2 { font-size: clamp(36px, 6vw, 72px); text-shadow: 4px 4px 0 var(--pink); }
 #touch .big { width: 92px; height: 92px; font-size: 15px; }
 #touch .big.j { margin-bottom: 40px; }
 #touch .sp { width: 64px; height: 64px; font-size: 12px; align-self: flex-start; border-color: var(--pink); }
-#touch .pz { position: absolute; top: calc(70px + env(safe-area-inset-top, 0px)); right: 18px; width: 46px; height: 46px; font-size: 14px; }
+/* Pause button: top middle, above everything in play */
+.pausebtn {
+  position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  width: 46px; height: 46px; border-radius: 50%; border: 3px solid rgba(243,236,224,.6); background: rgba(12,10,20,.5);
+  display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; z-index: 5; touch-action: none;
+}
+.pausebtn span { width: 5px; height: 16px; background: var(--ink); border-radius: 1px; }
+.pausebtn:hover, .pausebtn:focus-visible { border-color: var(--toxic); outline: none; }
+.cheat { display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 13px; text-align: left; color: var(--dim); }
+.cheat b { color: var(--ink); font-family: var(--hud); font-weight: 400; font-size: 12px; }
 
 @media (prefers-reduced-motion: reduce) { .pop, .armor.off { animation-duration: .01s; } }
 
@@ -299,6 +308,7 @@ h3.sub { margin: 4px 0 0; }
   <div id="bossbar" hidden><div class="name" id="bossname">THE BOUNCER</div><div class="track"><div id="bossfill"></div></div></div>
 </div>
 
+<button id="pause-btn" class="pausebtn" hidden aria-label="Pause"><span></span><span></span></button>
 <div id="popups"></div>
 <div id="banner" hidden></div>
 
@@ -328,16 +338,18 @@ h3.sub { margin: 4px 0 0; }
   <div class="title-inner">
     <h2>Controls</h2>
     <table class="ctl">
-      <tr><th></th><th>1 player</th><th>2P: player 1</th><th>2P: player 2</th><th>Pad</th></tr>
-      <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td></tr>
-      <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td></tr>
-      <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td></tr>
-      <tr><td>Climb ladder</td><td>Up / W, Down / S</td><td>W / S</td><td>&uarr; &darr;</td><td>D-pad up / down</td></tr>
-      <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td></tr>
-      <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td></tr>
-      <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td></tr>
+      <tr><th></th><th>1 player</th><th>2P: player 1</th><th>2P: player 2</th><th>Pad</th><th>Touch</th></tr>
+      <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td><td>&#9664; &#9654;</td></tr>
+      <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td><td>JUMP (hold = higher)</td></tr>
+      <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td><td>THROW</td></tr>
+      <tr><td>Climb ladder</td><td>Up / W, Down / S</td><td>W / S</td><td>&uarr; &darr;</td><td>D-pad up / down</td><td>&#9650; &#9660;</td></tr>
+      <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td><td>&#9660;</td></tr>
+      <tr><td>Drop off a ledge</td><td>Down + Jump</td><td>S + W</td><td>&darr; + &uarr;</td><td>Down + A</td><td>&#9660; + JUMP</td></tr>
+      <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td><td>SOLO</td></tr>
+      <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td><td>II (top middle)</td></tr>
     </table>
-    <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).</p>
+    <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).
+      On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
     <button class="btn back">Back</button>
   </div>
 </div>
@@ -374,6 +386,7 @@ h3.sub { margin: 4px 0 0; }
   <div class="title-inner">
     <h2>Paused</h2>
     <button id="resume" class="btn">Resume</button>
+    <div id="pause-help" class="cheat"></div>
     <div class="row-btns">
       <button id="quality" class="btn small">Graphics: High</button>
       <button id="p-flash" class="btn small">Flashing: On</button>
@@ -433,7 +446,6 @@ h3.sub { margin: 4px 0 0; }
     <button data-k="throw" class="big t">THROW</button>
     <button data-k="jump" class="big j">JUMP</button>
   </div>
-  <button data-k="pause" class="pz" aria-label="Pause">II</button>
 </div>
 
 <script>
@@ -5193,8 +5205,19 @@ function showMap(next) {
 let mapNext = 1;
 $('map-go').addEventListener('click', () => loadLevel(mapNext));
 
-function pause() { state = 'paused'; music.suspend(); only('pause'); showTouch(); $('resume').focus(); }
+function pause() {
+  state = 'paused'; music.suspend(); only('pause'); showTouch();
+  const touch = usingTouch();
+  const rows = touch
+    ? [['Move', '◀ ▶'], ['Jump', 'JUMP (hold for higher)'], ['Throw', 'THROW, tap on the beat'], ['Climb', '▲ ▼ at a ladder'],
+       ['Crouch', '▼'], ['Drop off a ledge', '▼ + JUMP'], ['Solo', 'SOLO when the meter is full']]
+    : [['Move', 'Arrows / A D'], ['Jump', 'Space / Z'], ['Throw', 'X / J, on the beat'], ['Climb', 'Up / Down at a ladder'],
+       ['Crouch', 'Down / S'], ['Drop off a ledge', 'Down + Jump'], ['Solo', 'C / L'], ['Pad', 'A jump, X throw, Y solo, Start pause']];
+  $('pause-help').innerHTML = rows.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('');
+  $('resume').focus();
+}
 function resume() { state = 'play'; music.resume(); only(null); showTouch(); }
+$('pause-btn').addEventListener('click', () => { if (state === 'play') pause(); else if (state === 'paused') resume(); });
 $('resume').addEventListener('click', resume);
 $('quit').addEventListener('click', () => { music.resume(); toTitle(); });
 $('quality').addEventListener('click', () => { quality.low = !quality.low; applyQuality(); });
@@ -5307,6 +5330,8 @@ function tick(raw) {
   music.update();
   menuCtrl.update();
   setCapture(state === 'play');
+  const pb = $('pause-btn'), wantPb = state === 'play';
+  if (pb.hidden === wantPb) pb.hidden = !wantPb;
   const frac = music.ctx ? ((music.beatFloat() % 1) + 1) % 1 : 0;
   const pulse = music.ctx && state === 'play' ? Math.exp(-frac * 5) : 0;
 

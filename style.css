@@ -71,7 +71,7 @@ body { font-family: var(--body); -webkit-user-select: none; user-select: none; t
 #beatbar.hit .center { border-color: var(--pink); box-shadow: 0 0 16px var(--pink); }
 #beatbar .mk { position: absolute; top: 5px; width: 6px; height: 12px; background: var(--ink); border-radius: 2px; opacity: .85; }
 
-#bossbar { position: absolute; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, 46vw); text-align: center; }
+#bossbar { position: absolute; left: 50%; top: calc(64px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, 46vw); text-align: center; }
 #bossbar .name { font-size: clamp(12px, 1.5vw, 18px); color: var(--pink); margin-bottom: 4px; }
 #bossbar .track { height: 12px; border: 2px solid var(--ink); background: rgba(0,0,0,.6); }
 #bossfill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--pink), var(--gold)); transition: width .15s; }
@@ -130,7 +130,16 @@ h2 { font-size: clamp(36px, 6vw, 72px); text-shadow: 4px 4px 0 var(--pink); }
 #touch .big { width: 92px; height: 92px; font-size: 15px; }
 #touch .big.j { margin-bottom: 40px; }
 #touch .sp { width: 64px; height: 64px; font-size: 12px; align-self: flex-start; border-color: var(--pink); }
-#touch .pz { position: absolute; top: calc(70px + env(safe-area-inset-top, 0px)); right: 18px; width: 46px; height: 46px; font-size: 14px; }
+/* Pause button: top middle, above everything in play */
+.pausebtn {
+  position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  width: 46px; height: 46px; border-radius: 50%; border: 3px solid rgba(243,236,224,.6); background: rgba(12,10,20,.5);
+  display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; z-index: 5; touch-action: none;
+}
+.pausebtn span { width: 5px; height: 16px; background: var(--ink); border-radius: 1px; }
+.pausebtn:hover, .pausebtn:focus-visible { border-color: var(--toxic); outline: none; }
+.cheat { display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 13px; text-align: left; color: var(--dim); }
+.cheat b { color: var(--ink); font-family: var(--hud); font-weight: 400; font-size: 12px; }
 
 @media (prefers-reduced-motion: reduce) { .pop, .armor.off { animation-duration: .01s; } }
 

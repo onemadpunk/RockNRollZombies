@@ -53,6 +53,7 @@
   <div id="bossbar" hidden><div class="name" id="bossname">THE BOUNCER</div><div class="track"><div id="bossfill"></div></div></div>
 </div>
 
+<button id="pause-btn" class="pausebtn" hidden aria-label="Pause"><span></span><span></span></button>
 <div id="popups"></div>
 <div id="banner" hidden></div>
 
@@ -87,16 +88,18 @@
   <div class="title-inner">
     <h2>Controls</h2>
     <table class="ctl">
-      <tr><th></th><th>1 player</th><th>2P: player 1</th><th>2P: player 2</th><th>Pad</th></tr>
-      <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td></tr>
-      <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td></tr>
-      <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td></tr>
-      <tr><td>Climb ladder</td><td>Up / W, Down / S</td><td>W / S</td><td>&uarr; &darr;</td><td>D-pad up / down</td></tr>
-      <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td></tr>
-      <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td></tr>
-      <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td></tr>
+      <tr><th></th><th>1 player</th><th>2P: player 1</th><th>2P: player 2</th><th>Pad</th><th>Touch</th></tr>
+      <tr><td>Move</td><td>Arrows / A D</td><td>A D</td><td>&larr; &rarr;</td><td>Stick / D-pad</td><td>&#9664; &#9654;</td></tr>
+      <tr><td>Jump</td><td>Space / Z / W</td><td>W / Space</td><td>&uarr;</td><td>A</td><td>JUMP (hold = higher)</td></tr>
+      <tr><td>Throw</td><td>X / J</td><td>F</td><td>K / Num 0</td><td>X / B</td><td>THROW</td></tr>
+      <tr><td>Climb ladder</td><td>Up / W, Down / S</td><td>W / S</td><td>&uarr; &darr;</td><td>D-pad up / down</td><td>&#9650; &#9660;</td></tr>
+      <tr><td>Crouch</td><td>Down / S</td><td>S</td><td>&darr;</td><td>Down</td><td>&#9660;</td></tr>
+      <tr><td>Drop off a ledge</td><td>Down + Jump</td><td>S + W</td><td>&darr; + &uarr;</td><td>Down + A</td><td>&#9660; + JUMP</td></tr>
+      <tr><td>Solo</td><td>C / L</td><td>G</td><td>L / Num 1</td><td>Y / LB</td><td>SOLO</td></tr>
+      <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td><td>II (top middle)</td></tr>
     </table>
-    <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).</p>
+    <p class="tip">In 2 players, each player can also use their own controller (pad 1 and pad 2).
+      On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
     <button class="btn back">Back</button>
   </div>
 </div>
@@ -133,6 +136,7 @@
   <div class="title-inner">
     <h2>Paused</h2>
     <button id="resume" class="btn">Resume</button>
+    <div id="pause-help" class="cheat"></div>
     <div class="row-btns">
       <button id="quality" class="btn small">Graphics: High</button>
       <button id="p-flash" class="btn small">Flashing: On</button>
@@ -192,7 +196,6 @@
     <button data-k="throw" class="big t">THROW</button>
     <button data-k="jump" class="big j">JUMP</button>
   </div>
-  <button data-k="pause" class="pz" aria-label="Pause">II</button>
 </div>
 
 <script>
