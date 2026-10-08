@@ -5,7 +5,7 @@
 
 export const SCOREBOARD = {
   url: 'https://vhxnkeldcjtvheroovqy.supabase.co',
-  key: '',   // the project's publishable key (sb_publishable_...) or legacy anon key (eyJ...)
+  key: 'sb_publishable_7Fjur-zx9JayxhpIYIlFQA_dWKxnrnP',   // the project's publishable key (sb_publishable_...) or legacy anon key (eyJ...)
 };
 
 const TABLE = 'scores';
