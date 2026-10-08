@@ -75,7 +75,7 @@ export function installBot({ mute = true } = {}) {
       if (f.kind === 'rubble' && Math.abs(f.x - p.x) < 1.2) move = p.x < f.x ? -1 : 1;
       else if (f.kind !== 'wave' && f.vy < 0 && Math.abs(f.x - p.x) < 1.8 && f.y > p.y) move = p.x < f.x ? -1 : 1;
       if (f.kind === 'wave' && Math.sign(f.vx) === Math.sign(p.x - f.x) && Math.abs(f.x - p.x) < 2.4) jump = true;
-      if (f.kind === 'scream' && Math.sign(f.vx) === Math.sign(p.x - f.x) && Math.abs(f.x - p.x) < 2.6) {
+      if (f.kind === 'scream' && (Math.sign(f.vx) === Math.sign(p.x - f.x) || Math.abs(f.x - p.x) < 0.8) && Math.abs(f.x - p.x) < 2.6) {
         if (f.band === 'high') { down = true; move = 0; } else jump = true;
       }
     }
@@ -153,11 +153,14 @@ export function installBot({ mute = true } = {}) {
   window.botRun = async (secs) => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const end = performance.now() + secs * 1000;
+    let last = performance.now(), owed = 0;
     while (performance.now() < end) {
       await sleep(16);
       if (!document.getElementById('over').hidden) break;
-      bot.think();
-      rnrz.tick(1 / 60);
+      // keep game time in step with the music clock even when the page is throttled
+      const now = performance.now();
+      owed = Math.min(owed + (now - last) / 1000, 0.1); last = now;
+      while (owed >= 1 / 60) { bot.think(); rnrz.tick(1 / 60); owed -= 1 / 60; }
     }
     const G = g(), p = G.players[0];
     return {

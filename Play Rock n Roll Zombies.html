@@ -780,6 +780,39 @@ const SONGS = {
     { r: [43, 43], s: 'disco', l: [79, _, 83, 79, 76, _, 74, _] },
     { r: [52, 52], s: 'disco', l: [76, 77, 79, 80, 81, _, 80, _] },
   ],
+  // ---- Level 5 ----
+  hellgate: [
+    { r: [40, 40], s: 'gallop', l: [64, _, 65, _, 67, 65, 64, _] },
+    { r: [40, 41], s: 'gallop', l: [64, _, 67, _, 70, 69, 67, 65] },
+    { r: [40, 40], s: 'gallop', l: [76, _, 77, _, 79, 77, 76, _] },
+    { r: [43, 41], s: 'chug', l: [79, 77, 76, 74, 72, 71, 69, 65] },
+    { r: [45, 45], s: 'drive', l: [69, _, 72, 76, 77, _, 76, 72] },
+    { r: [43, 43], s: 'drive', l: [67, _, 71, 74, 76, _, 74, 71] },
+    { r: [41, 41], s: 'drive', l: [65, _, 69, 72, 74, _, 72, 69] },
+    { r: [40, 40], s: 'half', l: [64, _, _, 65, 64, _, _, _] },
+  ],
+  stadium: [
+    { r: [40, 40], s: 'open', l: [71, _, 74, _, 76, _, 79, 76] },
+    { r: [43, 43], s: 'open', l: [74, _, 79, _, 81, _, 79, 74] },
+    { r: [45, 45], s: 'open', l: [76, _, 81, _, 83, 81, 79, 76] },
+    { r: [47, 47], s: 'chug', l: [78, _, 79, _, 81, _, 83, _] },
+    { r: [40, 40], s: 'drive', l: [83, _, 81, 79, 76, _, 79, _] },
+    { r: [48, 48], s: 'drive', l: [84, _, 83, 81, 79, _, 76, _] },
+    { r: [43, 45], s: 'drive', l: [79, 81, 83, 81, 79, 76, 74, _] },
+    { r: [47, 47], s: 'open', l: [78, _, 75, _, 71, _, _, _] },
+  ],
+  encore5: [
+    { r: [40, 40], s: 'drive', l: [76, 77, 79, 77, 76, _, 74, 76] },
+    { r: [41, 41], s: 'drive', l: [77, 79, 81, 79, 77, _, 76, 77] },
+    { r: [40, 40], s: 'gallop', l: [88, _, 86, _, 84, 83, 81, _] },
+    { r: [46, 47], s: 'drive', l: [82, 81, 79, 77, 76, 74, 72, 71] },
+  ],
+  devil: [
+    { r: [40, 40], s: 'half', l: [64, 65, 70, _, 64, 65, 71, _] },
+    { r: [41, 41], s: 'gallop', l: [77, _, 76, _, 74, 76, 77, _] },
+    { r: [40, 40], s: 'half', l: [76, 77, 82, _, 76, 77, 83, _] },
+    { r: [46, 47], s: 'drive', l: [82, 81, 80, 79, 77, 76, 74, 70] },
+  ],
   boss: [
     { r: [40, 40], s: 'half', l: [64, 65, 64, _, 64, 65, 67, _] },
     { r: [41, 41], s: 'half', l: [65, 64, 65, _, 65, 67, 68, _] },
@@ -2191,7 +2224,65 @@ function makeHearse() {
   return g;
 }
 
-Object.assign(__m, { MAT, HEROES, makeHero, makePunk, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeDiscoBall, makeGondola, makeFlightCase, makeJukebox, makeAmp, makeCoffin, makeScaffold, makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, makeHearse });
+// Level 5 boss: the Devil himself, with a flying-V. Wings come out when he's angry.
+function makeDevil() {
+  const z = makeZombie('devil');
+  const red = M(0xc81a1a, { roughness: 0.5, emissive: 0x200000 });
+  const [skin, cloth, pants] = z.mats;
+  const shirt = M(0x111114, { roughness: 0.4 }), trousers = M(0x1a1a1e, { roughness: 0.35, metalness: 0.2 });
+  z.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.material === skin) o.material = red;
+    else if (o.material === cloth) o.material = shirt;
+    else if (o.material === pants) o.material = trousers;
+  });
+  z.mats = [red, shirt];
+  // horns, goatee, yellow eyes
+  const bone = M(0xe8dcc0, { roughness: 0.6 });
+  for (const sx of [-1, 1]) {
+    const h = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.34, 8), bone);
+    h.position.set(sx * 0.13, 0.48, 0.02); h.rotation.z = -sx * 0.4; z.head.add(h);
+    box(0.07, 0.05, 0.02, M(0xffd23a, { emissive: 0xffb000, emissiveIntensity: 3 }), sx * 0.08, 0.24, 0.215, z.head);
+  }
+  box(0.08, 0.16, 0.06, MAT.dark, 0, -0.06, 0.16, z.jaw);
+  box(0.36, 0.06, 0.38, MAT.dark, 0, 0.4, 0.0, z.head);           // slicked-back hair
+  // tail
+  const tail = new THREE.Group(); tail.position.set(0, 0.95, -0.16); z.body.add(tail);
+  let seg = tail;
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Group(); s.position.set(0, -0.12, -0.1); s.rotation.x = 0.35; seg.add(s);
+    box(0.06, 0.06, 0.18, red, 0, 0, -0.06, s); seg = s;
+  }
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), red); tip.rotation.x = -Math.PI / 2; tip.position.z = -0.2; seg.add(tip);
+  z.tail = tail;
+  // flying-V guitar, slung low across the front
+  const gtr = new THREE.Group(); gtr.position.set(0, -0.15, 0.24); gtr.rotation.z = 0.55; z.torso.add(gtr);
+  const gm = M(0xd01020, { roughness: 0.25, metalness: 0.3, emissive: 0x300000 });
+  box(0.12, 0.62, 0.05, gm, -0.12, -0.22, 0, gtr).rotation.z = 0.35;
+  box(0.12, 0.62, 0.05, gm, 0.12, -0.22, 0, gtr).rotation.z = -0.35;
+  box(0.05, 0.8, 0.04, MAT.dark, 0, 0.36, 0, gtr);
+  box(0.12, 0.14, 0.04, gm, 0, 0.8, 0, gtr);
+  for (let i = 0; i < 3; i++) box(0.16, 0.02, 0.06, MAT.chrome, 0, -0.08 - i * 0.06, 0, gtr);
+  z.guitar = gtr;
+  // bat wings (hidden until he's angry)
+  const wingMat = M(0x3a0808, { roughness: 0.6, side: THREE.DoubleSide, emissive: 0x100000 });
+  const wings = new THREE.Group(); wings.position.set(0, 0.15, -0.16); z.torso.add(wings);
+  z.wingL = null; z.wingR = null;
+  for (const sx of [-1, 1]) {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0); shape.lineTo(sx * 1.1, 0.55); shape.lineTo(sx * 1.25, -0.05); shape.lineTo(sx * 0.9, -0.15);
+    shape.lineTo(sx * 0.7, -0.5); shape.lineTo(sx * 0.4, -0.3); shape.lineTo(0, -0.35); shape.lineTo(0, 0);
+    const w = new THREE.Group(); wings.add(w);
+    w.add(new THREE.Mesh(new THREE.ShapeGeometry(shape), wingMat));
+    box(0.04, 0.04, 0.04, bone, sx * 1.1, 0.55, 0, w);
+    if (sx < 0) z.wingL = w; else z.wingR = w;
+  }
+  wings.visible = false;
+  z.wings = wings;
+  return z;
+}
+
+Object.assign(__m, { MAT, HEROES, makeHero, makePunk, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeDiscoBall, makeGondola, makeFlightCase, makeJukebox, makeAmp, makeCoffin, makeScaffold, makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, makeHearse, makeDevil });
 }
 
 // ---- levelkit.js ----
@@ -3479,6 +3570,205 @@ function buildHighway(scene, quality) {
 Object.assign(__m, { LEVEL4 });
 }
 
+// ---- level5.js ----
+{
+// Level 5: Hell's Stadium. The final gig.
+
+const { rng, Batch, mat4, GEO, textPanel, sky, baseLevel } = __m;
+const { makeGate } = __m;
+
+// Zones: 1 Gates of Hell (0-46) · 2 The Bleachers (46-100) · 3 The Mosh Pit (100-150) · 4 Backstage (150-198) · Boss (200-222)
+const LEVEL5 = {
+  id: 4,
+  name: "Hell's Stadium",
+  short: 'Stadium',
+  rescue: 'soul',
+  boss: 'devil',
+  bossName: 'The Devil', bossTag: 'Wants your soul. Plays a mean guitar.',
+  ground: [[-30, 40], [45, 96], [101, 240]],
+  // [x1, x2, height, type]: the stand goes up in steps, along the top, and back down
+  blocks: [[52, 56, 1.2, 'stand'], [56, 60, 2.4, 'stand'], [60, 64, 3.6, 'stand'], [64, 82, 4.8, 'stand'],
+           [82, 86, 3.6, 'stand'], [86, 90, 2.4, 'stand'], [90, 94, 1.2, 'stand']],
+  vents: [14, 30, 110, 132, 170],
+  hands: [20, 23, 113, 116],
+  ledges: [[43.8, 46.8, 3.8], [74.5, 80.5, 9.0], [119.5, 123.5, 6.2], [140.5, 144, 6.0],
+           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+  movers: [
+    { kind: 'bob', x: 42.5, y: 0, amp: 1.6, w: 2.4 },
+    { kind: 'slide', x: 98.5, y: 0, amp: 1.6, w: 2.6 },
+  ],
+  // Up the floodlight gantry from the top of the stand
+  ladders: [{ x: 77.4, y1: 4.8, y2: 9.0 }],
+  // On-beat super jumps up to the speaker stacks
+  amps: [[118, 0.95], [139, 0.95]],
+  crates: [
+    { x: 10, loot: 'sticks' }, { x: 34, loot: 'jacket' }, { x: 58, y: 2.4, loot: 'gold' }, { x: 79, y: 9.0, loot: 'life' },
+    { x: 106, loot: 'flame' }, { x: 142, y: 6.0, loot: 'gold' }, { x: 147, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
+  ],
+  records: [{ x: 45.3, y: 5.2 }, { x: 76.5, y: 10.4 }, { x: 121.5, y: 7.6 }],
+  birds: [36, 86, 128],
+  pigeons: false,
+  headbangers: [90, 126],
+  throwers: [{ x: 72, y: 4.8, kind: 'barfly' }],
+  checkpoint: 104,
+  soundcheck: null,
+  ambush: {
+    name: "The Devil's warm-up act!", sub: 'Clear the backstage', trigger: 160, x1: 154, x2: 182, song: 'encore5',
+    waves: [
+      [['walker', 3], ['ghost', 2]],
+      [['pogo', 3], ['headbanger', 1], ['crawler', 2]],
+      [['headbanger', 2], ['diver', 2], ['ghost', 2]],
+    ],
+  },
+  arena: { gate: 199.5, x1: 200, x2: 222, trigger: 202 },
+  start: 3,
+  songs: { boss: 'devil', clear: 'main' },
+  zones: [
+    { x: 0, name: 'The Gates of Hell', song: 'hellgate', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 3 },
+    { x: 46, checkpoint: 48, name: 'The Bleachers', song: 'hellgate', spawn: { walker: 0.5, ghost: 0.3, pogo: 0.2 }, max: 4 },
+    { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 5 },
+    { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+  ],
+  palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a },
+  build: buildStadium,
+};
+
+function makeHellSlab(w) {
+  const g = new THREE.Group();
+  const rock = new THREE.MeshStandardMaterial({ color: 0x2a2024, roughness: 0.9 });
+  const glow = new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a0a, emissiveIntensity: 1.6 });
+  const s = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, 1.5), rock); s.position.y = -0.15; s.castShadow = true; s.receiveShadow = true; g.add(s);
+  const u = new THREE.Mesh(new THREE.ConeGeometry(w * 0.45, 0.8, 5), rock); u.rotation.x = Math.PI; u.position.y = -0.7; g.add(u);
+  for (const x of [-w / 3, 0, w / 3]) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 1.2), glow); c.position.set(x, 0.01, 0); c.rotation.y = 0.4; g.add(c); }
+  return g;
+}
+
+function buildStadium(scene, quality) {
+  const L = LEVEL5;
+  const r = rng(6660);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
+  const basalt = M(0x2a2024), soil = M(0x3a1a14), conc = M(0x4a4048, { roughness: 0.95 }), steel = M(0x8a8a96, { roughness: 0.4, metalness: 0.7 });
+  const seat = M(0x8a1414, { roughness: 0.6 }), dark = M(0x0c0a0e);
+  const lava = new THREE.MeshStandardMaterial({ color: 0xff5a1a, emissive: 0xff3a0a, emissiveIntensity: 2.2, roughness: 0.6 });
+  const fire = new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff5a10, emissiveIntensity: 2.5 });
+  const soulMat = new THREE.MeshStandardMaterial({ color: 0xc8d6ff, emissive: 0x6a7cff, emissiveIntensity: 1.2 });
+  const floodMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff0d0, emissiveIntensity: 3 });
+
+  const world = baseLevel(scene, L, { soil, top: basalt, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: steel, makeMover: makeHellSlab, lanternColor: 0xff6a2a });
+  const { B, onGround } = world;
+  const BG = new Batch();
+
+  // cracks of lava in the floor
+  for (let x = -28; x < 238; x += 2.5 + r() * 3) if (onGround(x) && !(L.blocks.some(([a, b]) => x > a - 1 && x < b + 1))) B.add(GEO.box, lava, mat4(x, 0.02, (r() - 0.5) * 4, 0, r() * 3, 0, 0.8 + r(), 0.02, 0.05));
+  BG.add(GEO.box, basalt, mat4(105, -0.4, -40, 0, 0, 0, 420, 0.5, 73));
+  for (let i = 0; i < L.ground.length - 1; i++) {
+    const a = L.ground[i][1], b = L.ground[i + 1][0];
+    B.add(GEO.box, lava, mat4((a + b) / 2, -0.86, -0.5, 0, 0, 0, b - a, 0.1, 6));
+    world.addLantern(new THREE.Vector3((a + b) / 2, -0.3, 1.5));
+  }
+  for (const x of L.vents) {
+    B.add(GEO.box, dark, mat4(x, 0.02, 0, 0, 0, 0, 1.2, 0.04, 1.4));
+    for (let k = -2; k <= 2; k++) B.add(GEO.box, lava, mat4(x + k * 0.22, 0.03, 0, 0, 0, 0, 0.06, 0.03, 1.2));
+  }
+
+  // The stand you climb: concrete steps with rows of red seats
+  for (const [a, b, h] of L.blocks) {
+    const w = b - a, cx = (a + b) / 2;
+    B.add(GEO.box, conc, mat4(cx, h / 2, -0.5, 0, 0, 0, w, h, 6));
+    for (let x = a + 0.5; x < b - 0.3; x += 0.8) B.add(GEO.box, seat, mat4(x, h + 0.2, -2.2, 0, 0, 0, 0.6, 0.4, 0.5));
+    B.add(GEO.box, steel, mat4(cx, h + 0.5, 2.4, 0, 0, 0, w, 0.06, 0.06));
+  }
+  // floodlight gantry over the top of the stand
+  for (const x of [74.6, 80.4]) B.add(GEO.box, steel, mat4(x, 6.9, -1.0, 0, 0, 0, 0.25, 4.2, 0.25));
+  for (let x = 75; x < 80.5; x += 1.1) { B.add(GEO.box, floodMat, mat4(x, 10.2, -1.2, 0.3, 0, 0, 0.8, 0.6, 0.12)); }
+  world.addLantern(new THREE.Vector3(77.5, 9.8, -0.6));
+
+  // The stadium bowl behind: tiers of souls, floodlight towers, big screens
+  for (let tier = 0; tier < 5; tier++) {
+    const z = -18 - tier * 7, y = tier * 3.4;
+    BG.add(GEO.box, conc, mat4(105, y + 1.4, z, 0, 0, 0, 340, 2.8, 6));
+    for (let x = -40; x < 260; x += 1.1 + r() * 0.8) if (r() < 0.75) BG.add(GEO.box, r() < 0.15 ? fire : soulMat, mat4(x, y + 3.1, z + 1.6, 0, 0, 0, 0.4, 0.6 + r() * 0.3, 0.3));
+  }
+  for (let x = -20; x < 260; x += 46) {
+    BG.add(GEO.box, steel, mat4(x, 14, -48, 0, 0, 0, 0.8, 28, 0.8));
+    BG.add(GEO.box, floodMat, mat4(x, 28.5, -47.4, 0, 0, 0, 5, 2.4, 0.3));
+  }
+  for (const x of [40, 150]) {
+    const scr = textPanel('THE DEVIL · LIVE IN HELL', { w: 16, h: 3, color: '#ff4a2a', neon: true, font: 'Bungee' });
+    scr.position.set(x, 17, -36); scene.add(scr);
+  }
+  // pillars of fire around the rim
+  for (let x = -20; x < 260; x += 24) BG.add(GEO.coneT, fire, mat4(x, 20, -52, 0, 0, 0, 3, 6 + r() * 4, 3));
+
+  // The gates of hell at the start
+  for (const x of [2, 7]) { B.add(GEO.box, basalt, mat4(x, 3, -3, 0, 0, 0, 1.2, 6, 1.2)); B.add(GEO.coneT, basalt, mat4(x, 6.6, -3, 0, 0, 0, 1.4, 1.4, 1.4)); }
+  const gates = textPanel("HELL'S STADIUM", { w: 7, h: 1.2, color: '#ff8a3a', neon: true, font: 'Bungee' });
+  gates.position.set(4.5, 8.0, -2.6); scene.add(gates);
+
+  // Mosh pit: barriers, speaker stacks you super-jump up to
+  for (const x of [116, 137]) for (let y = 0; y < 3; y++) B.add(GEO.box, dark, mat4(x + 5, 0.9 + y * 1.8, -2.4, 0, 0, 0, 3.2, 1.7, 1.4));
+  for (let x = 101; x < 150; x += 1.6) B.add(GEO.box, steel, mat4(x, 0.55, -2.8, 0, 0, 0, 1.5, 1.1, 0.08));
+
+  // Backstage: flight cases, a dressing room door
+  for (const x of [153, 158, 185, 190]) B.add(GEO.box, M(0x18181c, { roughness: 0.5 }), mat4(x, 0.5, -2.6, 0, r(), 0, 1.1, 1, 0.9));
+  B.add(GEO.box, M(0x5a1a1a), mat4(195, 1.3, -3.4, 0, 0, 0, 1.4, 2.6, 0.1));
+  const star = textPanel('★ THE DEVIL ★', { w: 1.6, h: 0.4, color: '#ffc94a' });
+  star.position.set(195, 2.2, -3.3); scene.add(star);
+
+  // The main stage: amp walls, a horned truss, and his name in lights
+  const A = L.arena;
+  B.add(GEO.box, M(0x141016), mat4((A.x1 + A.x2) / 2, 6, -4.5, 0, 0, 0, A.x2 - A.x1 + 4, 12, 1));
+  for (const x of [A.x1 + 0.2, A.x2 - 0.2]) for (let y = 0; y < 4; y++) for (const dz of [0]) {
+    B.add(GEO.box, dark, mat4(x + (x < 211 ? 0.9 : -0.9), 0.9 + y * 1.8, -3.4 + dz, 0, 0, 0, 1.8, 1.7, 1.2));
+    B.add(GEO.cyl, M(0x2a2a30), mat4(x + (x < 211 ? 0.9 : -0.9), 0.9 + y * 1.8, -2.78, Math.PI / 2, 0, 0, 1.2, 0.05, 1.2));
+  }
+  B.add(GEO.box, steel, mat4((A.x1 + A.x2) / 2, 10, -3.5, 0, 0, 0, A.x2 - A.x1 + 1, 0.4, 0.4));
+  for (const sx of [-1, 1]) B.add(GEO.coneT, M(0x8a1010, { emissive: 0x400000 }), mat4((A.x1 + A.x2) / 2 + sx * 3.5, 11.4, -3.5, 0, 0, sx * -0.5, 0.8, 3, 0.8));
+  B.add(GEO.box, conc, mat4(A.x2 + 1.5, 4, -0.5, 0, 0, 0, 3, 8, 7));
+  world.solids.push({ x1: A.x2, x2: 240, y1: 0, y2: 20 });
+  for (const z of [-1.8, 1.8]) B.add(GEO.box, steel, mat4(A.gate, 2.2, z, 0, 0, 0, 0.4, 4.4, 0.4));
+  world.gate = makeGate(scene, steel, A.gate);
+  const banner = textPanel('THE DEVIL', { w: 10, h: 1.8, color: '#ff3a1a', neon: true, font: 'Bungee' });
+  banner.position.set((A.x1 + A.x2) / 2, 8.6, -3.9); scene.add(banner);
+  // pyro along the front of the stage (lit when the boss fight starts)
+  const pyro = [];
+  for (let x = A.x1 + 1; x < A.x2; x += 3.5) {
+    B.add(GEO.box, dark, mat4(x, 0.1, 2.3, 0, 0, 0, 0.6, 0.2, 0.6));
+    const f = new THREE.Mesh(GEO.coneT, fire); f.position.set(x, 0.8, 2.3); f.scale.set(0.5, 1.2, 0.5); scene.add(f); pyro.push(f);
+  }
+
+  const sign = (x, text, color) => {
+    const board = textPanel(text, { color });
+    board.position.set(x, 2.0, -0.85); board.rotation.z = (r() - 0.5) * 0.12;
+    scene.add(board);
+    B.add(GEO.box, steel, mat4(x, 0.9, -0.9, 0, 0, 0, 0.12, 1.8, 0.12));
+  };
+  sign(10.5, 'ALL SOULS THIS WAY →');
+  sign(49, 'BLEACHERS', '#ffc94a');
+  sign(102.8, 'MOSH PIT', '#ff8ac8');
+  sign(116.4, 'JUMP OFF THE AMP ON THE BEAT', '#a6ff4d');
+  sign(151.5, 'BACKSTAGE', '#9affd8');
+  sign(197.5, 'ON STAGE', '#ff3a1a');
+
+  B.build(scene);
+  BG.build(scene, { cast: false, receive: true });
+  for (let x = 6; x < 196; x += 14) if (onGround(x) && !L.blocks.some(([a, b]) => x > a - 1 && x < b + 1)) world.addLantern(new THREE.Vector3(x, 2.8, -3.2));
+
+  const skyUpdate = sky(scene, r, { top: '#1a0204', mid: '#4a0a06', bottom: '#a02a0a', fog: 0x40100a, fogDensity: 0.01, cloudColor: 0x6a1a10, moonColor: 0xff6a3a });
+  world.update = (t, dt, cam, pulse) => {
+    skyUpdate(t, cam, pulse, 0);
+    world.baseUpdate(t, cam, pulse);
+    lava.emissiveIntensity = 1.8 + Math.sin(t * 2) * 0.4 + pulse * 0.6;
+    fire.emissiveIntensity = 2 + pulse * 2;
+    soulMat.emissiveIntensity = 0.8 + pulse * 1.2;
+    for (const [i, f] of pyro.entries()) f.scale.y = 0.6 + pulse * 2.2 + Math.sin(t * 9 + i) * 0.2;
+  };
+  return world;
+}
+
+Object.assign(__m, { LEVEL5 });
+}
+
 // ---- level.js ----
 {
 // Level registry + the tour (all the gigs, built or not yet).
@@ -3486,15 +3776,16 @@ const { LEVEL1 } = __m;
 const { LEVEL2 } = __m;
 const { LEVEL3 } = __m;
 const { LEVEL4 } = __m;
+const { LEVEL5 } = __m;
 
-const LEVELS = [LEVEL1, LEVEL2, LEVEL3, LEVEL4];
+const LEVELS = [LEVEL1, LEVEL2, LEVEL3, LEVEL4, LEVEL5];
 
 const TOUR = [
   { name: 'Graveyard Gig', boss: 'The Bouncer', rescue: 'Drummer' },
   { name: 'Back Alley Dive Bar', boss: 'The Gargoyle Punk', rescue: 'Bassist' },
   { name: 'Haunted Festival', boss: 'Banshee Diva', rescue: 'Singer' },
   { name: 'Highway to Hell', boss: 'Disco Mummy', rescue: 'Roadie' },
-  { name: "Hell's Stadium", boss: 'The Devil', rescue: 'Your soul', soon: true },
+  { name: "Hell's Stadium", boss: 'The Devil', rescue: 'Your soul' },
 ];
 
 function buildLevel(index, scene, quality) {
@@ -3699,6 +3990,21 @@ const ART = {
     <rect x="196" y="40" width="74" height="34" fill="#2a1d17" stroke="#120c09" stroke-width="3"/><rect x="214" y="74" width="4" height="46" fill="#6a3a22"/><rect x="250" y="74" width="4" height="46" fill="#6a3a22"/>
     <text x="233" y="62" text-anchor="middle" font-family="Bungee, Impact" font-size="11" fill="${GOLD}">HELL 666</text>
     <g transform="translate(70 150)"><rect width="56" height="16" fill="#141418"/><rect x="14" y="-12" width="38" height="13" fill="#141418"/><circle cx="12" cy="17" r="5" fill="#000"/><circle cx="44" cy="17" r="5" fill="#000"/><path d="M56 4 l18 -4 l-4 8 l6 4 l-20 0z" fill="#ff7a1a"/></g>`,
+  stadium: `${sky('#1a0204', '#a02a0a')}${[0, 1, 2, 3].map((k) => `<rect x="0" y="${70 + k * 18}" width="300" height="14" fill="#2a1418"/>${Array.from({ length: 30 }, (_, i) => `<circle cx="${5 + i * 10 + (k % 2) * 5}" cy="${68 + k * 18}" r="3" fill="#c8d6ff" opacity=".7"/>`).join('')}`).join('')}
+    <rect x="0" y="150" width="300" height="50" fill="#141016"/>${flames(150)}
+    <rect x="80" y="20" width="140" height="30" fill="#0c0a0e" stroke="#ff3a1a" stroke-width="2"/><text x="150" y="41" text-anchor="middle" font-family="Bungee, Impact" font-size="14" fill="#ff3a1a">LIVE IN HELL</text>`,
+  devilbeat: `${sky('#2a0505', '#5a1a0a')}<rect x="0" y="150" width="300" height="50" fill="#141016"/>
+    <g opacity=".55">${devil(150, 130, 0.9)}</g>${[0, 1, 2, 3, 4].map((k) => `<circle cx="${110 + k * 20}" cy="${40 + (k % 2) * 14}" r="${14 + k * 2}" fill="#3a3038" opacity=".6"/>`).join('')}
+    <g transform="translate(150 168) rotate(-12)"><path d="M-30 0 L0 -8 L-4 0 L0 8 Z" fill="${RED}"/><rect x="-2" y="-2" width="44" height="4" fill="#111"/><path d="M42 -4 l8 -6 M42 4 l8 6" stroke="#111" stroke-width="3"/></g>
+    <g transform="translate(230 60) rotate(10)"><rect width="46" height="58" fill="${BONE}"/><path d="M6 14 h34 M6 24 h34 M6 34 h20" stroke="#999"/><path d="M0 58 q8 -18 16 0 q8 -14 16 0 q7 -20 14 0 z" fill="#ff6a1a"/></g>`,
+  finale: `${sky('#1b1233', '#3b2a58')}<rect x="0" y="120" width="300" height="80" fill="#141018"/>
+    <polygon points="60,0 30,120 100,120" fill="${PINK}" opacity=".22"/><polygon points="150,0 120,120 180,120" fill="${GOLD}" opacity=".18"/><polygon points="240,0 200,120 270,120" fill="${TOXIC}" opacity=".2"/>
+    ${person(70, 118, 1)}${guitar(74, 98)}${person(120, 118, 1, INK, '#2fa8ff')}${person(170, 118, 1, INK, '#111')}${guitar(174, 96, -20)}${person(220, 118, 1, INK, GOLD)}
+    ${[20, 60, 100, 140, 180, 220, 260].map((x) => zhead(x, 168 + (x % 3) * 4)).join('')}`,
+  theend: `${sky('#06050d', '#191232')}${moon(240, 50, 22)}<rect x="0" y="160" width="300" height="40" fill="#141018"/>
+    <text x="150" y="90" text-anchor="middle" font-family="Bungee, Impact" font-size="34" fill="${PINK}">THE END</text>
+    <text x="150" y="118" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${TOXIC}">...OF THE TOUR</text>
+    <g transform="translate(30 140)"><rect width="56" height="22" rx="3" fill="${PINK}"/><rect x="38" y="-8" width="18" height="10" rx="2" fill="${PINK}"/><circle cx="12" cy="23" r="6" fill="#000"/><circle cx="44" cy="23" r="6" fill="#000"/></g>`,
 };
 
 const COMICS = {
@@ -3725,7 +4031,13 @@ const COMICS = {
   ],
   after3: [
     { art: 'bassfree', text: "The roadie is back, and so is the gear. Now you've got a show to play." },
-    { art: 'devil', text: "One gig left: Hell's Stadium. The Devil wants your soul, and he's tuning up. Coming soon..." },
+    { art: 'devil', text: "One gig left. The Devil wants your soul, and he's challenged you to a guitar duel." },
+    { art: 'stadium', text: "Next stop: Hell's Stadium. Sold out. Every seat a lost soul." },
+  ],
+  after4: [
+    { art: 'devilbeat', text: 'The Devil drops his flying-V. The contract goes up in flames. Your soul is your own again.' },
+    { art: 'finale', text: 'And the zombies? Turns out they just wanted a decent gig.' },
+    { art: 'theend', text: 'Thanks for playing! Try Hard mode for the Encore, and hunt down every platinum record.' },
   ],
 };
 
@@ -3853,7 +4165,7 @@ Object.assign(__m, { SCOREBOARD, online });
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 
 const {
-  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeFlightCase,
+  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } = __m;
 const { popup } = __m;
@@ -4055,7 +4367,7 @@ class Game {
     for (const fx of this.level.campfires) if (Math.abs(fx - this.camX) < this.halfW + 2) {
       this.sparks.emit({ x: fx + rand(-0.3, 0.3), y: 0.25 }, { n: 2, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 0.6, up: 2.8, life: 0.5, size: 0.12, gravity: -3, intensity: 1.8, spread: 0.4 });
     }
-    this.updateVents(dt);
+    this.updateVents();
     this.updatePickups(dt);
     this.updateDebris(dt);
     this.updateAmbush(dt);
@@ -4098,10 +4410,7 @@ class Game {
       if (vents.some((vx) => Math.abs(vx - lead.x) < 12)) this.music.sRumble();
       for (const vx of vents) this.sparks.emit({ x: vx, y: 0.1 }, { n: 6, color: [0xff6a1a, 0xffc94a], speed: 1, up: 2, life: 0.4, size: 0.08, gravity: -1, intensity: 1.6, spread: 0.4 });
     }
-    if (vents.length && i % 4 === 2) {
-      this.ventFire = this.music.spb * 1.5;
-      if (vents.some((vx) => Math.abs(vx - lead.x) < 12)) this.music.sFireball();
-    }
+    if (vents.length && i % 4 === 2 && vents.some((vx) => Math.abs(vx - lead.x) < 12)) this.music.sFireball();
     // Route 666: a hearse comes screaming down the road every two bars
     const T = this.L.traffic;
     if (T && !this.bossStarted && lead.x > T.x1 - 4 && lead.x < T.x2) {
@@ -4128,9 +4437,11 @@ class Game {
     }
   }
 
-  updateVents(dt) {
-    if (!(this.ventFire > 0)) return;
-    this.ventFire -= dt;
+  updateVents() {
+    // locked to the music clock: they blow from beat 2 to beat 3.5 of every bar
+    if (!this.L.vents || !this.music.ctx) return;
+    const ph = ((this.music.beatFloat() % 4) + 4) % 4;
+    if (ph < 2 || ph >= 3.5) return;
     for (const vx of this.L.vents || []) {
       if (Math.abs(vx - this.camX) > this.halfW + 4) continue;
       this.sparks.emit({ x: vx + rand(-0.3, 0.3), y: 0.1 }, { n: 4, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 1, up: 9, life: 0.35, size: 0.16, gravity: -2, intensity: 2, spread: 0.3 });
@@ -4650,6 +4961,13 @@ class Game {
     let dmg = s.dmg;
     if (e.dizzy > 0) dmg *= 2;
     else if (e.kind === 'banshee') dmg *= 0.5;   // her ghostly aura soaks hits until she's out of breath
+    else if (e.kind === 'devil') {
+      // The guitar duel: when it's your turn, only hits ON the beat really count
+      if (e.state === 'answer' && s.power) {
+        dmg *= 2; e.ans++;
+        popup(e.ans >= 3 ? 'NAILED IT!' : `ON THE BEAT ${e.ans}/3`, 'beat', { x: e.x, y: e.y + e.h + 0.6 }, this.camera);
+      } else dmg *= 0.5;
+    }
     e.hp -= dmg;
     e.flash = 0.08;
     this.music.sHit();
@@ -4854,6 +5172,7 @@ class Game {
         case 'gargoyle': this.updateGargoyle(e, dt); break;
         case 'banshee': this.updateBanshee(e, dt); break;
         case 'mummy': this.updateMummy(e, dt); break;
+        case 'devil': this.updateDevil(e, dt); break;
       }
       if (e.dead) continue;
       if (e.model.mats) for (const m of e.model.mats) m.emissive.setHex(e.flash > 0 ? 0xffffff : e.angry ? 0x400000 : 0x000000);
@@ -5111,7 +5430,7 @@ class Game {
 
   spawnBoss() {
     if (!this.bossStarted || this.boss || !this.alive.length) return;
-    const e = this.L.boss === 'gargoyle' ? this.spawnGargoyle() : this.L.boss === 'banshee' ? this.spawnBanshee() : this.L.boss === 'mummy' ? this.spawnMummy() : this.spawnBouncer();
+    const e = this.L.boss === 'gargoyle' ? this.spawnGargoyle() : this.L.boss === 'banshee' ? this.spawnBanshee() : this.L.boss === 'mummy' ? this.spawnMummy() : this.L.boss === 'devil' ? this.spawnDevil() : this.spawnBouncer();
     e.boss = true;
     e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
     this.boss = e;
@@ -5214,6 +5533,10 @@ class Game {
       this.ui.banner("He's angry!", 'Watch for the charge. Get up high.');
     } else if (e.kind === 'mummy') {
       this.ui.banner("He's lost it!", 'Faster slides, backup dancers');
+    } else if (e.kind === 'devil') {
+      e.moves = ['duel', 'fly', 'hellfire', 'duel', 'fireballs', 'summon'];
+      e.model.wings.visible = true;
+      this.ui.banner("He's furious!", 'Wings out. Longer riffs.');
     } else this.ui.banner("He's cracking!", 'Faster dives, rubble from the sky');
     this.ui.shake(0.6);
     this.music.sStomp();
@@ -5630,16 +5953,174 @@ class Game {
     }
   }
 
-  mirrorBeam(x, delay) {
+  mirrorBeam(x, delay, color = 0xff8ac8) {
     const mark = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.6, 24), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
     mark.rotation.x = -Math.PI / 2; mark.position.set(x, 0.06, 0);
     this.scene.add(mark);
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.6, 7.6, 12, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xff8ac8, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false, side: THREE.DoubleSide }));
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false, side: THREE.DoubleSide }));
     mesh.position.set(x, 3.8, 0);
     mesh.visible = false;
     this.scene.add(mesh);
     this.foeShots.push({ kind: 'beam', x, y: 0, vx: 0, vy: 0, wait: 0.9 + delay, on: 0.35, mark, life: 5, mesh, w: 0.5, h: 8 });
+  }
+
+  // ---- The Devil ---------------------------------------------------------------------------
+  spawnDevil() {
+    const model = makeDevil();
+    const s = 1.65;
+    model.root.scale.setScalar(s);
+    const A = this.L.arena;
+    const x = A.x2 - 4;
+    model.root.position.set(x, -s * 2, 0);
+    const e = this.base('devil', model, x, 0, {
+      w: 0.55, h: 1.8 * s, hp: 140, points: 66600, face: -1, state: 'rise',
+      moves: ['duel', 'fireballs', 'hellfire', 'duel', 'summon'], mi: 0, act: 0, camY: 3.5,
+      colors: [0xc81a1a, 0x111114],
+    });
+    e.center = () => ({ x: e.x, y: e.y + e.h * 0.55 });
+    e.hittable = () => e.state !== 'rise' || e.t > 1.2;
+    e.harmful = () => e.state !== 'rise' && e.state !== 'stunned';
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (this.cine || e.state === 'rise') return;
+      const at = { x: e.x, y: e.y + e.h + 0.6 };
+      if (e.state === 'riff') {
+        if (e.ri < 0) { e.ri++; return; }   // a beat to get ready
+        if (e.ri < e.riff.length) { const band = e.riff[e.ri++]; if (band) this.devilNote(e, band); return; }
+        e.state = 'answer'; e.t = 0; e.ans = 0; e.beats = e.angry ? 5 : 6;
+        popup('YOUR TURN! Hit him ON the beat', 'beat', at, this.camera);
+        return;
+      }
+      if (e.state === 'answer') {
+        if (--e.beats > 0) return;
+        if (e.ans >= 3) {
+          e.state = 'stunned'; e.t = 0; e.dizzy = 2.4;
+          this.ui.banner('The crowd goes wild!', "He's stunned: double damage");
+          this.music.sPlatinum();
+        } else {
+          e.state = 'strut'; e.t = 0;
+          popup(e.ans ? 'Not enough! He wins this round' : 'The crowd boos...', 'info', at, this.camera);
+        }
+        return;
+      }
+      if (e.state === 'fly' && e.act < 3 && e.t > 0.8) { e.act++; this.fireball(e, this.target(e.x)); return; }
+      if (e.state !== 'strut' || i % 4 !== 0 || e.t < 1.5) return;
+      const mv = e.moves[e.mi++ % e.moves.length];
+      e.t = 0; e.act = 0;
+      if (mv === 'duel') {
+        // Every low note (jump it) is followed by a rest so you can land: two rests before a high one.
+        const _ = null;
+        const pats = e.angry
+          ? [['high', 'high', 'low', _, _, 'high'], ['high', 'high', _, 'low', _, _], ['low', _, _, 'high', 'high', 'low']]
+          : [['high', 'high', 'low', _], ['high', _, 'low', _], ['high', 'high', _, 'low'], ['low', _, _, 'high']];
+        e.riff = pats[Math.floor(Math.random() * pats.length)]; e.ri = -1;
+        e.state = 'riff'; e.face = this.target(e.x).x < e.x ? -1 : 1;
+        this.ui.banner('Guitar duel!', 'Duck the high notes, jump the low ones');
+      } else if (mv === 'fireballs') {
+        e.state = 'fireballs';
+        popup('HELLFIRE! Keep moving', 'beat', at, this.camera);
+      } else if (mv === 'hellfire') {
+        e.state = 'hellfire';
+        popup('FIRE FROM BELOW! Out of the red circles', 'beat', at, this.camera);
+      } else if (mv === 'fly') {
+        e.state = 'fly';
+        popup('HE FLIES! Dodge the fireballs', 'beat', at, this.camera);
+      } else e.state = mv;
+    };
+    this.music.sScreech();
+    return e;
+  }
+
+  devilNote(e, band) {
+    e.face = this.target(e.x).x < e.x ? -1 : 1;
+    const g = makeWeaponMesh('notes', true);
+    g.scale.setScalar(1.8);
+    const y0 = band === 'high' ? 1.65 : 0.4;
+    g.position.set(e.x + e.face * 0.9, y0, 0.2);
+    this.scene.add(g);
+    this.music.sPower();
+    this.sparks.emit({ x: e.x + e.face * 0.9, y: y0 }, { n: 8, color: [0xff2e10, 0xffc94a], speed: 3, up: 0, life: 0.3, size: 0.07, gravity: 0, intensity: 2 });
+    // same hit bands as the banshee's screams: duck the high one, jump the low one
+    this.foeShots.push({ kind: 'scream', band, x: e.x + e.face * 0.9, y: y0, vx: e.face * 9.5, vy: 0, life: 3, mesh: g, w: 0.4, h: 0 });
+  }
+
+  updateDevil(e, dt) {
+    const R = e.model.root, Z = e.model, A = this.L.arena, s = R.scale.x;
+    const p = this.target(e.x);
+    const bf = this.music.beatFloat();
+    let armL = -1.0, armR = -0.6 + Math.sin(bf * Math.PI * 2) * 0.15, lean = 0, flying = false;
+    if (e.state === 'rise') {
+      const k = Math.min(1, e.t / 2.2);
+      R.position.set(e.x, -s * 2 * (1 - k), 0);
+      if (Math.random() < 0.9) this.sparks.emit({ x: e.x + rand(-1.2, 1.2), y: 0.1 }, { n: 2, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 1, up: 7, life: 0.6, size: 0.14, gravity: -2, intensity: 2 });
+      if (k >= 1) { e.state = 'strut'; e.t = 0; }
+      return;
+    }
+    if (e.state === 'strut') {
+      e.face = p.x < e.x ? -1 : 1;
+      const dist = Math.abs(p.x - e.x);
+      e.vx = this.cine ? 0 : dist > 4 ? e.face * (e.angry ? 2.4 : 1.7) : dist < 2.6 ? -e.face * 1.4 : 0;
+    } else if (e.state === 'riff') {
+      e.vx = 0; lean = -0.15;
+      armR = -0.6 + Math.sin(e.t * 40) * 0.35;   // shredding
+      armL = -1.2;
+      if (Math.random() < 0.4) this.sparks.emit({ x: e.x + e.face * 0.4, y: e.y + 1.6 }, { n: 1, color: [0xff2e10, 0xffc94a], speed: 2, up: 1, life: 0.3, size: 0.06, gravity: 0, intensity: 2 });
+    } else if (e.state === 'answer') {
+      e.vx = 0; armR = -0.2; armL = -0.4; lean = 0.1;   // arms folded: "go on then"
+    } else if (e.state === 'stunned') {
+      e.vx = 0; armL = armR = 0.3;
+      Z.head.rotation.z = Math.sin(e.t * 8) * 0.4;
+      if (Math.random() < 0.3) this.sparks.emit({ x: e.x + Math.sin(e.t * 9) * 0.8, y: e.y + e.h + 0.2 }, { n: 1, color: 0xffc94a, speed: 0.5, up: 0, life: 0.4, size: 0.1, gravity: 0, intensity: 2 });
+      if (e.t > 2.4) { e.state = 'strut'; e.t = 0; Z.head.rotation.z = 0; }
+    } else if (e.state === 'fireballs') {
+      e.vx = 0; armR = -3.0;
+      if (e.act === 0 && e.t > 0.4) { e.act = 1; this.fireball(e, p); }
+      if (e.act === 1 && e.t > 1.1) { e.act = 2; this.fireball(e, this.target(e.x)); }
+      if (e.t > 1.7) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'hellfire') {
+      e.vx = 0; armL = armR = -2.9;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        this.ui.shake(0.4);
+        const n = e.angry ? 6 : 4;
+        const xs = [p.x];
+        for (let k = 1; k < n; k++) xs.push(A.x1 + 1 + Math.random() * (A.x2 - A.x1 - 2));
+        xs.forEach((x, k) => this.mirrorBeam(Math.min(Math.max(x, A.x1 + 0.8), A.x2 - 0.8), k * 0.2, 0xff5a1a));
+      }
+      if (e.t > 2.2) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'summon') {
+      e.vx = 0; armL = armR = -2.9;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        const ghosts = this.enemies.filter((z) => z.kind === 'ghost' && !z.dead).length;
+        for (let k = ghosts; k < 2; k++) this.spawnGhost(A.x1 + 2 + Math.random() * (A.x2 - A.x1 - 4), 1.2);
+        this.ui.banner('Lost souls!', '');
+      }
+      if (e.t > 1.2) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'fly') {
+      flying = true;
+      e.face = p.x < e.x ? -1 : 1;
+      const landing = e.act >= 3 && e.t > 3.2;
+      const wantY = landing ? 0 : 4.2;
+      const tx = Math.min(Math.max(p.x + (e.x > p.x ? 2 : -2), A.x1 + 1), A.x2 - 1);
+      e.x += Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x), 3 * dt);
+      e.y += (wantY - e.y) * Math.min(1, dt * 2.5);
+      e.vx = 0; e.vy = 0; armL = armR = -0.4;
+      if (landing && e.y < 0.08) { e.y = 0; e.state = 'strut'; e.t = 0; this.ui.shake(0.5); this.music.sStomp(); }
+    }
+    if (!flying) this.move(e, dt, false);
+    e.x = Math.min(Math.max(e.x, A.x1 + e.w), A.x2 - e.w);
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += (faceRot(e.face) - R.rotation.y) * Math.min(1, dt * 8);
+    Z.armL.rotation.x += (armL - Z.armL.rotation.x) * Math.min(1, dt * 12);
+    Z.armR.rotation.x += (armR - Z.armR.rotation.x) * Math.min(1, dt * 14);
+    Z.body.rotation.x += (lean - Z.body.rotation.x) * Math.min(1, dt * 10);
+    e.phase += Math.abs(e.vx) * dt * 1.6;
+    Z.legL.rotation.x = flying ? 0.3 : Math.sin(e.phase) * 0.4; Z.legR.rotation.x = flying ? -0.2 : -Math.sin(e.phase) * 0.4;
+    Z.kneeL.rotation.x = Math.max(0, Math.sin(e.phase + 1.4)) * 0.6; Z.kneeR.rotation.x = Math.max(0, -Math.sin(e.phase + 1.4)) * 0.6;
+    Z.tail.rotation.y = Math.sin(e.t * 3) * 0.5;
+    if (Z.wings.visible) { const f = Math.sin(e.t * (flying ? 14 : 3)) * (flying ? 0.7 : 0.2); Z.wingL.rotation.y = 0.4 + f; Z.wingR.rotation.y = -0.4 - f; }
   }
 
   rubble(x, delay) {
@@ -5782,7 +6263,8 @@ class Game {
     setTimeout(() => {
       const who = { drummer: 'Drummer', bassist: 'Bassist', singer: 'Singer', roadie: 'Roadie' }[this.L.rescue] || 'Bandmate';
       const sub = { drummer: 'The beat is back for good', bassist: 'The low end is back', singer: 'The band has a voice again', roadie: 'The gear is back on the road' }[this.L.rescue] || '';
-      this.ui.banner(`${who} rescued!`, sub);
+      if (this.L.rescue === 'soul') this.ui.banner('Your soul is saved!', 'The contract goes up in flames');
+      else this.ui.banner(`${who} rescued!`, sub);
       this.music.setLayer('beat', true);
     }, 1200);
     setTimeout(() => this.ui.levelClear(this), 5600);
@@ -6367,7 +6849,7 @@ function loadLevel(i) {
   music.setSong(LEVELS[i].zones[0].song);
   lastBeat = Math.floor(music.beatFloat());
   showTouch();
-  ui.banner(LEVELS[i].name, run.encore ? 'ENCORE!' : `Rescue the ${LEVELS[i].rescue}`);
+  ui.banner(LEVELS[i].name, run.encore ? 'ENCORE!' : LEVELS[i].rescue === 'soul' ? 'Save your soul' : `Rescue the ${LEVELS[i].rescue}`);
   camDist = 13.5;
 }
 
@@ -6391,7 +6873,8 @@ function endLevel(g, clear) {
   let unlockText = '';
   if (clear) {
     music.sClear();
-    if (unlockCharacter(L.rescue)) unlockText = `New character: ${HEROES[L.rescue].name}!`;
+    if (HEROES[L.rescue] && unlockCharacter(L.rescue)) unlockText = `New character: ${HEROES[L.rescue].name}!`;
+    if (last && !run.encore) unlockText = 'You beat the Devil! The tour is complete.';
     unlockLevel(run.level + 2);
   } else music.sOver();
   $('unlock').textContent = unlockText;

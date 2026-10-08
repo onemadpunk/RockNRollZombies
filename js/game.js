@@ -2,7 +2,7 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeFlightCase,
+  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
@@ -204,7 +204,7 @@ export class Game {
     for (const fx of this.level.campfires) if (Math.abs(fx - this.camX) < this.halfW + 2) {
       this.sparks.emit({ x: fx + rand(-0.3, 0.3), y: 0.25 }, { n: 2, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 0.6, up: 2.8, life: 0.5, size: 0.12, gravity: -3, intensity: 1.8, spread: 0.4 });
     }
-    this.updateVents(dt);
+    this.updateVents();
     this.updatePickups(dt);
     this.updateDebris(dt);
     this.updateAmbush(dt);
@@ -247,10 +247,7 @@ export class Game {
       if (vents.some((vx) => Math.abs(vx - lead.x) < 12)) this.music.sRumble();
       for (const vx of vents) this.sparks.emit({ x: vx, y: 0.1 }, { n: 6, color: [0xff6a1a, 0xffc94a], speed: 1, up: 2, life: 0.4, size: 0.08, gravity: -1, intensity: 1.6, spread: 0.4 });
     }
-    if (vents.length && i % 4 === 2) {
-      this.ventFire = this.music.spb * 1.5;
-      if (vents.some((vx) => Math.abs(vx - lead.x) < 12)) this.music.sFireball();
-    }
+    if (vents.length && i % 4 === 2 && vents.some((vx) => Math.abs(vx - lead.x) < 12)) this.music.sFireball();
     // Route 666: a hearse comes screaming down the road every two bars
     const T = this.L.traffic;
     if (T && !this.bossStarted && lead.x > T.x1 - 4 && lead.x < T.x2) {
@@ -277,9 +274,11 @@ export class Game {
     }
   }
 
-  updateVents(dt) {
-    if (!(this.ventFire > 0)) return;
-    this.ventFire -= dt;
+  updateVents() {
+    // locked to the music clock: they blow from beat 2 to beat 3.5 of every bar
+    if (!this.L.vents || !this.music.ctx) return;
+    const ph = ((this.music.beatFloat() % 4) + 4) % 4;
+    if (ph < 2 || ph >= 3.5) return;
     for (const vx of this.L.vents || []) {
       if (Math.abs(vx - this.camX) > this.halfW + 4) continue;
       this.sparks.emit({ x: vx + rand(-0.3, 0.3), y: 0.1 }, { n: 4, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 1, up: 9, life: 0.35, size: 0.16, gravity: -2, intensity: 2, spread: 0.3 });
@@ -799,6 +798,13 @@ export class Game {
     let dmg = s.dmg;
     if (e.dizzy > 0) dmg *= 2;
     else if (e.kind === 'banshee') dmg *= 0.5;   // her ghostly aura soaks hits until she's out of breath
+    else if (e.kind === 'devil') {
+      // The guitar duel: when it's your turn, only hits ON the beat really count
+      if (e.state === 'answer' && s.power) {
+        dmg *= 2; e.ans++;
+        popup(e.ans >= 3 ? 'NAILED IT!' : `ON THE BEAT ${e.ans}/3`, 'beat', { x: e.x, y: e.y + e.h + 0.6 }, this.camera);
+      } else dmg *= 0.5;
+    }
     e.hp -= dmg;
     e.flash = 0.08;
     this.music.sHit();
@@ -1003,6 +1009,7 @@ export class Game {
         case 'gargoyle': this.updateGargoyle(e, dt); break;
         case 'banshee': this.updateBanshee(e, dt); break;
         case 'mummy': this.updateMummy(e, dt); break;
+        case 'devil': this.updateDevil(e, dt); break;
       }
       if (e.dead) continue;
       if (e.model.mats) for (const m of e.model.mats) m.emissive.setHex(e.flash > 0 ? 0xffffff : e.angry ? 0x400000 : 0x000000);
@@ -1260,7 +1267,7 @@ export class Game {
 
   spawnBoss() {
     if (!this.bossStarted || this.boss || !this.alive.length) return;
-    const e = this.L.boss === 'gargoyle' ? this.spawnGargoyle() : this.L.boss === 'banshee' ? this.spawnBanshee() : this.L.boss === 'mummy' ? this.spawnMummy() : this.spawnBouncer();
+    const e = this.L.boss === 'gargoyle' ? this.spawnGargoyle() : this.L.boss === 'banshee' ? this.spawnBanshee() : this.L.boss === 'mummy' ? this.spawnMummy() : this.L.boss === 'devil' ? this.spawnDevil() : this.spawnBouncer();
     e.boss = true;
     e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
     this.boss = e;
@@ -1363,6 +1370,10 @@ export class Game {
       this.ui.banner("He's angry!", 'Watch for the charge. Get up high.');
     } else if (e.kind === 'mummy') {
       this.ui.banner("He's lost it!", 'Faster slides, backup dancers');
+    } else if (e.kind === 'devil') {
+      e.moves = ['duel', 'fly', 'hellfire', 'duel', 'fireballs', 'summon'];
+      e.model.wings.visible = true;
+      this.ui.banner("He's furious!", 'Wings out. Longer riffs.');
     } else this.ui.banner("He's cracking!", 'Faster dives, rubble from the sky');
     this.ui.shake(0.6);
     this.music.sStomp();
@@ -1779,16 +1790,174 @@ export class Game {
     }
   }
 
-  mirrorBeam(x, delay) {
+  mirrorBeam(x, delay, color = 0xff8ac8) {
     const mark = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.6, 24), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
     mark.rotation.x = -Math.PI / 2; mark.position.set(x, 0.06, 0);
     this.scene.add(mark);
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.6, 7.6, 12, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xff8ac8, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false, side: THREE.DoubleSide }));
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false, side: THREE.DoubleSide }));
     mesh.position.set(x, 3.8, 0);
     mesh.visible = false;
     this.scene.add(mesh);
     this.foeShots.push({ kind: 'beam', x, y: 0, vx: 0, vy: 0, wait: 0.9 + delay, on: 0.35, mark, life: 5, mesh, w: 0.5, h: 8 });
+  }
+
+  // ---- The Devil ---------------------------------------------------------------------------
+  spawnDevil() {
+    const model = makeDevil();
+    const s = 1.65;
+    model.root.scale.setScalar(s);
+    const A = this.L.arena;
+    const x = A.x2 - 4;
+    model.root.position.set(x, -s * 2, 0);
+    const e = this.base('devil', model, x, 0, {
+      w: 0.55, h: 1.8 * s, hp: 140, points: 66600, face: -1, state: 'rise',
+      moves: ['duel', 'fireballs', 'hellfire', 'duel', 'summon'], mi: 0, act: 0, camY: 3.5,
+      colors: [0xc81a1a, 0x111114],
+    });
+    e.center = () => ({ x: e.x, y: e.y + e.h * 0.55 });
+    e.hittable = () => e.state !== 'rise' || e.t > 1.2;
+    e.harmful = () => e.state !== 'rise' && e.state !== 'stunned';
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (this.cine || e.state === 'rise') return;
+      const at = { x: e.x, y: e.y + e.h + 0.6 };
+      if (e.state === 'riff') {
+        if (e.ri < 0) { e.ri++; return; }   // a beat to get ready
+        if (e.ri < e.riff.length) { const band = e.riff[e.ri++]; if (band) this.devilNote(e, band); return; }
+        e.state = 'answer'; e.t = 0; e.ans = 0; e.beats = e.angry ? 5 : 6;
+        popup('YOUR TURN! Hit him ON the beat', 'beat', at, this.camera);
+        return;
+      }
+      if (e.state === 'answer') {
+        if (--e.beats > 0) return;
+        if (e.ans >= 3) {
+          e.state = 'stunned'; e.t = 0; e.dizzy = 2.4;
+          this.ui.banner('The crowd goes wild!', "He's stunned: double damage");
+          this.music.sPlatinum();
+        } else {
+          e.state = 'strut'; e.t = 0;
+          popup(e.ans ? 'Not enough! He wins this round' : 'The crowd boos...', 'info', at, this.camera);
+        }
+        return;
+      }
+      if (e.state === 'fly' && e.act < 3 && e.t > 0.8) { e.act++; this.fireball(e, this.target(e.x)); return; }
+      if (e.state !== 'strut' || i % 4 !== 0 || e.t < 1.5) return;
+      const mv = e.moves[e.mi++ % e.moves.length];
+      e.t = 0; e.act = 0;
+      if (mv === 'duel') {
+        // Every low note (jump it) is followed by a rest so you can land: two rests before a high one.
+        const _ = null;
+        const pats = e.angry
+          ? [['high', 'high', 'low', _, _, 'high'], ['high', 'high', _, 'low', _, _], ['low', _, _, 'high', 'high', 'low']]
+          : [['high', 'high', 'low', _], ['high', _, 'low', _], ['high', 'high', _, 'low'], ['low', _, _, 'high']];
+        e.riff = pats[Math.floor(Math.random() * pats.length)]; e.ri = -1;
+        e.state = 'riff'; e.face = this.target(e.x).x < e.x ? -1 : 1;
+        this.ui.banner('Guitar duel!', 'Duck the high notes, jump the low ones');
+      } else if (mv === 'fireballs') {
+        e.state = 'fireballs';
+        popup('HELLFIRE! Keep moving', 'beat', at, this.camera);
+      } else if (mv === 'hellfire') {
+        e.state = 'hellfire';
+        popup('FIRE FROM BELOW! Out of the red circles', 'beat', at, this.camera);
+      } else if (mv === 'fly') {
+        e.state = 'fly';
+        popup('HE FLIES! Dodge the fireballs', 'beat', at, this.camera);
+      } else e.state = mv;
+    };
+    this.music.sScreech();
+    return e;
+  }
+
+  devilNote(e, band) {
+    e.face = this.target(e.x).x < e.x ? -1 : 1;
+    const g = makeWeaponMesh('notes', true);
+    g.scale.setScalar(1.8);
+    const y0 = band === 'high' ? 1.65 : 0.4;
+    g.position.set(e.x + e.face * 0.9, y0, 0.2);
+    this.scene.add(g);
+    this.music.sPower();
+    this.sparks.emit({ x: e.x + e.face * 0.9, y: y0 }, { n: 8, color: [0xff2e10, 0xffc94a], speed: 3, up: 0, life: 0.3, size: 0.07, gravity: 0, intensity: 2 });
+    // same hit bands as the banshee's screams: duck the high one, jump the low one
+    this.foeShots.push({ kind: 'scream', band, x: e.x + e.face * 0.9, y: y0, vx: e.face * 9.5, vy: 0, life: 3, mesh: g, w: 0.4, h: 0 });
+  }
+
+  updateDevil(e, dt) {
+    const R = e.model.root, Z = e.model, A = this.L.arena, s = R.scale.x;
+    const p = this.target(e.x);
+    const bf = this.music.beatFloat();
+    let armL = -1.0, armR = -0.6 + Math.sin(bf * Math.PI * 2) * 0.15, lean = 0, flying = false;
+    if (e.state === 'rise') {
+      const k = Math.min(1, e.t / 2.2);
+      R.position.set(e.x, -s * 2 * (1 - k), 0);
+      if (Math.random() < 0.9) this.sparks.emit({ x: e.x + rand(-1.2, 1.2), y: 0.1 }, { n: 2, color: [0xff6a1a, 0xffc94a, 0xff2e10], speed: 1, up: 7, life: 0.6, size: 0.14, gravity: -2, intensity: 2 });
+      if (k >= 1) { e.state = 'strut'; e.t = 0; }
+      return;
+    }
+    if (e.state === 'strut') {
+      e.face = p.x < e.x ? -1 : 1;
+      const dist = Math.abs(p.x - e.x);
+      e.vx = this.cine ? 0 : dist > 4 ? e.face * (e.angry ? 2.4 : 1.7) : dist < 2.6 ? -e.face * 1.4 : 0;
+    } else if (e.state === 'riff') {
+      e.vx = 0; lean = -0.15;
+      armR = -0.6 + Math.sin(e.t * 40) * 0.35;   // shredding
+      armL = -1.2;
+      if (Math.random() < 0.4) this.sparks.emit({ x: e.x + e.face * 0.4, y: e.y + 1.6 }, { n: 1, color: [0xff2e10, 0xffc94a], speed: 2, up: 1, life: 0.3, size: 0.06, gravity: 0, intensity: 2 });
+    } else if (e.state === 'answer') {
+      e.vx = 0; armR = -0.2; armL = -0.4; lean = 0.1;   // arms folded: "go on then"
+    } else if (e.state === 'stunned') {
+      e.vx = 0; armL = armR = 0.3;
+      Z.head.rotation.z = Math.sin(e.t * 8) * 0.4;
+      if (Math.random() < 0.3) this.sparks.emit({ x: e.x + Math.sin(e.t * 9) * 0.8, y: e.y + e.h + 0.2 }, { n: 1, color: 0xffc94a, speed: 0.5, up: 0, life: 0.4, size: 0.1, gravity: 0, intensity: 2 });
+      if (e.t > 2.4) { e.state = 'strut'; e.t = 0; Z.head.rotation.z = 0; }
+    } else if (e.state === 'fireballs') {
+      e.vx = 0; armR = -3.0;
+      if (e.act === 0 && e.t > 0.4) { e.act = 1; this.fireball(e, p); }
+      if (e.act === 1 && e.t > 1.1) { e.act = 2; this.fireball(e, this.target(e.x)); }
+      if (e.t > 1.7) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'hellfire') {
+      e.vx = 0; armL = armR = -2.9;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        this.ui.shake(0.4);
+        const n = e.angry ? 6 : 4;
+        const xs = [p.x];
+        for (let k = 1; k < n; k++) xs.push(A.x1 + 1 + Math.random() * (A.x2 - A.x1 - 2));
+        xs.forEach((x, k) => this.mirrorBeam(Math.min(Math.max(x, A.x1 + 0.8), A.x2 - 0.8), k * 0.2, 0xff5a1a));
+      }
+      if (e.t > 2.2) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'summon') {
+      e.vx = 0; armL = armR = -2.9;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        const ghosts = this.enemies.filter((z) => z.kind === 'ghost' && !z.dead).length;
+        for (let k = ghosts; k < 2; k++) this.spawnGhost(A.x1 + 2 + Math.random() * (A.x2 - A.x1 - 4), 1.2);
+        this.ui.banner('Lost souls!', '');
+      }
+      if (e.t > 1.2) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'fly') {
+      flying = true;
+      e.face = p.x < e.x ? -1 : 1;
+      const landing = e.act >= 3 && e.t > 3.2;
+      const wantY = landing ? 0 : 4.2;
+      const tx = Math.min(Math.max(p.x + (e.x > p.x ? 2 : -2), A.x1 + 1), A.x2 - 1);
+      e.x += Math.sign(tx - e.x) * Math.min(Math.abs(tx - e.x), 3 * dt);
+      e.y += (wantY - e.y) * Math.min(1, dt * 2.5);
+      e.vx = 0; e.vy = 0; armL = armR = -0.4;
+      if (landing && e.y < 0.08) { e.y = 0; e.state = 'strut'; e.t = 0; this.ui.shake(0.5); this.music.sStomp(); }
+    }
+    if (!flying) this.move(e, dt, false);
+    e.x = Math.min(Math.max(e.x, A.x1 + e.w), A.x2 - e.w);
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += (faceRot(e.face) - R.rotation.y) * Math.min(1, dt * 8);
+    Z.armL.rotation.x += (armL - Z.armL.rotation.x) * Math.min(1, dt * 12);
+    Z.armR.rotation.x += (armR - Z.armR.rotation.x) * Math.min(1, dt * 14);
+    Z.body.rotation.x += (lean - Z.body.rotation.x) * Math.min(1, dt * 10);
+    e.phase += Math.abs(e.vx) * dt * 1.6;
+    Z.legL.rotation.x = flying ? 0.3 : Math.sin(e.phase) * 0.4; Z.legR.rotation.x = flying ? -0.2 : -Math.sin(e.phase) * 0.4;
+    Z.kneeL.rotation.x = Math.max(0, Math.sin(e.phase + 1.4)) * 0.6; Z.kneeR.rotation.x = Math.max(0, -Math.sin(e.phase + 1.4)) * 0.6;
+    Z.tail.rotation.y = Math.sin(e.t * 3) * 0.5;
+    if (Z.wings.visible) { const f = Math.sin(e.t * (flying ? 14 : 3)) * (flying ? 0.7 : 0.2); Z.wingL.rotation.y = 0.4 + f; Z.wingR.rotation.y = -0.4 - f; }
   }
 
   rubble(x, delay) {
@@ -1931,7 +2100,8 @@ export class Game {
     setTimeout(() => {
       const who = { drummer: 'Drummer', bassist: 'Bassist', singer: 'Singer', roadie: 'Roadie' }[this.L.rescue] || 'Bandmate';
       const sub = { drummer: 'The beat is back for good', bassist: 'The low end is back', singer: 'The band has a voice again', roadie: 'The gear is back on the road' }[this.L.rescue] || '';
-      this.ui.banner(`${who} rescued!`, sub);
+      if (this.L.rescue === 'soul') this.ui.banner('Your soul is saved!', 'The contract goes up in flames');
+      else this.ui.banner(`${who} rescued!`, sub);
       this.music.setLayer('beat', true);
     }, 1200);
     setTimeout(() => this.ui.levelClear(this), 5600);

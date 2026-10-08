@@ -67,6 +67,21 @@ const ART = {
     <rect x="196" y="40" width="74" height="34" fill="#2a1d17" stroke="#120c09" stroke-width="3"/><rect x="214" y="74" width="4" height="46" fill="#6a3a22"/><rect x="250" y="74" width="4" height="46" fill="#6a3a22"/>
     <text x="233" y="62" text-anchor="middle" font-family="Bungee, Impact" font-size="11" fill="${GOLD}">HELL 666</text>
     <g transform="translate(70 150)"><rect width="56" height="16" fill="#141418"/><rect x="14" y="-12" width="38" height="13" fill="#141418"/><circle cx="12" cy="17" r="5" fill="#000"/><circle cx="44" cy="17" r="5" fill="#000"/><path d="M56 4 l18 -4 l-4 8 l6 4 l-20 0z" fill="#ff7a1a"/></g>`,
+  stadium: `${sky('#1a0204', '#a02a0a')}${[0, 1, 2, 3].map((k) => `<rect x="0" y="${70 + k * 18}" width="300" height="14" fill="#2a1418"/>${Array.from({ length: 30 }, (_, i) => `<circle cx="${5 + i * 10 + (k % 2) * 5}" cy="${68 + k * 18}" r="3" fill="#c8d6ff" opacity=".7"/>`).join('')}`).join('')}
+    <rect x="0" y="150" width="300" height="50" fill="#141016"/>${flames(150)}
+    <rect x="80" y="20" width="140" height="30" fill="#0c0a0e" stroke="#ff3a1a" stroke-width="2"/><text x="150" y="41" text-anchor="middle" font-family="Bungee, Impact" font-size="14" fill="#ff3a1a">LIVE IN HELL</text>`,
+  devilbeat: `${sky('#2a0505', '#5a1a0a')}<rect x="0" y="150" width="300" height="50" fill="#141016"/>
+    <g opacity=".55">${devil(150, 130, 0.9)}</g>${[0, 1, 2, 3, 4].map((k) => `<circle cx="${110 + k * 20}" cy="${40 + (k % 2) * 14}" r="${14 + k * 2}" fill="#3a3038" opacity=".6"/>`).join('')}
+    <g transform="translate(150 168) rotate(-12)"><path d="M-30 0 L0 -8 L-4 0 L0 8 Z" fill="${RED}"/><rect x="-2" y="-2" width="44" height="4" fill="#111"/><path d="M42 -4 l8 -6 M42 4 l8 6" stroke="#111" stroke-width="3"/></g>
+    <g transform="translate(230 60) rotate(10)"><rect width="46" height="58" fill="${BONE}"/><path d="M6 14 h34 M6 24 h34 M6 34 h20" stroke="#999"/><path d="M0 58 q8 -18 16 0 q8 -14 16 0 q7 -20 14 0 z" fill="#ff6a1a"/></g>`,
+  finale: `${sky('#1b1233', '#3b2a58')}<rect x="0" y="120" width="300" height="80" fill="#141018"/>
+    <polygon points="60,0 30,120 100,120" fill="${PINK}" opacity=".22"/><polygon points="150,0 120,120 180,120" fill="${GOLD}" opacity=".18"/><polygon points="240,0 200,120 270,120" fill="${TOXIC}" opacity=".2"/>
+    ${person(70, 118, 1)}${guitar(74, 98)}${person(120, 118, 1, INK, '#2fa8ff')}${person(170, 118, 1, INK, '#111')}${guitar(174, 96, -20)}${person(220, 118, 1, INK, GOLD)}
+    ${[20, 60, 100, 140, 180, 220, 260].map((x) => zhead(x, 168 + (x % 3) * 4)).join('')}`,
+  theend: `${sky('#06050d', '#191232')}${moon(240, 50, 22)}<rect x="0" y="160" width="300" height="40" fill="#141018"/>
+    <text x="150" y="90" text-anchor="middle" font-family="Bungee, Impact" font-size="34" fill="${PINK}">THE END</text>
+    <text x="150" y="118" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${TOXIC}">...OF THE TOUR</text>
+    <g transform="translate(30 140)"><rect width="56" height="22" rx="3" fill="${PINK}"/><rect x="38" y="-8" width="18" height="10" rx="2" fill="${PINK}"/><circle cx="12" cy="23" r="6" fill="#000"/><circle cx="44" cy="23" r="6" fill="#000"/></g>`,
 };
 
 export const COMICS = {
@@ -93,7 +108,13 @@ export const COMICS = {
   ],
   after3: [
     { art: 'bassfree', text: "The roadie is back, and so is the gear. Now you've got a show to play." },
-    { art: 'devil', text: "One gig left: Hell's Stadium. The Devil wants your soul, and he's tuning up. Coming soon..." },
+    { art: 'devil', text: "One gig left. The Devil wants your soul, and he's challenged you to a guitar duel." },
+    { art: 'stadium', text: "Next stop: Hell's Stadium. Sold out. Every seat a lost soul." },
+  ],
+  after4: [
+    { art: 'devilbeat', text: 'The Devil drops his flying-V. The contract goes up in flames. Your soul is your own again.' },
+    { art: 'finale', text: 'And the zombies? Turns out they just wanted a decent gig.' },
+    { art: 'theend', text: 'Thanks for playing! Try Hard mode for the Encore, and hunt down every platinum record.' },
   ],
 };
 

@@ -439,7 +439,7 @@ function loadLevel(i) {
   music.setSong(LEVELS[i].zones[0].song);
   lastBeat = Math.floor(music.beatFloat());
   showTouch();
-  ui.banner(LEVELS[i].name, run.encore ? 'ENCORE!' : `Rescue the ${LEVELS[i].rescue}`);
+  ui.banner(LEVELS[i].name, run.encore ? 'ENCORE!' : LEVELS[i].rescue === 'soul' ? 'Save your soul' : `Rescue the ${LEVELS[i].rescue}`);
   camDist = 13.5;
 }
 
@@ -463,7 +463,8 @@ function endLevel(g, clear) {
   let unlockText = '';
   if (clear) {
     music.sClear();
-    if (unlockCharacter(L.rescue)) unlockText = `New character: ${HEROES[L.rescue].name}!`;
+    if (HEROES[L.rescue] && unlockCharacter(L.rescue)) unlockText = `New character: ${HEROES[L.rescue].name}!`;
+    if (last && !run.encore) unlockText = 'You beat the Devil! The tour is complete.';
     unlockLevel(run.level + 2);
   } else music.sOver();
   $('unlock').textContent = unlockText;

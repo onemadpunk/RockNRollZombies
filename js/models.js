@@ -813,3 +813,61 @@ export function makeHearse() {
   g.userData.wheels = wheels;
   return g;
 }
+
+// Level 5 boss: the Devil himself, with a flying-V. Wings come out when he's angry.
+export function makeDevil() {
+  const z = makeZombie('devil');
+  const red = M(0xc81a1a, { roughness: 0.5, emissive: 0x200000 });
+  const [skin, cloth, pants] = z.mats;
+  const shirt = M(0x111114, { roughness: 0.4 }), trousers = M(0x1a1a1e, { roughness: 0.35, metalness: 0.2 });
+  z.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.material === skin) o.material = red;
+    else if (o.material === cloth) o.material = shirt;
+    else if (o.material === pants) o.material = trousers;
+  });
+  z.mats = [red, shirt];
+  // horns, goatee, yellow eyes
+  const bone = M(0xe8dcc0, { roughness: 0.6 });
+  for (const sx of [-1, 1]) {
+    const h = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.34, 8), bone);
+    h.position.set(sx * 0.13, 0.48, 0.02); h.rotation.z = -sx * 0.4; z.head.add(h);
+    box(0.07, 0.05, 0.02, M(0xffd23a, { emissive: 0xffb000, emissiveIntensity: 3 }), sx * 0.08, 0.24, 0.215, z.head);
+  }
+  box(0.08, 0.16, 0.06, MAT.dark, 0, -0.06, 0.16, z.jaw);
+  box(0.36, 0.06, 0.38, MAT.dark, 0, 0.4, 0.0, z.head);           // slicked-back hair
+  // tail
+  const tail = new THREE.Group(); tail.position.set(0, 0.95, -0.16); z.body.add(tail);
+  let seg = tail;
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Group(); s.position.set(0, -0.12, -0.1); s.rotation.x = 0.35; seg.add(s);
+    box(0.06, 0.06, 0.18, red, 0, 0, -0.06, s); seg = s;
+  }
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), red); tip.rotation.x = -Math.PI / 2; tip.position.z = -0.2; seg.add(tip);
+  z.tail = tail;
+  // flying-V guitar, slung low across the front
+  const gtr = new THREE.Group(); gtr.position.set(0, -0.15, 0.24); gtr.rotation.z = 0.55; z.torso.add(gtr);
+  const gm = M(0xd01020, { roughness: 0.25, metalness: 0.3, emissive: 0x300000 });
+  box(0.12, 0.62, 0.05, gm, -0.12, -0.22, 0, gtr).rotation.z = 0.35;
+  box(0.12, 0.62, 0.05, gm, 0.12, -0.22, 0, gtr).rotation.z = -0.35;
+  box(0.05, 0.8, 0.04, MAT.dark, 0, 0.36, 0, gtr);
+  box(0.12, 0.14, 0.04, gm, 0, 0.8, 0, gtr);
+  for (let i = 0; i < 3; i++) box(0.16, 0.02, 0.06, MAT.chrome, 0, -0.08 - i * 0.06, 0, gtr);
+  z.guitar = gtr;
+  // bat wings (hidden until he's angry)
+  const wingMat = M(0x3a0808, { roughness: 0.6, side: THREE.DoubleSide, emissive: 0x100000 });
+  const wings = new THREE.Group(); wings.position.set(0, 0.15, -0.16); z.torso.add(wings);
+  z.wingL = null; z.wingR = null;
+  for (const sx of [-1, 1]) {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0); shape.lineTo(sx * 1.1, 0.55); shape.lineTo(sx * 1.25, -0.05); shape.lineTo(sx * 0.9, -0.15);
+    shape.lineTo(sx * 0.7, -0.5); shape.lineTo(sx * 0.4, -0.3); shape.lineTo(0, -0.35); shape.lineTo(0, 0);
+    const w = new THREE.Group(); wings.add(w);
+    w.add(new THREE.Mesh(new THREE.ShapeGeometry(shape), wingMat));
+    box(0.04, 0.04, 0.04, bone, sx * 1.1, 0.55, 0, w);
+    if (sx < 0) z.wingL = w; else z.wingR = w;
+  }
+  wings.visible = false;
+  z.wings = wings;
+  return z;
+}
