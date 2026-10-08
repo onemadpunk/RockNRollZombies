@@ -285,6 +285,43 @@ h3.sub { margin: 4px 0 0; }
   #banner { font-size: clamp(26px, 8vh, 48px); top: 22%; }
 }
 
+/* ---- Phones in landscape (short screens): everything must fit without scrolling ---- */
+@media (max-height: 520px) {
+  .screen { padding-block: 10px; }
+  .title-inner { gap: 8px; }
+  h1 { font-size: clamp(30px, 10vh, 56px); }
+  h2 { font-size: clamp(26px, 9vh, 44px); }
+  .btn { font-size: 16px; padding: 8px 22px; }
+  .btn.small { font-size: 12px; padding: 6px 12px; }
+  /* Story: one row of panels, smaller captions */
+  .panels { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+  .panel { box-shadow: 4px 4px 0 var(--pink); }
+  .panel svg { max-height: 34vh; }
+  .panel figcaption { font-size: clamp(10px, 3.2vh, 13px); padding: 5px 7px; line-height: 1.25; }
+  /* Title options: tighter */
+  .opts { gap: 6px 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .seg button { font-size: 11px; padding: 5px 8px; }
+  .blurb { font-size: 10px; }
+  .controls, .tip { font-size: 11px; }
+  /* End screen + map */
+  #rank { gap: 14px; }
+  #rank .grade { font-size: 64px; }
+  #rank dl { font-size: 12px; gap: 2px 12px; }
+  .initials .slot span { font-size: 30px; }
+  #over .title-inner { display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; max-width: 900px; width: 100%; column-gap: 20px; }
+  #over h2, #over #over-text, #over .row-btns, #over .share-text, #over .unlock { grid-column: 1 / -1; }
+  #over #rank { grid-column: 1; }
+  #over #hs { grid-column: 2; grid-row: 3; gap: 4px; }
+  #over #rank[hidden] + * { grid-column: 1 / -1; }
+  #over .hs .tip { font-size: 10px; }
+  #rank .grade { font-size: 52px; }
+  #mapsvg svg { max-height: 30vh; }
+  .shop-item { padding: 6px 8px; }
+  .shop-item .bl { display: none; }
+  .ctl { font-size: 11px; }
+  .ctl th, .ctl td { padding: 3px 6px; }
+}
+
 </style>
 <script type="importmap">
 {
