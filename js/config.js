@@ -31,7 +31,7 @@ export const SHOP = [
 
 const KEY = 'rnrz-save-v1';
 const DEFAULTS = {
-  settings: { difficulty: 'normal', flashing: true, shake: true, soundcheck: true },
+  settings: { difficulty: 'normal', flashing: true, shake: true, soundcheck: true, musicVol: 1, sfxVol: 1, outfit: 'classic' },
   unlocked: { levels: 1, characters: ['punk'] },
   records: {},          // level index -> array of collected record ids
   scores: [],           // [{ name, score, level, diff, date }]

@@ -2,7 +2,7 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeFlightCase,
+  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
@@ -100,8 +100,8 @@ export class Game {
   }
 
   // ---------------------------------------------------------------------------
-  makePlayer(i, { char, controls }) {
-    const hero = makeHero(char);
+  makePlayer(i, { char, controls, outfit }) {
+    const hero = makeHero(char, outfit ? OUTFITS[outfit] : null);
     this.scene.add(hero.root);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.55, 32),
       new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[i], transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));

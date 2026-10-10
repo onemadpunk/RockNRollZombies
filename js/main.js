@@ -10,14 +10,14 @@ import { Controls, KEYS_SOLO, KEYS_P1, KEYS_P2, bindTouch, onTouchMode, usingTou
 import { LEVELS, buildLevel } from './level.js';
 import { Particles, Embers, popup } from './fx.js';
 import { Game, WEAPONS } from './game.js';
-import { MAT, HEROES, makeHero } from './models.js';
+import { MAT, HEROES, OUTFITS, makeHero } from './models.js';
 import { DIFFICULTY, ENCORE, SHOP, save, persist, unlockCharacter, unlockLevel, qualifies, addScore, timeQualifies, addTime, fmtTime } from './config.js';
 import { renderComic, renderMap, renderShop } from './screens.js';
 import { online, worldTop, worldQualifies, submitWorld, flushOutbox } from './online.js';
 
 const $ = (id) => document.getElementById(id);
 const show = (id, on = true) => { $(id).hidden = !on; };
-const SCREENS = ['title', 'controls', 'scores', 'comic', 'map', 'pause', 'over'];
+const SCREENS = ['title', 'controls', 'scores', 'collection', 'comic', 'map', 'pause', 'over'];
 function only(id) { for (const s of SCREENS) show(s, s === id); }
 
 // ---- Quality ----------------------------------------------------------------------
@@ -147,8 +147,12 @@ function applyQuality() {
   $('quality').textContent = 'Graphics: ' + (quality.low ? 'Low' : 'High');
   try { localStorage.setItem('rnrz-quality', quality.low ? 'low' : 'high'); } catch {}
 }
+const volLabel = (v) => (v <= 0 ? 'Off' : Math.round(v * 100) + '%');
 function syncToggles() {
   const S = save.settings;
+  $('tg-music').textContent = $('p-music').textContent = 'Music: ' + volLabel(S.musicVol ?? 1);
+  $('tg-sfx').textContent = $('p-sfx').textContent = 'Sound: ' + volLabel(S.sfxVol ?? 1);
+  music.setVolumes(S.musicVol ?? 1, S.sfxVol ?? 1);
   $('tg-flash').textContent = $('p-flash').textContent = 'Flashing: ' + (S.flashing ? 'On' : 'Off');
   $('tg-shake').textContent = $('p-shake').textContent = 'Shake: ' + (S.shake ? 'On' : 'Off');
   $('tg-sound').textContent = 'Soundcheck: ' + (S.soundcheck ? 'On' : 'Off');
@@ -257,6 +261,12 @@ function renderTitle() {
   show('opt-char2-wrap', sel.players === 2);
   const chars2 = Object.keys(HEROES).map((k) => ({ label: HEROES[k].name.replace('The ', ''), value: k, locked: unlocked.includes(k) || k === 'drummer' ? null : 'Rescue them to unlock' }));
   segButtons($('opt-char2'), chars2, sel.char2, (v) => { sel.char2 = v; renderTitle(); });
+  // Outfits (locked ones say how to get them)
+  if (!outfitUnlocked(save.settings.outfit)) save.settings.outfit = 'classic';
+  const outfits = Object.entries(OUTFITS).map(([k, o]) => ({ label: o.name, value: k, locked: outfitUnlocked(k) ? null : o.how }));
+  segButtons($('opt-outfit'), outfits, save.settings.outfit, (v) => { save.settings.outfit = v; persist(); renderTitle(); placeTitleHero(); });
+  const got = Object.keys(OUTFITS).filter(outfitUnlocked).length;
+  $('outfit-blurb').textContent = `${got}/${Object.keys(OUTFITS).length} unlocked. Platinum records, secret areas and beating the Devil unlock more (see Collection).`;
   const levels = LEVELS.map((L, i) => ({ label: `${i + 1}. ${L.short}`, value: i, locked: i < save.unlocked.levels ? null : 'Beat the previous gig first' }));
   segButtons($('opt-level'), levels, sel.level, (v) => { sel.level = v; renderTitle(); });
   const recs = (save.records[sel.level] || []).length;
@@ -267,10 +277,42 @@ for (const b of $('opt-players').children) b.addEventListener('click', () => { s
 $('tg-flash').addEventListener('click', () => { save.settings.flashing = !save.settings.flashing; persist(); syncToggles(); });
 $('p-flash').addEventListener('click', () => { save.settings.flashing = !save.settings.flashing; persist(); syncToggles(); });
 $('tg-shake').addEventListener('click', () => { save.settings.shake = !save.settings.shake; persist(); syncToggles(); });
+// Volume: each press steps down a notch (100 -> 75 -> 50 -> 25 -> off -> 100)
+const stepVol = (key) => {
+  const v = save.settings[key] ?? 1;
+  save.settings[key] = v <= 0 ? 1 : Math.max(0, Math.round((v - 0.25) * 4) / 4);
+  persist(); syncToggles();
+  if (key === 'sfxVol') music.sPickup?.();   // a little blip so you can hear the new level
+};
+for (const id of ['tg-music', 'p-music']) $(id).addEventListener('click', () => stepVol('musicVol'));
+for (const id of ['tg-sfx', 'p-sfx']) $(id).addEventListener('click', () => stepVol('sfxVol'));
 $('p-shake').addEventListener('click', () => { save.settings.shake = !save.settings.shake; persist(); syncToggles(); });
 $('tg-sound').addEventListener('click', () => { save.settings.soundcheck = !save.settings.soundcheck; persist(); syncToggles(); });
 $('btn-controls').addEventListener('click', () => { only('controls'); state = 'menu'; $('controls').querySelector('.back').focus(); });
 $('btn-scores').addEventListener('click', () => openScores());
+$('btn-collection').addEventListener('click', () => { renderCollection(); only('collection'); state = 'menu'; $('collection').querySelector('.back').focus(); });
+
+// ---- Collection: records, secret areas and outfits ----------------------------------------
+function secretsFound() { return LEVELS.reduce((n, L) => n + (save.secrets[L.id] || []).length, 0); }
+function secretsTotal() { return LEVELS.reduce((n, L) => n + (L.secrets || []).length, 0); }
+function outfitUnlocked(k) {
+  const o = OUTFITS[k];
+  if (!o) return false;
+  if (o.records !== undefined) return (save.records[o.records] || []).length >= 3;
+  if (o.secrets) return secretsFound() >= secretsTotal();
+  if (o.beaten) return save.unlocked.levels > LEVELS.length;
+  return true;
+}
+function renderCollection() {
+  const recs = LEVELS.reduce((n, L) => n + (save.records[L.id] || []).length, 0);
+  $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
+  const disc = (n, of) => Array.from({ length: of }, (_, i) => (i < n ? '\u25CF' : '\u25CB')).join(' ');
+  $('col-gigs').innerHTML = '<tr><th>Gig</th><th>Records</th><th>Secrets</th></tr>' + LEVELS.map((L, i) => {
+    const open = i < save.unlocked.levels;
+    return `<tr><td>${open ? `${i + 1}. ${L.song}` : `${i + 1}. ???`}</td><td>${disc((save.records[L.id] || []).length, 3)}</td><td>${disc((save.secrets[L.id] || []).length, (L.secrets || []).length)}</td></tr>`;
+  }).join('');
+  $('col-outfits').innerHTML = Object.entries(OUTFITS).map(([k, o]) => `<li class="${outfitUnlocked(k) ? '' : 'locked'}"><b>${o.name}</b>${outfitUnlocked(k) ? 'Unlocked' : o.how}</li>`).join('');
+}
 function openScores(attract = false) {
   scoreSrc = online() ? 'world' : 'local';
   renderScores();
@@ -418,7 +460,7 @@ $('share').addEventListener('click', shareScore);
 
 function placeTitleHero() {
   if (titleHero) scene.remove(titleHero.root);
-  titleHero = makeHero(sel.char);
+  titleHero = makeHero(sel.char, OUTFITS[save.settings.outfit] || null);
   titleHero.root.position.set(3, 0, 0);
   titleHero.root.rotation.y = 0.5;
   scene.add(titleHero.root);
@@ -492,9 +534,9 @@ let comicThen = null;
 $('comic-next').addEventListener('click', () => { const f = comicThen; comicThen = null; f && f(); });
 
 function playerConfigs() {
-  if (sel.players === 1) return [{ char: sel.char, controls: new Controls({ keys: KEYS_SOLO, pad: 'any', touch: true }) }];
+  if (sel.players === 1) return [{ char: sel.char, outfit: save.settings.outfit, controls: new Controls({ keys: KEYS_SOLO, pad: 'any', touch: true }) }];
   return [
-    { char: sel.char, controls: new Controls({ keys: KEYS_P1, pad: 0, touch: true }) },
+    { char: sel.char, outfit: save.settings.outfit, controls: new Controls({ keys: KEYS_P1, pad: 0, touch: true }) },
     { char: sel.char2, controls: new Controls({ keys: KEYS_P2, pad: 1, touch: false }) },
   ];
 }

@@ -193,11 +193,13 @@ export class Music {
     this.master.connect(comp).connect(ctx.destination);
 
     const mk = (v, dest = this.master) => { const g = ctx.createGain(); g.gain.value = v; g.connect(dest); return g; };
-    this.musicBus = mk(1);
+    // Player volume settings sit after everything else, so the game's own ducking still works
+    this.userMusic = mk(this.vol ? this.vol.music : 1);
+    this.musicBus = mk(1, this.userMusic);
     const mb = this.musicBus;
     this.layers = { guitar: mk(0.2, mb), bass: mk(0.5, mb), beat: mk(0, mb), lead: mk(0, mb) };
     this.drums = mk(0.9, mb);
-    this.sfx = mk(0.7);
+    this.sfx = mk(0.7 * (this.vol ? this.vol.sfx : 1));
 
     // Guitar amp: drive -> shaper -> cab
     this.gIn = ctx.createGain(); this.gIn.gain.value = 7;
@@ -577,6 +579,13 @@ export class Music {
     [52, 51, 50, 40].forEach((m, i) => this.chord(t + i * 0.35, mtof(m), true, 0.9, this.gIn, i === 3 ? 1.8 : 0.4));
   }
   /** Fade everything except effects (for menus). */
+  /** Player settings: music and sound effects, 0..1 each. Safe to call before the audio starts. */
+  setVolumes(music, sfx) {
+    this.vol = { music, sfx };
+    if (!this.ctx) return;
+    this.userMusic.gain.value = music;
+    this.sfx.gain.value = 0.7 * sfx;
+  }
   musicVolume(v) {
     if (!this.ctx) return;
     const g = this.musicBus.gain, t = this.ctx.currentTime;

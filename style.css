@@ -335,6 +335,12 @@ h3.sub { margin: 4px 0 0; }
 #rotate small { font-family: var(--hud, sans-serif); opacity: .7; }
 .rot-phone { width: 46px; height: 80px; border: 4px solid var(--pink); border-radius: 9px; animation: rotphone 1.8s ease-in-out infinite; }
 @keyframes rotphone { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+.outfits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; width: min(900px, 92vw); }
+.outfits li { padding: 8px 10px; border: 2px solid #2a2235; border-radius: 6px; font-size: 13px; text-align: left; }
+.outfits li b { display: block; font-family: var(--display); font-weight: 400; color: var(--toxic); }
+.outfits li.locked { opacity: .55; }
+.outfits li.locked b { color: #a99fb8; }
+.collection td:nth-child(n+2) { text-align: center; }
 .credit { margin: 2px 0 0; text-align: center; font-family: var(--display); font-size: 12px; letter-spacing: .04em; color: var(--pink); opacity: .85; }
 .ver { position: fixed; right: 10px; bottom: 6px; margin: 0; font-size: 10px; color: var(--dim); opacity: .7; }
 

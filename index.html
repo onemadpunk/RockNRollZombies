@@ -87,13 +87,15 @@
         <button data-v="1" class="on">1 player</button><button data-v="2">2 players</button></div>
         <p class="blurb" id="players-blurb">Keyboard, controller or touch.</p></div>
       <div class="opt"><span class="label" id="char-label">Character</span><div class="seg" id="opt-char"></div><p class="blurb" id="char-blurb"></p></div>
+      <div class="opt"><span class="label">Outfit</span><div class="seg" id="opt-outfit"></div><p class="blurb" id="outfit-blurb"></p></div>
       <div class="opt" id="opt-char2-wrap" hidden><span class="label">Player 2</span><div class="seg" id="opt-char2"></div></div>
       <div class="opt"><span class="label">Gig</span><div class="seg" id="opt-level"></div><p class="blurb" id="level-blurb"></p></div>
       <div class="opt"><span class="label">Settings</span><div class="seg toggles">
+        <button id="tg-music">Music: 100%</button><button id="tg-sfx">Sound: 100%</button>
         <button id="tg-full">Full screen</button><button id="tg-install" hidden>Install app</button>
         <button id="tg-flash">Flashing: On</button><button id="tg-shake">Shake: On</button><button id="tg-sound">Soundcheck: On</button></div></div>
     </div>
-    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button></div>
+    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button><button id="btn-collection" class="btn small">Collection</button></div>
     <p class="credit">Made by One Mad Punk</p>
     <p id="loading" class="tip">Loading&hellip;</p>
     <p id="ver" class="ver"></p>
@@ -126,6 +128,17 @@
     <p class="tip">2 players on one keyboard: player 1 keeps to the left end, player 2 to the right end, so your hands don't bump.
       Two controllers (pad 1 and pad 2) are even better.
       On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
+    <button class="btn back">Back</button>
+  </div>
+</div>
+
+<div id="collection" class="screen" hidden>
+  <div class="title-inner">
+    <h2>Collection</h2>
+    <p class="tip" id="col-total"></p>
+    <table class="ctl collection" id="col-gigs"></table>
+    <h3 class="sub">Outfits</h3>
+    <ul class="outfits" id="col-outfits"></ul>
     <button class="btn back">Back</button>
   </div>
 </div>
@@ -165,6 +178,8 @@
     <button id="resume" class="btn">Resume</button>
     <div id="pause-help" class="cheat"></div>
     <div class="row-btns">
+      <button id="p-music" class="btn small">Music: 100%</button>
+      <button id="p-sfx" class="btn small">Sound: 100%</button>
       <button id="p-full" class="btn small">Full screen</button>
       <button id="quality" class="btn small">Graphics: High</button>
       <button id="p-flash" class="btn small">Flashing: On</button>

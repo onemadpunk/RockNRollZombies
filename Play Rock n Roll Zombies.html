@@ -361,6 +361,12 @@ h3.sub { margin: 4px 0 0; }
 #rotate small { font-family: var(--hud, sans-serif); opacity: .7; }
 .rot-phone { width: 46px; height: 80px; border: 4px solid var(--pink); border-radius: 9px; animation: rotphone 1.8s ease-in-out infinite; }
 @keyframes rotphone { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+.outfits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; width: min(900px, 92vw); }
+.outfits li { padding: 8px 10px; border: 2px solid #2a2235; border-radius: 6px; font-size: 13px; text-align: left; }
+.outfits li b { display: block; font-family: var(--display); font-weight: 400; color: var(--toxic); }
+.outfits li.locked { opacity: .55; }
+.outfits li.locked b { color: #a99fb8; }
+.collection td:nth-child(n+2) { text-align: center; }
 .credit { margin: 2px 0 0; text-align: center; font-family: var(--display); font-size: 12px; letter-spacing: .04em; color: var(--pink); opacity: .85; }
 .ver { position: fixed; right: 10px; bottom: 6px; margin: 0; font-size: 10px; color: var(--dim); opacity: .7; }
 
@@ -430,13 +436,15 @@ h3.sub { margin: 4px 0 0; }
         <button data-v="1" class="on">1 player</button><button data-v="2">2 players</button></div>
         <p class="blurb" id="players-blurb">Keyboard, controller or touch.</p></div>
       <div class="opt"><span class="label" id="char-label">Character</span><div class="seg" id="opt-char"></div><p class="blurb" id="char-blurb"></p></div>
+      <div class="opt"><span class="label">Outfit</span><div class="seg" id="opt-outfit"></div><p class="blurb" id="outfit-blurb"></p></div>
       <div class="opt" id="opt-char2-wrap" hidden><span class="label">Player 2</span><div class="seg" id="opt-char2"></div></div>
       <div class="opt"><span class="label">Gig</span><div class="seg" id="opt-level"></div><p class="blurb" id="level-blurb"></p></div>
       <div class="opt"><span class="label">Settings</span><div class="seg toggles">
+        <button id="tg-music">Music: 100%</button><button id="tg-sfx">Sound: 100%</button>
         <button id="tg-full">Full screen</button><button id="tg-install" hidden>Install app</button>
         <button id="tg-flash">Flashing: On</button><button id="tg-shake">Shake: On</button><button id="tg-sound">Soundcheck: On</button></div></div>
     </div>
-    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button></div>
+    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button><button id="btn-collection" class="btn small">Collection</button></div>
     <p class="credit">Made by One Mad Punk</p>
     <p id="loading" class="tip">Loading&hellip;</p>
     <p id="ver" class="ver"></p>
@@ -464,6 +472,17 @@ h3.sub { margin: 4px 0 0; }
     <p class="tip">2 players on one keyboard: player 1 keeps to the left end, player 2 to the right end, so your hands don't bump.
       Two controllers (pad 1 and pad 2) are even better.
       On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
+    <button class="btn back">Back</button>
+  </div>
+</div>
+
+<div id="collection" class="screen" hidden>
+  <div class="title-inner">
+    <h2>Collection</h2>
+    <p class="tip" id="col-total"></p>
+    <table class="ctl collection" id="col-gigs"></table>
+    <h3 class="sub">Outfits</h3>
+    <ul class="outfits" id="col-outfits"></ul>
     <button class="btn back">Back</button>
   </div>
 </div>
@@ -503,6 +522,8 @@ h3.sub { margin: 4px 0 0; }
     <button id="resume" class="btn">Resume</button>
     <div id="pause-help" class="cheat"></div>
     <div class="row-btns">
+      <button id="p-music" class="btn small">Music: 100%</button>
+      <button id="p-sfx" class="btn small">Sound: 100%</button>
       <button id="p-full" class="btn small">Full screen</button>
       <button id="quality" class="btn small">Graphics: High</button>
       <button id="p-flash" class="btn small">Flashing: On</button>
@@ -613,7 +634,7 @@ const SHOP = [
 
 const KEY = 'rnrz-save-v1';
 const DEFAULTS = {
-  settings: { difficulty: 'normal', flashing: true, shake: true, soundcheck: true },
+  settings: { difficulty: 'normal', flashing: true, shake: true, soundcheck: true, musicVol: 1, sfxVol: 1, outfit: 'classic' },
   unlocked: { levels: 1, characters: ['punk'] },
   records: {},          // level index -> array of collected record ids
   scores: [],           // [{ name, score, level, diff, date }]
@@ -886,11 +907,13 @@ class Music {
     this.master.connect(comp).connect(ctx.destination);
 
     const mk = (v, dest = this.master) => { const g = ctx.createGain(); g.gain.value = v; g.connect(dest); return g; };
-    this.musicBus = mk(1);
+    // Player volume settings sit after everything else, so the game's own ducking still works
+    this.userMusic = mk(this.vol ? this.vol.music : 1);
+    this.musicBus = mk(1, this.userMusic);
     const mb = this.musicBus;
     this.layers = { guitar: mk(0.2, mb), bass: mk(0.5, mb), beat: mk(0, mb), lead: mk(0, mb) };
     this.drums = mk(0.9, mb);
-    this.sfx = mk(0.7);
+    this.sfx = mk(0.7 * (this.vol ? this.vol.sfx : 1));
 
     // Guitar amp: drive -> shaper -> cab
     this.gIn = ctx.createGain(); this.gIn.gain.value = 7;
@@ -1270,6 +1293,13 @@ class Music {
     [52, 51, 50, 40].forEach((m, i) => this.chord(t + i * 0.35, mtof(m), true, 0.9, this.gIn, i === 3 ? 1.8 : 0.4));
   }
   /** Fade everything except effects (for menus). */
+  /** Player settings: music and sound effects, 0..1 each. Safe to call before the audio starts. */
+  setVolumes(music, sfx) {
+    this.vol = { music, sfx };
+    if (!this.ctx) return;
+    this.userMusic.gain.value = music;
+    this.sfx.gain.value = 0.7 * sfx;
+  }
   musicVolume(v) {
     if (!this.ctx) return;
     const g = this.musicBus.gain, t = this.ctx.currentTime;
@@ -1530,7 +1560,19 @@ const HEROES = {
   roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Heavy spanners, double damage. BARGE: walks straight through crew barricades.' },
 };
 
-function makeHero(kind = 'punk') {
+// Outfits: unlocked with platinum records, secret areas and beating the game. Colours only.
+const OUTFITS = {
+  classic: { name: 'Classic', how: 'Always yours' },
+  bone: { name: 'Bone White', jacket: 0xe8e4dc, hair: 0xf3ece0, how: "All 3 platinum records in Don't Fear the Reaper", records: 0 },
+  neon: { name: 'Neon Night', jacket: 0xff2e88, hair: 0xa6ff4d, how: 'All 3 platinum records in Bat Out of Hell', records: 1 },
+  festival: { name: 'Festival Gold', jacket: 0xffc94a, hair: 0xff5aa8, how: 'All 3 platinum records in Stairway to Heaven', records: 2 },
+  hivis: { name: 'Hi-Vis', jacket: 0xff7a1a, hair: 0x2fa8ff, how: 'All 3 platinum records in Highway to Hell', records: 3 },
+  hellfire: { name: 'Hellfire', jacket: 0xb01010, hair: 0x141414, how: 'All 3 platinum records in The Number of the Beast', records: 4 },
+  zombie: { name: 'Zombie', skin: 0x7d9a5a, jacket: 0x3a4250, hair: 0x2a3a1e, how: 'Find all 10 secret areas', secrets: 10 },
+  golden: { name: 'Golden Jacket', jacket: 0xffd23a, metal: true, how: 'Beat the Devil', beaten: true },
+};
+
+function makeHero(kind = 'punk', outfit = null) {
   const root = new THREE.Group();
   const body = pivot(0, 0, 0, root);
   const p = { root, body, kind, jacket: [], spikes: [] };
@@ -1699,9 +1741,24 @@ function makeHero(kind = 'punk') {
   p.setArmor = (n) => { p.jacket.forEach((m) => (m.visible = n > 0)); p.spikes.forEach((m) => (m.visible = n > 1)); };
   p.setJacket = (on) => p.setArmor(on ? 1 : 0);
   p.setArmor(1);
+  if (outfit) dressHero(p, outfit, skin);
   return p;
 }
 const makePunk = () => makeHero('punk');
+
+/** Recolour a hero: the jacket pieces, the hair on its pivot, and optionally the skin. */
+function dressHero(p, o, skin) {
+  const swap = new Map();
+  const recolour = (mat, hex, extra = {}) => {
+    const key = mat.uuid + hex;
+    if (!swap.has(key)) { const m = mat.clone(); m.color.setHex(hex); if (m.emissive) m.emissive.setHex(0x000000); Object.assign(m, extra); swap.set(key, m); }
+    return swap.get(key);
+  };
+  const metal = o.metal ? { metalness: 0.7, roughness: 0.25, emissive: new THREE.Color(0x6a4a00) } : {};
+  if (o.jacket) for (const m of p.jacket) if (m.isMesh && m.material !== MAT.white) m.material = recolour(m.material, o.jacket, metal);
+  if (o.hair && p.hair) p.hair.traverse((m) => { if (m.isMesh) m.material = recolour(m.material, o.hair); });
+  if (o.skin) p.root.traverse((m) => { if (m.isMesh && m.material === skin) m.material = recolour(skin, o.skin); });
+}
 
 // ---------------------------------------------------------------------------
 // Zombies: 'walker' | 'headbanger' | 'pogo' | 'digger' | 'barfly' | 'bouncer'
@@ -2374,7 +2431,7 @@ function makeHellbat() {
   return { root: g, body, head, arms, wings, tail, mats: [red] };
 }
 
-Object.assign(__m, { MAT, HEROES, makeHero, makePunk, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeDiscoBall, makeGondola, makeFlightCase, makeJukebox, makeAmp, makeCoffin, makeScaffold, makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, makeHearse, makeDevil, makeHellbat });
+Object.assign(__m, { MAT, HEROES, OUTFITS, makeHero, makePunk, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeDiscoBall, makeGondola, makeFlightCase, makeJukebox, makeAmp, makeCoffin, makeScaffold, makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, makeHearse, makeDevil, makeHellbat });
 }
 
 // ---- levelkit.js ----
@@ -4676,7 +4733,7 @@ Object.assign(__m, { SCOREBOARD, online });
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 
 const {
-  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeFlightCase,
+  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } = __m;
 const { popup } = __m;
@@ -4774,8 +4831,8 @@ class Game {
   }
 
   // ---------------------------------------------------------------------------
-  makePlayer(i, { char, controls }) {
-    const hero = makeHero(char);
+  makePlayer(i, { char, controls, outfit }) {
+    const hero = makeHero(char, outfit ? OUTFITS[outfit] : null);
     this.scene.add(hero.root);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.55, 32),
       new THREE.MeshBasicMaterial({ color: PLAYER_COLORS[i], transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
@@ -7217,14 +7274,14 @@ const { Controls, KEYS_SOLO, KEYS_P1, KEYS_P2, bindTouch, onTouchMode, usingTouc
 const { LEVELS, buildLevel } = __m;
 const { Particles, Embers, popup } = __m;
 const { Game, WEAPONS } = __m;
-const { MAT, HEROES, makeHero } = __m;
+const { MAT, HEROES, OUTFITS, makeHero } = __m;
 const { DIFFICULTY, ENCORE, SHOP, save, persist, unlockCharacter, unlockLevel, qualifies, addScore, timeQualifies, addTime, fmtTime } = __m;
 const { renderComic, renderMap, renderShop } = __m;
 const { online, worldTop, worldQualifies, submitWorld, flushOutbox } = __m;
 
 const $ = (id) => document.getElementById(id);
 const show = (id, on = true) => { $(id).hidden = !on; };
-const SCREENS = ['title', 'controls', 'scores', 'comic', 'map', 'pause', 'over'];
+const SCREENS = ['title', 'controls', 'scores', 'collection', 'comic', 'map', 'pause', 'over'];
 function only(id) { for (const s of SCREENS) show(s, s === id); }
 
 // ---- Quality ----------------------------------------------------------------------
@@ -7354,8 +7411,12 @@ function applyQuality() {
   $('quality').textContent = 'Graphics: ' + (quality.low ? 'Low' : 'High');
   try { localStorage.setItem('rnrz-quality', quality.low ? 'low' : 'high'); } catch {}
 }
+const volLabel = (v) => (v <= 0 ? 'Off' : Math.round(v * 100) + '%');
 function syncToggles() {
   const S = save.settings;
+  $('tg-music').textContent = $('p-music').textContent = 'Music: ' + volLabel(S.musicVol ?? 1);
+  $('tg-sfx').textContent = $('p-sfx').textContent = 'Sound: ' + volLabel(S.sfxVol ?? 1);
+  music.setVolumes(S.musicVol ?? 1, S.sfxVol ?? 1);
   $('tg-flash').textContent = $('p-flash').textContent = 'Flashing: ' + (S.flashing ? 'On' : 'Off');
   $('tg-shake').textContent = $('p-shake').textContent = 'Shake: ' + (S.shake ? 'On' : 'Off');
   $('tg-sound').textContent = 'Soundcheck: ' + (S.soundcheck ? 'On' : 'Off');
@@ -7464,6 +7525,12 @@ function renderTitle() {
   show('opt-char2-wrap', sel.players === 2);
   const chars2 = Object.keys(HEROES).map((k) => ({ label: HEROES[k].name.replace('The ', ''), value: k, locked: unlocked.includes(k) || k === 'drummer' ? null : 'Rescue them to unlock' }));
   segButtons($('opt-char2'), chars2, sel.char2, (v) => { sel.char2 = v; renderTitle(); });
+  // Outfits (locked ones say how to get them)
+  if (!outfitUnlocked(save.settings.outfit)) save.settings.outfit = 'classic';
+  const outfits = Object.entries(OUTFITS).map(([k, o]) => ({ label: o.name, value: k, locked: outfitUnlocked(k) ? null : o.how }));
+  segButtons($('opt-outfit'), outfits, save.settings.outfit, (v) => { save.settings.outfit = v; persist(); renderTitle(); placeTitleHero(); });
+  const got = Object.keys(OUTFITS).filter(outfitUnlocked).length;
+  $('outfit-blurb').textContent = `${got}/${Object.keys(OUTFITS).length} unlocked. Platinum records, secret areas and beating the Devil unlock more (see Collection).`;
   const levels = LEVELS.map((L, i) => ({ label: `${i + 1}. ${L.short}`, value: i, locked: i < save.unlocked.levels ? null : 'Beat the previous gig first' }));
   segButtons($('opt-level'), levels, sel.level, (v) => { sel.level = v; renderTitle(); });
   const recs = (save.records[sel.level] || []).length;
@@ -7474,10 +7541,42 @@ for (const b of $('opt-players').children) b.addEventListener('click', () => { s
 $('tg-flash').addEventListener('click', () => { save.settings.flashing = !save.settings.flashing; persist(); syncToggles(); });
 $('p-flash').addEventListener('click', () => { save.settings.flashing = !save.settings.flashing; persist(); syncToggles(); });
 $('tg-shake').addEventListener('click', () => { save.settings.shake = !save.settings.shake; persist(); syncToggles(); });
+// Volume: each press steps down a notch (100 -> 75 -> 50 -> 25 -> off -> 100)
+const stepVol = (key) => {
+  const v = save.settings[key] ?? 1;
+  save.settings[key] = v <= 0 ? 1 : Math.max(0, Math.round((v - 0.25) * 4) / 4);
+  persist(); syncToggles();
+  if (key === 'sfxVol') music.sPickup?.();   // a little blip so you can hear the new level
+};
+for (const id of ['tg-music', 'p-music']) $(id).addEventListener('click', () => stepVol('musicVol'));
+for (const id of ['tg-sfx', 'p-sfx']) $(id).addEventListener('click', () => stepVol('sfxVol'));
 $('p-shake').addEventListener('click', () => { save.settings.shake = !save.settings.shake; persist(); syncToggles(); });
 $('tg-sound').addEventListener('click', () => { save.settings.soundcheck = !save.settings.soundcheck; persist(); syncToggles(); });
 $('btn-controls').addEventListener('click', () => { only('controls'); state = 'menu'; $('controls').querySelector('.back').focus(); });
 $('btn-scores').addEventListener('click', () => openScores());
+$('btn-collection').addEventListener('click', () => { renderCollection(); only('collection'); state = 'menu'; $('collection').querySelector('.back').focus(); });
+
+// ---- Collection: records, secret areas and outfits ----------------------------------------
+function secretsFound() { return LEVELS.reduce((n, L) => n + (save.secrets[L.id] || []).length, 0); }
+function secretsTotal() { return LEVELS.reduce((n, L) => n + (L.secrets || []).length, 0); }
+function outfitUnlocked(k) {
+  const o = OUTFITS[k];
+  if (!o) return false;
+  if (o.records !== undefined) return (save.records[o.records] || []).length >= 3;
+  if (o.secrets) return secretsFound() >= secretsTotal();
+  if (o.beaten) return save.unlocked.levels > LEVELS.length;
+  return true;
+}
+function renderCollection() {
+  const recs = LEVELS.reduce((n, L) => n + (save.records[L.id] || []).length, 0);
+  $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
+  const disc = (n, of) => Array.from({ length: of }, (_, i) => (i < n ? '\u25CF' : '\u25CB')).join(' ');
+  $('col-gigs').innerHTML = '<tr><th>Gig</th><th>Records</th><th>Secrets</th></tr>' + LEVELS.map((L, i) => {
+    const open = i < save.unlocked.levels;
+    return `<tr><td>${open ? `${i + 1}. ${L.song}` : `${i + 1}. ???`}</td><td>${disc((save.records[L.id] || []).length, 3)}</td><td>${disc((save.secrets[L.id] || []).length, (L.secrets || []).length)}</td></tr>`;
+  }).join('');
+  $('col-outfits').innerHTML = Object.entries(OUTFITS).map(([k, o]) => `<li class="${outfitUnlocked(k) ? '' : 'locked'}"><b>${o.name}</b>${outfitUnlocked(k) ? 'Unlocked' : o.how}</li>`).join('');
+}
 function openScores(attract = false) {
   scoreSrc = online() ? 'world' : 'local';
   renderScores();
@@ -7625,7 +7724,7 @@ $('share').addEventListener('click', shareScore);
 
 function placeTitleHero() {
   if (titleHero) scene.remove(titleHero.root);
-  titleHero = makeHero(sel.char);
+  titleHero = makeHero(sel.char, OUTFITS[save.settings.outfit] || null);
   titleHero.root.position.set(3, 0, 0);
   titleHero.root.rotation.y = 0.5;
   scene.add(titleHero.root);
@@ -7699,9 +7798,9 @@ let comicThen = null;
 $('comic-next').addEventListener('click', () => { const f = comicThen; comicThen = null; f && f(); });
 
 function playerConfigs() {
-  if (sel.players === 1) return [{ char: sel.char, controls: new Controls({ keys: KEYS_SOLO, pad: 'any', touch: true }) }];
+  if (sel.players === 1) return [{ char: sel.char, outfit: save.settings.outfit, controls: new Controls({ keys: KEYS_SOLO, pad: 'any', touch: true }) }];
   return [
-    { char: sel.char, controls: new Controls({ keys: KEYS_P1, pad: 0, touch: true }) },
+    { char: sel.char, outfit: save.settings.outfit, controls: new Controls({ keys: KEYS_P1, pad: 0, touch: true }) },
     { char: sel.char2, controls: new Controls({ keys: KEYS_P2, pad: 1, touch: false }) },
   ];
 }

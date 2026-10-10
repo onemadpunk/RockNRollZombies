@@ -78,7 +78,19 @@ export const HEROES = {
   roadie: { name: 'The Roadie', weapon: 'spanner', jump: 14.6, blurb: 'Heavy spanners, double damage. BARGE: walks straight through crew barricades.' },
 };
 
-export function makeHero(kind = 'punk') {
+// Outfits: unlocked with platinum records, secret areas and beating the game. Colours only.
+export const OUTFITS = {
+  classic: { name: 'Classic', how: 'Always yours' },
+  bone: { name: 'Bone White', jacket: 0xe8e4dc, hair: 0xf3ece0, how: "All 3 platinum records in Don't Fear the Reaper", records: 0 },
+  neon: { name: 'Neon Night', jacket: 0xff2e88, hair: 0xa6ff4d, how: 'All 3 platinum records in Bat Out of Hell', records: 1 },
+  festival: { name: 'Festival Gold', jacket: 0xffc94a, hair: 0xff5aa8, how: 'All 3 platinum records in Stairway to Heaven', records: 2 },
+  hivis: { name: 'Hi-Vis', jacket: 0xff7a1a, hair: 0x2fa8ff, how: 'All 3 platinum records in Highway to Hell', records: 3 },
+  hellfire: { name: 'Hellfire', jacket: 0xb01010, hair: 0x141414, how: 'All 3 platinum records in The Number of the Beast', records: 4 },
+  zombie: { name: 'Zombie', skin: 0x7d9a5a, jacket: 0x3a4250, hair: 0x2a3a1e, how: 'Find all 10 secret areas', secrets: 10 },
+  golden: { name: 'Golden Jacket', jacket: 0xffd23a, metal: true, how: 'Beat the Devil', beaten: true },
+};
+
+export function makeHero(kind = 'punk', outfit = null) {
   const root = new THREE.Group();
   const body = pivot(0, 0, 0, root);
   const p = { root, body, kind, jacket: [], spikes: [] };
@@ -247,9 +259,24 @@ export function makeHero(kind = 'punk') {
   p.setArmor = (n) => { p.jacket.forEach((m) => (m.visible = n > 0)); p.spikes.forEach((m) => (m.visible = n > 1)); };
   p.setJacket = (on) => p.setArmor(on ? 1 : 0);
   p.setArmor(1);
+  if (outfit) dressHero(p, outfit, skin);
   return p;
 }
 export const makePunk = () => makeHero('punk');
+
+/** Recolour a hero: the jacket pieces, the hair on its pivot, and optionally the skin. */
+function dressHero(p, o, skin) {
+  const swap = new Map();
+  const recolour = (mat, hex, extra = {}) => {
+    const key = mat.uuid + hex;
+    if (!swap.has(key)) { const m = mat.clone(); m.color.setHex(hex); if (m.emissive) m.emissive.setHex(0x000000); Object.assign(m, extra); swap.set(key, m); }
+    return swap.get(key);
+  };
+  const metal = o.metal ? { metalness: 0.7, roughness: 0.25, emissive: new THREE.Color(0x6a4a00) } : {};
+  if (o.jacket) for (const m of p.jacket) if (m.isMesh && m.material !== MAT.white) m.material = recolour(m.material, o.jacket, metal);
+  if (o.hair && p.hair) p.hair.traverse((m) => { if (m.isMesh) m.material = recolour(m.material, o.hair); });
+  if (o.skin) p.root.traverse((m) => { if (m.isMesh && m.material === skin) m.material = recolour(skin, o.skin); });
+}
 
 // ---------------------------------------------------------------------------
 // Zombies: 'walker' | 'headbanger' | 'pogo' | 'digger' | 'barfly' | 'bouncer'
