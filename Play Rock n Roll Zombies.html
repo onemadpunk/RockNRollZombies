@@ -5039,8 +5039,8 @@ class Game {
       else if (b && !b.hinted) { b.hinted = true; popup('Climb the ladder: UP (the Roadie barges through!)', 'info', { x: b.x, y: b.solid.y2 + 1 }, this.camera); }
     }
     const minX = this.camX - this.halfW + 0.4;
-    if (p.x < minX) { p.x = minX; p.vx = Math.max(0, p.vx); }
-    if (this.coop) { const maxX = this.camX + this.halfW - 0.4; if (p.x > maxX) { p.x = maxX; p.vx = Math.min(0, p.vx); } }
+    if (p.x < minX && !this.room) { p.x = minX; p.vx = Math.max(0, p.vx); }   // in a room, its walls are the limit
+    if (this.coop && !this.room) { const maxX = this.camX + this.halfW - 0.4; if (p.x > maxX) { p.x = maxX; p.vx = Math.min(0, p.vx); } }
     if (this.lock) p.x = Math.min(Math.max(p.x, this.lock.x1 + p.w), this.lock.x2 - p.w);
     if (p.onGround && !p.wasGround) {
       M.sLand();
@@ -5458,7 +5458,7 @@ class Game {
     if (this.lock || this.bossStarted) return;
     if (this.room) {
       const R = this.room.room;
-      const near = Math.abs(p.x - R.exitX) < 0.8;
+      const near = p.x < R.exitX + 0.9;   // anywhere from the exit door to the wall beside it
       if (near && !p.exitHint) { p.exitHint = true; popup('UP to go back', 'info', { x: R.exitX, y: 3.4 }, this.camera); }
       if (near && inp.pressed.up) this.leaveRoom();
       return;
@@ -6955,7 +6955,15 @@ class Game {
   // ---------------------------------------------------------------------------
   updateCamera(dt) {
     const A = this.L.arena;
-    if (this.room) { this.camX = this.room.room.cx; return; }
+    if (this.room) {
+      // Inside a secret room: follow the players, but keep the camera within the room's walls.
+      // (Pinning it to the middle hid the exit door off the edge on narrow screens, like a phone held upright.)
+      const R = this.room.room, w = R.x1 - R.x0;
+      const avg = this.alive.length ? this.alive.reduce((sum, p) => sum + p.x, 0) / this.alive.length : R.cx;
+      const target = this.halfW * 2 >= w ? R.cx : Math.min(Math.max(avg, R.x0 + this.halfW), R.x1 - this.halfW);
+      this.camX += (target - this.camX) * Math.min(1, dt * 6);
+      return;
+    }
     const live = this.alive;
     const avg = live.length ? live.reduce((s, p) => s + p.x, 0) / live.length : this.camX;
     const face = live.length === 1 ? live[0].face : 0;
