@@ -814,7 +814,11 @@ function tick(raw) {
 
   // Camera
   const camX = game ? game.camX : 7;
-  const wantDist = game && game.lock ? 17.5 : 13.5;
+  // Narrow screens (tablets, square-ish windows) see less sideways, and lots of the game is measured
+  // from the screen edge: zoom out until at least as much is visible as on a normal wide screen.
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const minHalfW = game && game.lock ? 9.5 : 7.2;
+  const wantDist = Math.max(game && game.lock ? 17.5 : 13.5, Math.min(minHalfW / (tanHalf * camera.aspect), 26));
   camDist += (wantDist - camDist) * Math.min(1, dt * 2);
   const halfH = camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   if (game) game.halfW = halfH * camera.aspect;
@@ -861,6 +865,10 @@ function tick(raw) {
   embers.update(dt, t, camX);
 
   if (game && (state === 'play' || state === 'paused')) updateHud(frac);
+  // A phone held upright is far too narrow to play: pause and ask to turn it sideways
+  const portrait = usingTouch() && innerHeight > innerWidth * 1.05 && (state === 'play' || state === 'paused');
+  if ($('rotate').hidden === portrait) $('rotate').hidden = !portrait;
+  if (portrait && state === 'play') pause();
   composer.render();
 }
 
