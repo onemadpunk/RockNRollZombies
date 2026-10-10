@@ -96,6 +96,8 @@ export function installBot({ mute = true } = {}) {
       } else if (boss.state === 'ground' && Math.abs(boss.x - p.x) < 2.2) move = p.x < boss.x ? -1 : 1;
     }
 
+    // Hell Bats telegraph their swoop ("SWOOP!") and dive at where you were: step out of the way
+    for (const e of live) if (e.kind === 'hellbat' && e.state === 'swoop' && e.to && Math.abs(e.to.x - p.x) < 2) move = p.x < e.to.x ? -1 : 1;
     if (boss && boss.kind === 'mummy') {
       const d = boss.x - p.x;
       if (boss.state === 'slide' && Math.sign(boss.vx) === -Math.sign(d) && Math.abs(d) < 3.6 && p.y < 1) jump = true;

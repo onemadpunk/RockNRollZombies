@@ -46,7 +46,8 @@ export const LEVEL2 = {
   pigeons: true,
   headbangers: [72, 147],
   hands: [],
-  throwers: [{ x: 53.5, y: 6.0, kind: 'barfly' }, { x: 75, y: 7.0, kind: 'barfly' }, { x: 139.5, y: 4.5, kind: 'barfly' }, { x: 188.5, y: 5.0, kind: 'barfly' }],
+  throwers: [{ x: 75, y: 7.0, kind: 'barfly' },   // (the one at 53.5 sat right over the Fire Escapes respawn point)
+              { x: 139.5, y: 4.5, kind: 'barfly' }, { x: 188.5, y: 5.0, kind: 'barfly' }],
   // Secret areas: shoot the cracked wall (its cracks glow on the beat), then Up at the door
   secrets: [
     { x: 38, theme: 'cellar', name: 'THE CELLAR', loot: ['gold', 'life', 'gold'] },
@@ -54,6 +55,9 @@ export const LEVEL2 = {
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
   barricades: [[34.2, 35, 3.4]],   // well clear of the sewer pit (stepping off the top used to carry you into it)
+  // Demo tape: hidden out on the high route; unlocks this gig's songs in the Jukebox menu
+  tape: { x: 19.7, y: 7.0 },
+  tracks: [['alley', 'Back Alley Boogie'], ['bar', 'Last Orders'], ['roof', 'Rooftop Run'], ['brawl', 'Bar Brawl'], ['boss2', 'Gargoyle Punk']],
   checkpoint: 92,
   soundcheck: null,
   ambush: {

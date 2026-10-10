@@ -71,7 +71,7 @@ function arm(parent, x, y, wide, upperMat, foreMat, fistMat) {
 // ---------------------------------------------------------------------------
 // Heroes: 'punk' (guitar), 'drummer', 'bassist'. Same skeleton, different look.
 export const HEROES = {
-  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks, the fastest throws. The all-rounder.' },
+  punk: { name: 'The Punk', weapon: 'pick', jump: 15, blurb: 'Guitar picks, the fastest throws. WALL JUMP: push into a wall in mid-air, then Jump.' },
   drummer: { name: 'The Drummer', weapon: 'sticks', jump: 16, blurb: 'Drumsticks in a spread. DOUBLE JUMP: press Jump again in the air.' },
   bassist: { name: 'The Bassist', weapon: 'vinyl', jump: 14.6, blurb: 'Boomerang vinyl. SLIDE TACKLE: press Down while running.' },
   singer: { name: 'The Singer', weapon: 'notes', jump: 15, blurb: 'Notes that weave up and down. GLIDE: hold Jump while falling.' },
@@ -947,4 +947,65 @@ export function makeHellbat() {
   const tip = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), red); tip.rotation.x = -Math.PI / 2; tip.position.z = -0.55; tail.add(tip);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return { root: g, body, head, arms, wings, tail, mats: [red] };
+}
+
+// A demo tape (hidden one per gig): unlocks that gig's songs in the Jukebox menu
+export function makeTape(old = false) {
+  const g = new THREE.Group();
+  const body = M(0x18181c, { roughness: 0.4, transparent: old, opacity: old ? 0.35 : 1 });
+  box(0.62, 0.4, 0.1, body, 0, 0, 0, g);
+  box(0.5, 0.16, 0.012, M(0xff2e88, { emissive: 0x5a0030, transparent: old, opacity: old ? 0.35 : 1 }), 0, 0.08, 0.056, g);   // label
+  box(0.34, 0.1, 0.012, M(0x0a0a0c), 0, -0.07, 0.056, g);                                                                        // window
+  for (const sx of [-1, 1]) {
+    const reel = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 10), M(0xf3ece0));
+    reel.rotation.x = Math.PI / 2; reel.position.set(sx * 0.09, -0.07, 0.064); g.add(reel);
+  }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.025, 6, 32), new THREE.MeshBasicMaterial({ color: 0xff2e88 }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = -0.55; g.add(ring);
+  return g;
+}
+
+// The cash you dropped when you died: a bag of money with a beam of light so you can find it again
+export function makeCashBag() {
+  const g = new THREE.Group();
+  const bag = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), M(0x5a8a3a, { roughness: 0.7 }));
+  bag.scale.set(1, 0.9, 0.9); g.add(bag);
+  box(0.16, 0.12, 0.16, M(0x4a7a2a), 0, 0.3, 0, g);                                                        // tied neck
+  box(0.14, 0.22, 0.02, M(0xffc94a, { emissive: 0x6a4a00, emissiveIntensity: 1.5 }), 0, 0, 0.29, g);       // $ sign
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, 6, 10, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xa6ff4d, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.y = 3; g.add(beam);
+  return g;
+}
+
+// Rick Rotten: a zombie guitarist on the Devil's payroll. Crashes the end of every ambush.
+export function makeRival() {
+  const z = makeZombie('rival');
+  const [skin, cloth, pants] = z.mats;
+  const black = M(0x101014, { roughness: 0.35 }), white = M(0xf3ece0);
+  z.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.material === cloth) o.material = black;
+    else if (o.material === pants) o.material = M(0x1a1a24, { roughness: 0.4 });
+    else if (o.material === skin) o.material = M(0x9ab08a, { roughness: 0.8 });
+  });
+  z.mats = [black, white];
+  // bleached liberty spikes
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const s = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.34, 5), white);
+    s.position.set(Math.cos(a) * 0.12, 0.5, Math.sin(a) * 0.12); s.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+    z.head.add(s);
+  }
+  // shades + studded collar
+  box(0.34, 0.07, 0.03, MAT.dark, 0, 0.24, 0.2, z.head);
+  for (let i = 0; i < 5; i++) box(0.04, 0.04, 0.04, MAT.stud, -0.12 + i * 0.06, 0.32, 0.14, z.torso);
+  // white guitar slung across the front
+  const gtr = new THREE.Group(); gtr.position.set(0, -0.12, 0.22); gtr.rotation.z = 0.6; z.torso.add(gtr);
+  box(0.36, 0.42, 0.06, white, 0, -0.2, 0, gtr);
+  box(0.05, 0.75, 0.04, MAT.dark, 0, 0.35, 0, gtr);
+  box(0.12, 0.14, 0.04, white, 0, 0.78, 0, gtr);
+  for (let i = 0; i < 2; i++) box(0.3, 0.02, 0.07, MAT.chrome, 0, -0.14 - i * 0.08, 0, gtr);
+  z.guitar = gtr;
+  return z;
 }

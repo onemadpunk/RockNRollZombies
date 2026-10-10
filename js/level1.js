@@ -50,6 +50,9 @@ export const LEVEL1 = {
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
   barricades: [[82.5, 83.3, 3.4]],
   ladders: [{ x: 82.05, y1: 0, y2: 3.4 }, { x: 80.6, y1: 0, y2: 5.2 }, { x: 125.2, y1: 0, y2: 5.8 }],
+  // Demo tape: hidden out on the high route; unlocks this gig's songs in the Jukebox menu
+  tape: { x: 67.2, y: 6.6 },
+  tracks: [['main', 'Graveyard Shift'], ['storm', 'Riders on the Storm Drain'], ['pit', 'Mosh Pit Mayhem'], ['boss', 'Name Not on the List']],
   checkpoint: 110,
   soundcheck: [9.5, 12, 14.5],
   storm: [121, 135],

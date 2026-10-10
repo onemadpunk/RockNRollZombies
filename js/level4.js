@@ -54,6 +54,9 @@ export const LEVEL4 = {
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
   barricades: [[95, 95.8, 3.4]],
+  // Demo tape: hidden out on the high route; unlocks this gig's songs in the Jukebox menu
+  tape: { x: 69.2, y: 7.0 },
+  tracks: [['highway', 'Hell Freight'], ['route', 'Route 666'], ['roadblock', 'Road Block'], ['boss4', 'Disco Inferno']],
   checkpoint: 100,
   soundcheck: null,
   ambush: {

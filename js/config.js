@@ -37,6 +37,7 @@ const DEFAULTS = {
   scores: [],           // [{ name, score, level, diff, date }]
   times: {},            // level index -> [{ name, time, diff, hero }] fastest first
   secrets: {},          // level index -> array of secret areas found
+  tapes: {},            // level index -> true once its demo tape is found (unlocks songs in the Jukebox)
 };
 
 function load() {
@@ -51,6 +52,7 @@ function load() {
       scores: Array.isArray(s.scores) ? s.scores : [],
       times: s.times || {},
       secrets: s.secrets || {},
+      tapes: s.tapes || {},
     };
   } catch { return structuredClone(DEFAULTS); }
 }
@@ -67,6 +69,10 @@ export function unlockCharacter(id) {
 }
 export function unlockLevel(n) {
   if (save.unlocked.levels < n) { save.unlocked.levels = n; persist(); }
+}
+export function collectTape(level) {
+  if (save.tapes[level]) return false;
+  save.tapes[level] = true; persist(); return true;
 }
 export function findSecret(level, id) {
   const list = save.secrets[level] || (save.secrets[level] = []);

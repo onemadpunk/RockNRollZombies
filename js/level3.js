@@ -46,6 +46,9 @@ export const LEVEL3 = {
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
   barricades: [[144.6, 145.4, 3.4]],
+  // Demo tape: hidden out on the high route; unlocks this gig's songs in the Jukebox menu
+  tape: { x: 67.7, y: 7.0 },
+  tracks: [['festival', 'Wellies and Woe'], ['funfair', 'Ghost Train'], ['surge', 'Crowd Surge'], ['boss3', 'Banshee Diva']],
   checkpoint: 120,
   soundcheck: null,
   ambush: {

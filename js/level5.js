@@ -52,6 +52,9 @@ export const LEVEL5 = {
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
   barricades: [[149.2, 150, 3.4]],
+  // Demo tape: hidden out on the high route; unlocks this gig's songs in the Jukebox menu
+  tape: { x: 135.2, y: 7.2 },
+  tracks: [['hellgate', 'Gates of Hell'], ['stadium', 'Sold Out in Hell'], ['encore5', 'The Warm-up Act'], ['devil', 'The Duel']],
   checkpoint: 104,
   soundcheck: null,
   ambush: {

@@ -17,7 +17,7 @@ import { online, worldTop, worldQualifies, submitWorld, flushOutbox } from './on
 
 const $ = (id) => document.getElementById(id);
 const show = (id, on = true) => { $(id).hidden = !on; };
-const SCREENS = ['title', 'controls', 'scores', 'collection', 'comic', 'map', 'pause', 'over'];
+const SCREENS = ['title', 'controls', 'scores', 'collection', 'jukebox', 'comic', 'map', 'pause', 'over'];
 function only(id) { for (const s of SCREENS) show(s, s === id); }
 
 // ---- Quality ----------------------------------------------------------------------
@@ -290,6 +290,33 @@ $('p-shake').addEventListener('click', () => { save.settings.shake = !save.setti
 $('tg-sound').addEventListener('click', () => { save.settings.soundcheck = !save.settings.soundcheck; persist(); syncToggles(); });
 $('btn-controls').addEventListener('click', () => { only('controls'); state = 'menu'; $('controls').querySelector('.back').focus(); });
 $('btn-scores').addEventListener('click', () => openScores());
+// ---- Jukebox: songs unlocked by the demo tapes hidden in each gig ---------------------------
+let jbPlaying = null;
+function renderJukebox() {
+  $('jb-list').innerHTML = LEVELS.map((L, i) => {
+    const open = !!save.tapes[L.id];
+    const title = i < save.unlocked.levels ? `${i + 1}. ${L.song}` : `${i + 1}. ???`;
+    if (!open) return `<div class="jb-gig"><h4>${title}</h4><p class="locked">\u25A1 Demo tape not found yet. It's somewhere up on the high route.</p></div>`;
+    return `<div class="jb-gig"><h4>${title}</h4>${L.tracks.map(([key, name]) => `<button class="btn small${jbPlaying === key ? ' on' : ''}" data-song="${key}">\u266a ${name}</button>`).join('')}</div>`;
+  }).join('');
+  for (const b of $('jb-list').querySelectorAll('button[data-song]')) b.addEventListener('click', () => playJukebox(b.dataset.song, b.textContent.slice(2)));
+}
+function playJukebox(key, name) {
+  if (!music.ctx) music.start(); else music.resume();
+  music.setSong(key);
+  music.setLayer('beat', true); music.setLayer('lead', true);
+  music.musicVolume(1);
+  jbPlaying = key;
+  $('jb-now').textContent = `Now playing: ${name}`;
+  renderJukebox();
+}
+$('btn-jukebox').addEventListener('click', () => {
+  jbPlaying = null;
+  $('jb-now').textContent = 'Find the demo tape hidden in each gig to unlock its songs.';
+  renderJukebox(); only('jukebox'); state = 'menu';
+  $('jukebox').querySelector('.back').focus();
+});
+$('jukebox').querySelector('.back').addEventListener('click', () => { if (jbPlaying) { music.suspend(); jbPlaying = null; } });
 $('btn-collection').addEventListener('click', () => { renderCollection(); only('collection'); state = 'menu'; $('collection').querySelector('.back').focus(); });
 
 // ---- Collection: records, secret areas and outfits ----------------------------------------
@@ -307,9 +334,9 @@ function renderCollection() {
   const recs = LEVELS.reduce((n, L) => n + (save.records[L.id] || []).length, 0);
   $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
   const disc = (n, of) => Array.from({ length: of }, (_, i) => (i < n ? '\u25CF' : '\u25CB')).join(' ');
-  $('col-gigs').innerHTML = '<tr><th>Gig</th><th>Records</th><th>Secrets</th></tr>' + LEVELS.map((L, i) => {
+  $('col-gigs').innerHTML = '<tr><th>Gig</th><th>Records</th><th>Secrets</th><th>Tape</th></tr>' + LEVELS.map((L, i) => {
     const open = i < save.unlocked.levels;
-    return `<tr><td>${open ? `${i + 1}. ${L.song}` : `${i + 1}. ???`}</td><td>${disc((save.records[L.id] || []).length, 3)}</td><td>${disc((save.secrets[L.id] || []).length, (L.secrets || []).length)}</td></tr>`;
+    return `<tr><td>${open ? `${i + 1}. ${L.song}` : `${i + 1}. ???`}</td><td>${disc((save.records[L.id] || []).length, 3)}</td><td>${disc((save.secrets[L.id] || []).length, (L.secrets || []).length)}</td><td>${save.tapes[L.id] ? '\u25CF' : '\u25CB'}</td></tr>`;
   }).join('');
   $('col-outfits').innerHTML = Object.entries(OUTFITS).map(([k, o]) => `<li class="${outfitUnlocked(k) ? '' : 'locked'}"><b>${o.name}</b>${outfitUnlocked(k) ? 'Unlocked' : o.how}</li>`).join('');
 }

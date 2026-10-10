@@ -95,7 +95,7 @@
         <button id="tg-full">Full screen</button><button id="tg-install" hidden>Install app</button>
         <button id="tg-flash">Flashing: On</button><button id="tg-shake">Shake: On</button><button id="tg-sound">Soundcheck: On</button></div></div>
     </div>
-    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button><button id="btn-collection" class="btn small">Collection</button></div>
+    <div class="row-btns"><button id="btn-scores" class="btn small">High scores</button><button id="btn-controls" class="btn small">Controls</button><button id="btn-collection" class="btn small">Collection</button><button id="btn-jukebox" class="btn small">Jukebox</button></div>
     <p class="credit">Made by One Mad Punk</p>
     <p id="loading" class="tip">Loading&hellip;</p>
     <p id="ver" class="ver"></p>
@@ -122,12 +122,22 @@
       <tr><td>Pause</td><td>Esc / P</td><td>Esc</td><td></td><td>Start</td><td>II (top middle)</td></tr>
       <tr><td>Enter a secret door</td><td>Up / W</td><td>W</td><td>&uarr;</td><td>D-pad up</td><td>Drag up</td></tr>
     </table>
-    <p class="tip"><b>Special moves:</b> Drummer: press Jump again in the air to double jump. Singer: hold Jump while falling to glide.
+    <p class="tip"><b>Special moves:</b> Punk: push into a wall in mid-air, then Jump to wall jump. Drummer: press Jump again in the air to double jump. Singer: hold Jump while falling to glide.
       Bassist: press Down while running to slide tackle. Roadie: walk into a crew barricade to barge through it.
-      Secret areas hide behind cracked walls: look for a faint light in the cracks, then shoot.</p>
+      Secret areas hide behind cracked walls: look for a faint light in the cracks, then shoot.
+      Smash a jukebox for cash, but it won't save your spot. Die and half your cash drops where you fell: go back and grab it.</p>
     <p class="tip">2 players on one keyboard: player 1 keeps to the left end, player 2 to the right end, so your hands don't bump.
       Two controllers (pad 1 and pad 2) are even better.
       On a phone or tablet, the touch buttons appear as soon as you touch the screen. Landscape works best.</p>
+    <button class="btn back">Back</button>
+  </div>
+</div>
+
+<div id="jukebox" class="screen" hidden>
+  <div class="title-inner">
+    <h2>Jukebox</h2>
+    <p class="tip" id="jb-now">Find the demo tape hidden in each gig to unlock its songs.</p>
+    <div id="jb-list" class="jb-list"></div>
     <button class="btn back">Back</button>
   </div>
 </div>

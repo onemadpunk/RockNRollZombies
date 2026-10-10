@@ -335,6 +335,12 @@ h3.sub { margin: 4px 0 0; }
 #rotate small { font-family: var(--hud, sans-serif); opacity: .7; }
 .rot-phone { width: 46px; height: 80px; border: 4px solid var(--pink); border-radius: 9px; animation: rotphone 1.8s ease-in-out infinite; }
 @keyframes rotphone { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+.jb-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; width: min(900px, 92vw); }
+.jb-gig { border: 2px solid #2a2235; border-radius: 6px; padding: 8px 10px; text-align: left; }
+.jb-gig h4 { margin: 0 0 6px; font-family: var(--display); font-weight: 400; color: var(--gold, #ffc94a); font-size: 14px; }
+.jb-gig button { display: block; width: 100%; margin: 3px 0; text-align: left; }
+.jb-gig button.on { color: var(--toxic); border-color: var(--toxic); }
+.jb-gig .locked { font-size: 12px; opacity: .6; margin: 4px 0 0; }
 .outfits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; width: min(900px, 92vw); }
 .outfits li { padding: 8px 10px; border: 2px solid #2a2235; border-radius: 6px; font-size: 13px; text-align: left; }
 .outfits li b { display: block; font-family: var(--display); font-weight: 400; color: var(--toxic); }

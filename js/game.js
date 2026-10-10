@@ -2,11 +2,11 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeFlightCase,
+  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
-import { save, collectRecord, findSecret } from './config.js';
+import { save, collectRecord, findSecret, collectTape } from './config.js';
 
 const G = 38;               // gravity
 const RUN = 6.2;
@@ -76,6 +76,14 @@ export class Game {
       scene.add(mesh);
       this.pickups.push({ kind: 'platinum', id: i, old, x: r.x, y: r.y, mesh, t: 0, forever: true });
     });
+    if (this.L.tape) {
+      const old = !!save.tapes[this.L.id];
+      const mesh = makeTape(old);
+      mesh.position.set(this.L.tape.x, this.L.tape.y, 0);
+      scene.add(mesh);
+      this.pickups.push({ kind: 'tape', old, x: this.L.tape.x, y: this.L.tape.y, mesh, t: 0, forever: true });
+    }
+    this.cashBag = null;
     if (this.soundcheck) {
       this.dummies = this.L.soundcheck.map((x) => {
         const mesh = makeCutout();
@@ -446,6 +454,7 @@ export class Game {
       return;
     }
     p.inv -= dt; p.stun -= dt; p.cd -= dt; p.throwT -= dt; p.drop -= dt; p.soloT -= dt;
+    p.wallJumpT = (p.wallJumpT || 0) - dt;
 
     if (p.onGround && p.standing && p.standing.mover) { p.x += p.standing.dx; p.y += p.standing.dy; }
 
@@ -469,7 +478,7 @@ export class Game {
     if (target) p.face = target;
     const accel = p.onGround ? 70 : 42;
     if (p.soloT > 0 || this.cine) p.vx *= 0.8;
-    else if (ctrl) {
+    else if (ctrl && p.wallJumpT <= 0) {
       const inMud = p.onGround && this.level.mudAt(p.x);
       const goal = target * RUN * (inMud ? 0.5 : 1);
       if (inMud && Math.abs(p.vx) > 1 && Math.random() < 0.2) this.chunks.emit({ x: p.x, y: 0.05 }, { n: 1, color: 0x3a2618, speed: 1.5, up: 1.5, life: 0.4, size: 0.08 });
@@ -540,6 +549,21 @@ export class Game {
     }
 
     this.move(p, dt);
+    // Punk: cling to a wall in mid-air (slide down slowly) and kick off it with Jump
+    if (p.char === 'punk') {
+      const pushing = ctrl && ((inp.held.left && p.face < 0) || (inp.held.right && p.face > 0));
+      if (!p.onGround && !p.climb && p.hitWall && pushing && p.vy < 3) {
+        if (!(p.clingT > 0)) this.chunks.emit({ x: p.x + p.face * 0.3, y: p.y + 1 }, { n: 4, color: 0x8a8a96, speed: 2, up: 1, life: 0.3, size: 0.06 });
+        p.clingT = 0.15; p.clingDir = p.face;
+        if (p.vy < -2.5) p.vy = -2.5;
+      } else p.clingT = (p.clingT || 0) - dt;
+      if (p.clingT > 0 && !p.onGround && p.buffer > 0) {
+        p.buffer = 0; p.clingT = 0;
+        p.vy = 13.5; p.vx = -p.clingDir * 7; p.face = -p.clingDir; p.wallJumpT = 0.18; p.jumpCut = false;
+        M.sJump();
+        this.sparks.emit({ x: p.x + p.clingDir * 0.3, y: p.y + 0.8 }, { n: 10, color: [0xffffff, 0xff2e88], speed: 4, up: 1, life: 0.3, size: 0.06, gravity: 2, intensity: 2 });
+      }
+    }
     if (p.hitWall) {
       const b = (this.level.barricades || []).find((q) => !q.broken && p.y < q.solid.y2 - 0.1 && Math.abs(p.x - (p.face > 0 ? q.solid.x1 - p.w : q.solid.x2 + p.w)) < 0.1);
       if (b && p.char === 'roadie') this.smashBarricade(b);
@@ -580,10 +604,10 @@ export class Game {
       if (zi > 0) {
         this.ui.zone(this.L.zones[zi].name);
         const cp = this.L.zones[zi].checkpoint;
-        if (this.D.zoneCheckpoints && cp && cp > this.checkpointX) this.checkpointX = cp;
+        if (this.D.zoneCheckpoints && cp && cp > this.checkpointX && !(this.jukeSmashed && zi === this.smashedZone)) this.checkpointX = cp;
       }
     }
-    if (!this.jukeOn && p.x > this.L.checkpoint) {
+    if (!this.jukeOn && !this.jukeSmashed && p.x > this.L.checkpoint) {
       this.jukeOn = true; this.checkpointX = Math.max(this.checkpointX, this.L.checkpoint);
       this.level.juke.glow.emissiveIntensity = 3;
       M.sCheckpoint();
@@ -680,6 +704,9 @@ export class Game {
         armL = near === 'L' ? spin : -1.2; armR = near === 'R' ? spin : -1.2; elL = elR = 0;
       }
       P.head.rotation.x = Math.sin(this.t * 25) * 0.3;
+    } else if (p.clingT > 0 && !p.onGround) {
+      // clinging to a wall: one hand up on it, knees tucked
+      legL = -0.6; legR = -0.2; kneeL = 1.2; kneeR = 0.8; armL = armR = -2.6; elL = elR = -0.3; lean = -0.1;
     } else if (p.slideT > 0) {
       legL = -1.4; legR = -1.2; kneeL = 0.2; kneeR = 0.4; armL = armR = -1.0; elL = elR = -0.3; bodyY = -0.55; lean = -0.7;
     } else if (p.gliding) {
@@ -837,6 +864,7 @@ export class Game {
 
   kill(p) {
     if (p.dead) return;
+    this.dropCash(p);
     p.climb = null;
     p.dead = true; p.deadT = 2.6;
     p.combo = 0;
@@ -852,6 +880,24 @@ export class Game {
       }
       this.chunks.emit({ x: p.x, y: p.y + 1 }, { n: 16, color: [0x17151c, 0x2c3c62, p.color], speed: 6, up: 5, life: 1.2, size: 0.14 });
     }
+  }
+
+  /** Shovel Knight style: half your cash drops where you died. Grab it back, or lose it if you die first. */
+  dropCash(p) {
+    if (this.cashBag) {   // the last bag is lost for good
+      this.cashBag.gone = true;
+      popup('Your dropped cash is gone!', 'info', { x: p.x, y: p.y + 2.6 }, this.camera);
+      this.cashBag = null;
+    }
+    const amount = Math.ceil(this.run.cash / 2);
+    if (amount <= 0 || this.room) return;
+    this.run.cash -= amount;
+    const fell = p.y < -1 && p.safeX !== undefined;
+    const x = fell ? p.safeX : p.x, y = (fell ? p.safeY : Math.max(0, p.y)) + 0.9;
+    const mesh = makeCashBag();
+    mesh.position.set(x, y, 0); this.scene.add(mesh);
+    this.cashBag = { kind: 'cashbag', amount, x, y, mesh, t: 0, forever: true };
+    this.pickups.push(this.cashBag);
   }
 
   // ---------------------------------------------------------------------------
@@ -913,6 +959,15 @@ export class Game {
           if (s.type !== 'vinyl') s.life = 0;
         }
       }
+      if (!this.jukeOn && !this.jukeSmashed && s.life > 0 && !s.hits.has(this.level.juke) &&
+          Math.abs(s.x - this.L.checkpoint) < 0.7 + s.r && s.y > 0 && s.y < 2.2) {
+        s.hits.add(this.level.juke);
+        this.jukeHp = (this.jukeHp ?? 4) - s.dmg;
+        this.music.sCrate();
+        this.level.juke.root.position.x = this.L.checkpoint + (Math.random() - 0.5) * 0.15;
+        if (this.jukeHp <= 0) this.smashJukebox();
+        if (s.type !== 'vinyl') s.life = 0;
+      }
       for (const d of this.doors) {
         if (d.open || s.hits.has(d) || s.life <= 0) continue;
         if (Math.abs(s.x - d.x) < 1.2 + s.r && s.y > d.y && s.y < d.y + 3) {
@@ -948,6 +1003,25 @@ export class Game {
     this.ui.shake(0.6);
     this.chunks.emit({ x: b.x, y: b.solid.y2 / 2 }, { n: 50, color: [0x6a4a2a, 0xffc94a, 0x141416], speed: 8, up: 5, life: 1.1, size: 0.16 });
     popup('BARGED THROUGH!', 'beat', { x: b.x, y: b.solid.y2 + 1 }, this.camera);
+  }
+
+  /** Shovel Knight style: smash a checkpoint for cash, and lose the checkpoint. */
+  smashJukebox() {
+    this.jukeSmashed = true;
+    this.smashedZone = this.zoneAt(this.L.checkpoint);
+    const J = this.level.juke, x = this.L.checkpoint;
+    this.scene.remove(J.root);
+    this.music.sStomp(); this.music.sBottle();
+    this.ui.shake(0.4);
+    this.chunks.emit({ x, y: 1 }, { n: 40, color: [0xffb347, 0xff2e88, 0x3a2418], speed: 7, up: 5, life: 1, size: 0.14 });
+    for (let i = 0; i < 3; i++) {
+      const mesh = makePickup('gold');
+      const px = x + (i - 1) * 1.1;
+      mesh.position.set(px, 1.2, 0); this.scene.add(mesh);
+      this.pickups.push({ kind: 'gold', x: px, y: 1.2, mesh, t: 0 });
+    }
+    this.run.cash += 30;
+    popup('SMASHED! +$30 (no checkpoint here now)', 'beat', { x, y: 3 }, this.camera);
   }
 
   // ---- Secret areas -------------------------------------------------------------------------
@@ -1078,6 +1152,11 @@ export class Game {
     if (!e.boss) e.hitTilt = 0.4 * (Math.sign(s.vx || 1) === e.face ? 1 : -1);   // knocked back (or forward if hit from behind)
     this.music.sHit();
     if (!s.fire) this.sparks.emit({ x: s.x, y: s.y }, { n: s.power ? 14 : 6, color: s.power ? [0xff2e88, 0xffffff] : [0xa6ff4d, 0xffffff], speed: 5, life: 0.35, size: 0.07, gravity: 4 });
+    if (e.kind === 'rival') {
+      this.ui.boss(Math.max(0, e.hp) / e.maxHp);
+      if (e.hp <= 0) this.rivalBeaten(e);
+      return;
+    }
     if (e.boss) {
       this.hitStop = Math.max(this.hitStop, 0.03);
       if (e.hp <= 0) { this.killEnemy(e, s.power, s.owner); return; }
@@ -1280,6 +1359,7 @@ export class Game {
         case 'banshee': this.updateBanshee(e, dt); break;
         case 'mummy': this.updateMummy(e, dt); break;
         case 'hellbat': this.updateHellbat(e, dt); break;
+        case 'rival': this.updateRival(e, dt); break;
         case 'devil': this.updateDevil(e, dt); break;
       }
       if (e.dead) continue;
@@ -1504,6 +1584,7 @@ export class Game {
   updateAmbush(dt) {
     const am = this.ambush, A = this.L.ambush;
     if (am.state !== 'active') return;
+    if (am.rival) return;   // waiting for Rick Rotten to be beaten
     if (am.queue.length || this.enemies.some((e) => e.pit && !e.dead)) return;
     am.wait -= dt;
     if (am.wait > 0) return;
@@ -1512,15 +1593,117 @@ export class Game {
       am.wave++;
       am.wait = 1.5;
       this.ui.zone(`Wave ${am.wave} of ${A.waves.length}`);
+    } else if (!am.rivalDone) {
+      am.rival = this.spawnRival();
+    } else this.finishAmbush();
+  }
+
+  finishAmbush() {
+    const am = this.ambush, A = this.L.ambush;
+    am.state = 'done';
+    this.lock = null;
+    this.run.score += 3000;
+    this.run.cash += 25;
+    this.checkpointX = Math.max(this.checkpointX, A.x2 - 1);
+    this.music.sCheckpoint();
+    this.ui.banner('Cleared!', '+3000');
+  }
+
+  // ---- Rick Rotten, the rival: a zombie guitarist who turns up at every ambush, tougher each gig ----
+  spawnRival() {
+    const n = this.L.id;   // the how-manyth time you've met him
+    const A = this.L.ambush;
+    const model = makeRival();
+    model.root.scale.setScalar(1.15);
+    const p = this.target((A.x1 + A.x2) / 2);
+    const x = Math.min(Math.max(p.x > (A.x1 + A.x2) / 2 ? A.x1 + 4 : A.x2 - 4, A.x1 + 2), A.x2 - 2);
+    model.root.position.set(x, 9, 0);
+    const e = this.base('rival', model, x, 9, {
+      w: 0.4, h: 1.8 * 1.15, hp: Math.round((12 + 6 * n) * this.D.bossHp), points: 5000 + 2500 * n, state: 'enter', life: 999,
+      moves: n < 2 ? ['riff', 'leap', 'riff', 'charge'] : ['riff', 'charge', 'leap', 'riff', 'charge'], mi: 0, rank: n,
+      colors: [0x101014, 0xf3ece0],
+    });
+    e.maxHp = e.hp;
+    e.hittable = () => e.state !== 'enter' && e.state !== 'flee';
+    e.harmful = () => e.state !== 'enter' && e.state !== 'flee';
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (e.state === 'riff') {
+        if (e.ri < 0) { e.ri++; return; }
+        if (e.ri < e.riff.length) { const band = e.riff[e.ri++]; if (band) this.devilNote(e, band); return; }
+        e.state = 'strut'; e.t = 0; return;
+      }
+      if (e.state !== 'strut' || i % 4 !== 0 || e.t < 1.2) return;
+      const mv = e.moves[e.mi++ % e.moves.length];
+      e.t = 0;
+      const pl = this.target(e.x);
+      if (mv === 'riff') {
+        const _ = null;   // same fairness rule as the Devil: always time to land after a low note
+        const pats = [['high', 'high'], ['high', 'high', 'low', _], ['high', _, 'low', _], ['low', _, _, 'high', 'high'], ['high', 'high', 'low', _, _, 'high']];
+        e.riff = pats[Math.min(pats.length - 1, e.rank + Math.floor(Math.random() * 2))]; e.ri = -1;
+        e.state = 'riff'; e.face = pl.x < e.x ? -1 : 1;
+        popup('RIFF! Duck high, jump low', 'beat', { x: e.x, y: e.y + 2.8 }, this.camera);
+      } else if (mv === 'leap') {
+        e.state = 'leap'; e.vy = 13;
+        const side = pl.x < e.x ? -1 : 1;
+        e.tx = Math.min(Math.max(pl.x + side * 3, A.x1 + 1), A.x2 - 1);
+        e.vx = (e.tx - e.x) / 0.7;
+      } else {
+        e.state = 'charge'; e.face = pl.x < e.x ? -1 : 1;
+        popup('CHARGE! Jump him', 'beat', { x: e.x, y: e.y + 2.8 }, this.camera);
+      }
+    };
+    this.music.sScreech();
+    this.ui.banner('RICK ROTTEN', ['"That\'s MY crowd!"', '"Round two, punk!"', '"You again?!"', '"The Devil\'s paying me double!"', '"Last chance!"'][Math.min(4, n)]);
+    this.ui.boss(1);
+    return e;
+  }
+
+  updateRival(e, dt) {
+    const R = e.model.root, Z = e.model, A = this.L.ambush;
+    const p = this.target(e.x);
+    let armR = -0.6 + Math.sin(this.music.beatFloat() * Math.PI * 2) * 0.15, armL = -1.0, lean = 0;
+    if (e.state === 'enter') {
+      e.vy -= 38 * dt; e.y += e.vy * dt;
+      if (e.y <= 0) { e.y = 0; e.vy = 0; e.state = 'strut'; e.t = 0; this.ui.shake(0.4); this.music.sStomp(); }
+    } else if (e.state === 'flee') {
+      e.vy = 12; e.y += e.vy * dt; e.x += e.face * -6 * dt;
+      if (e.t > 1.2) { e.dead = true; this.scene.remove(R); }
     } else {
-      am.state = 'done';
-      this.lock = null;
-      this.run.score += 3000;
-      this.run.cash += 25;
-      this.checkpointX = Math.max(this.checkpointX, A.x2 - 1);
-      this.music.sCheckpoint();
-      this.ui.banner('Cleared!', '+3000');
+      if (e.state === 'strut') {
+        e.face = p.x < e.x ? -1 : 1;
+        const d = Math.abs(p.x - e.x);
+        e.vx = d > 6 ? e.face * (2 + e.rank * 0.3) : d < 3.5 ? -e.face * 2 : 0;
+      } else if (e.state === 'riff') {
+        e.vx = 0; armR = -0.6 + Math.sin(e.t * 40) * 0.35; armL = -1.2; lean = -0.15;
+      } else if (e.state === 'charge') {
+        e.vx = e.face * (8 + e.rank); lean = 0.5;
+        if (e.t > 1.4 || e.x <= A.x1 + 0.8 || e.x >= A.x2 - 0.8) { e.state = 'strut'; e.t = 0; }
+      } else if (e.state === 'leap') {
+        if (e.onGround && e.t > 0.2) { e.state = 'strut'; e.t = 0; e.vx = 0; this.ui.shake(0.2); }
+      }
+      this.move(e, dt, false);
+      e.x = Math.min(Math.max(e.x, A.x1 + e.w), A.x2 - e.w);
     }
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += (faceRot(e.face) - R.rotation.y) * Math.min(1, dt * 10);
+    Z.armL.rotation.x += (armL - Z.armL.rotation.x) * Math.min(1, dt * 12);
+    Z.armR.rotation.x += (armR - Z.armR.rotation.x) * Math.min(1, dt * 14);
+    Z.body.rotation.x += (lean - Z.body.rotation.x) * Math.min(1, dt * 10);
+    e.phase += Math.abs(e.vx) * dt * 1.6;
+    Z.legL.rotation.x = Math.sin(e.phase) * 0.5; Z.legR.rotation.x = -Math.sin(e.phase) * 0.5;
+  }
+
+  /** Beaten, Rick runs off (he'll be back at the next gig) and the ambush is cleared. */
+  rivalBeaten(e) {
+    e.state = 'flee'; e.t = 0; e.hp = 0;
+    this.ui.boss(null);
+    this.run.score += e.points; this.run.cash += 50;
+    this.music.sBossDie?.(); this.ui.shake(0.6);
+    popup(`+${e.points}`, 'pts', { x: e.x, y: e.y + 2 }, this.camera);
+    popup(['"You got lucky!"', '"This isn\'t over!"', '"See you at the next gig!"', '"The Devil will finish you!"', '"...Nice playing, punk."'][Math.min(4, e.rank)], 'beat', { x: e.x, y: e.y + 3.2 }, this.camera);
+    this.ambush.rival = null; this.ambush.rivalDone = true;
+    setTimeout(() => { if (this.ambush.state === 'active') this.finishAmbush(); }, 1200);
   }
 
   // ---------------------------------------------------------------------------
@@ -2429,6 +2612,13 @@ export class Game {
         this.run.score += 2500; this.run.cash += k.old ? 25 : 100;
         popup(`PLATINUM RECORD ${this.recordsFound.length}/3!`, 'beat', at, this.camera);
       } else if (k.kind === 'life') { this.run.lives++; this.music.sLife(); popup('1UP!', 'beat', at, this.camera); }
+      else if (k.kind === 'cashbag') { this.run.cash += k.amount; this.cashBag = null; popup(`+$${k.amount} GOT IT BACK!`, 'beat', at, this.camera); }
+      else if (k.kind === 'tape') {
+        this.music.sPlatinum();
+        const isNew = collectTape(this.L.id);
+        this.run.score += 2000;
+        popup(isNew ? 'DEMO TAPE! New songs in the Jukebox' : 'Demo tape (already found) +2000', 'beat', at, this.camera);
+      }
       else if (k.kind === 'jacket') {
         if (p.armor > 0) { this.run.score += 1000; popup('+1000', 'pts', at, this.camera); }
         else { p.armor = 1; p.hero.setArmor(1); popup('JACKET ON!', 'info', at, this.camera); }
