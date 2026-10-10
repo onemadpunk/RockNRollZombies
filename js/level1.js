@@ -16,7 +16,13 @@ export const LEVEL1 = {
   ground: [[-30, 38], [41, 50], [57, 66], [73, 121], [124.5, 146], [152, 240]],
   blocks: [[23, 27, 1.8], [61, 64, 1.8], [95, 99, 1.7], [136, 140, 2.0], [158, 161, 1.8]],     // crypts
   ledges: [[30, 34, 2.6], [86, 90, 2.7], [102, 107, 2.7], [114, 117, 2.6], [129, 133, 6.3], [142, 145, 2.8],
-           [173, 176, 2.7], [180, 183, 2.7], [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+           [173, 176, 2.7], [180, 183, 2.7], [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // The high route: up off the crypt or the step at 30, over the open graves on stone walkways,
+           // across the churchyard roofs, and along the storm walkway. Flyers up here, zombies down there.
+           [28, 31.5, 4.2], [33, 36.5, 4.6], [38, 41.5, 4.4], [43.5, 47, 5.0],
+           [49.5, 52.5, 5.2], [54.5, 57.5, 5.6], [59.5, 63, 5.4], [65.5, 69, 5.2], [71, 74.5, 5.0],
+           [80.2, 85, 5.2], [86.5, 90, 5.6], [91.5, 94.5, 5.4], [96, 99.5, 5.8], [101, 107, 5.6], [108.5, 112, 5.4],
+           [124.9, 128.4, 5.8], [134.5, 138, 6.0], [139.5, 143, 6.4], [144.5, 148, 6.0], [149.5, 153.5, 5.6]],
   movers: [
     { kind: 'bob', x: 53.5, y: 0, amp: 1.6, w: 2.4 },
     { kind: 'slide', x: 69.5, y: 0.0, amp: 2.0, w: 2.9 },
@@ -28,7 +34,9 @@ export const LEVEL1 = {
     { x: 130.2, y: 6.3, loot: 'life' }, { x: 132.2, y: 6.3, loot: 'gold' }, { x: 156, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   // Hidden platinum records: high up, off the beaten path.
-  records: [{ x: 53.5, y: 3.9 }, { x: 104.5, y: 5.0 }, { x: 131.2, y: 7.6 }],
+  records: [{ x: 56, y: 7.0 }, { x: 104, y: 7.0 }, { x: 131.2, y: 7.6 }],
+  // Hell Bats (our Red Arremer): one over the churchyard (solid ground on the first gig), one in the storm
+  hellbats: [{ x: 98, y: 8 }, { x: 141, y: 8.5 }],
   birds: [19, 84, 118, 142.5],
   pigeons: false,
   headbangers: [100, 160],
@@ -41,7 +49,7 @@ export const LEVEL1 = {
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
   barricades: [[82.5, 83.3, 3.4]],
-  ladders: [{ x: 82.05, y1: 0, y2: 3.4 }],
+  ladders: [{ x: 82.05, y1: 0, y2: 3.4 }, { x: 80.6, y1: 0, y2: 5.2 }, { x: 125.2, y1: 0, y2: 5.8 }],
   checkpoint: 110,
   soundcheck: [9.5, 12, 14.5],
   storm: [121, 135],
@@ -57,10 +65,11 @@ export const LEVEL1 = {
   start: 3,
   songs: { boss: 'boss', clear: 'main' },
   zones: [
-    { x: 0, name: 'Cemetery Gates', song: 'main', spawn: { walker: 1 }, max: 3 },
-    { x: 40, checkpoint: 43, name: 'Open Graves', song: 'main', spawn: { walker: 0.6, crawler: 0.4 }, max: 4 },
-    { x: 80, checkpoint: 82, name: 'The Churchyard', song: 'main', spawn: { walker: 0.5, ghost: 0.3, crawler: 0.2 }, max: 4 },
-    { x: 121, checkpoint: 125.5, name: 'The Storm', song: 'storm', spawn: { walker: 0.4, pogo: 0.3, crawler: 0.3 }, max: 5 },
+    // burst: every few bars that many zombies claw up out of the ground around you
+    { x: 0, name: 'Cemetery Gates', song: 'main', spawn: { walker: 1 }, max: 4, burst: 2 },
+    { x: 40, checkpoint: 43, name: 'Open Graves', song: 'main', spawn: { walker: 0.6, crawler: 0.4 }, max: 4 },   // no bursts among the pits
+    { x: 80, checkpoint: 82, name: 'The Churchyard', song: 'main', spawn: { walker: 0.5, ghost: 0.3, crawler: 0.2 }, max: 5, burst: 3 },
+    { x: 121, checkpoint: 125.5, name: 'The Storm', song: 'storm', spawn: { walker: 0.4, pogo: 0.3, crawler: 0.3 }, max: 6, burst: 3 },
     { x: 166, name: 'The Mosh Pit', song: 'storm', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
   palette: { hemiSky: 0x8a7cc8, hemiGround: 0x1a1220, key: 0xc4ccff, rim: 0xd9b8ff,

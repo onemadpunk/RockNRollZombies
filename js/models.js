@@ -876,3 +876,48 @@ export function makeDevil() {
   z.wings = wings;
   return z;
 }
+
+// The Hell Bat: our Red Arremer. A little red winged demon that hovers, dodges and swoops.
+export function makeHellbat() {
+  const g = new THREE.Group();
+  const red = M(0xd8202a, { roughness: 0.45, emissive: 0x300000 });
+  const dark = M(0x3a0610, { roughness: 0.6, side: THREE.DoubleSide, emissive: 0x120000 });
+  const body = pivot(0, 0.9, 0, g);
+  box(0.46, 0.55, 0.34, red, 0, 0, 0, body);                         // chest
+  box(0.36, 0.3, 0.3, red, 0, -0.38, 0, body);                       // belly
+  const head = pivot(0, 0.48, 0.02, body);
+  box(0.4, 0.34, 0.36, red, 0, 0.1, 0, head);
+  for (const sx of [-1, 1]) {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.28, 6), M(0xe8dcc0));
+    horn.position.set(sx * 0.15, 0.36, 0); horn.rotation.z = -sx * 0.5; head.add(horn);
+    box(0.08, 0.06, 0.02, M(0xffe24a, { emissive: 0xffc000, emissiveIntensity: 3 }), sx * 0.09, 0.14, 0.19, head);   // eyes
+    box(0.03, 0.08, 0.02, M(0xffffff), sx * 0.06, -0.02, 0.19, head);                                                 // fangs
+  }
+  const arms = [];
+  for (const sx of [-1, 1]) {
+    const a = pivot(sx * 0.3, 0.12, 0, body);
+    box(0.12, 0.42, 0.12, red, 0, -0.2, 0, a);
+    for (const k of [-1, 0, 1]) box(0.03, 0.12, 0.03, M(0xe8dcc0), k * 0.04, -0.46, 0.04, a);   // claws
+    arms.push(a);
+  }
+  for (const sx of [-1, 1]) {
+    const leg = pivot(sx * 0.12, -0.52, 0, body);
+    box(0.12, 0.34, 0.12, red, 0, -0.17, 0, leg);
+  }
+  // bat wings
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0); shape.lineTo(sx * 0.95, 0.6); shape.lineTo(sx * 1.15, 0.05); shape.lineTo(sx * 0.85, -0.05);
+    shape.lineTo(sx * 0.7, -0.4); shape.lineTo(sx * 0.4, -0.2); shape.lineTo(sx * 0.15, -0.35); shape.lineTo(0, 0);
+    const w = pivot(sx * 0.12, 0.15, -0.18, body);
+    w.add(new THREE.Mesh(new THREE.ShapeGeometry(shape), dark));
+    wings.push(w);
+  }
+  // tail
+  const tail = pivot(0, -0.5, -0.16, body);
+  box(0.05, 0.05, 0.5, red, 0, 0, -0.25, tail);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), red); tip.rotation.x = -Math.PI / 2; tip.position.z = -0.55; tail.add(tip);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return { root: g, body, head, arms, wings, tail, mats: [red] };
+}

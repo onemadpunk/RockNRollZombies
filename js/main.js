@@ -817,8 +817,12 @@ function tick(raw) {
   // Narrow screens (tablets, square-ish windows) see less sideways, and lots of the game is measured
   // from the screen edge: zoom out until at least as much is visible as on a normal wide screen.
   const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  // Ghosts 'n Goblins scale: pull back to show more of the world, but never so far that the hero is
+  // shorter than ~64 pixels (phones stay close; tablets and computers get the big view).
+  const readable = (1.8 * innerHeight / 64) / (2 * tanHalf);
+  const baseDist = Math.max(13.5, Math.min(21, readable));
   const minHalfW = game && game.lock ? 9.5 : 7.2;
-  const wantDist = Math.max(game && game.lock ? 17.5 : 13.5, Math.min(minHalfW / (tanHalf * camera.aspect), 26));
+  const wantDist = Math.max(baseDist, Math.min(minHalfW / (tanHalf * camera.aspect), 26));
   camDist += (wantDist - camDist) * Math.min(1, dt * 2);
   const halfH = camDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   if (game) game.halfW = halfH * camera.aspect;
@@ -828,7 +832,8 @@ function tick(raw) {
   // Rise with the player on high ledges (in co-op, follow the pair's average so nobody drops off the bottom).
   const live = game ? game.players.filter((p) => !p.dead && !p.out) : [];
   const height = !live.length ? 0 : live.length === 1 ? live[0].y : live.reduce((a, p) => a + p.y, 0) / live.length;
-  camLift += (Math.max(0, height - 1.2) * 0.9 - camLift) * Math.min(1, dt * 4);
+  // Rise with the player on high routes, but only as much as a close camera needs: a pulled-back view already shows them
+  camLift += (Math.max(0, height - 1.2 - zoomOut * 0.5) * 0.9 - camLift) * Math.min(1, dt * 4);
   const touchLift = usingTouch() ? -1.1 : 0;   // touch: show the action higher, above the thumb buttons
   let px = camX + sx, py = 3.8 + zoomOut * 0.3 + sy + camLift + touchLift, pz = camDist;
   camLook.set(camX + sx * 0.5, 3.0 + zoomOut * 0.25 + camLift + touchLift, 0);

@@ -280,7 +280,8 @@ export function baseLevel(scene, L, { soil, top, pitMat, ledgeMat, pillarMat, ma
   for (const [a, b, y] of L.ledges) {
     const w = b - a, cx = (a + b) / 2;
     B.add(GEO.box, ledgeMat, mat4(cx, y - 0.15, -0.2, 0, 0, 0, w, 0.3, 1.6));
-    if (pillarMat) B.add(GEO.cyl4, pillarMat, mat4(cx, (y - 0.3) / 2, -0.9, 0, Math.PI / 4, 0, 0.6, y - 0.3, 0.6));
+    const base = onGround(cx) ? 0 : -6;
+    if (pillarMat) B.add(GEO.cyl4, pillarMat, mat4(cx, (y - 0.3 + base) / 2, -0.9, 0, Math.PI / 4, 0, 0.6, y - 0.3 - base, 0.6));
     ledges.push({ x1: a, x2: b, y, dx: 0, dy: 0 });
   }
   // Ferris wheels: each car is a moving platform that circles once every 16 beats

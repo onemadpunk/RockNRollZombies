@@ -2,7 +2,7 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeFlightCase,
+  makeHero, HEROES, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
@@ -145,6 +145,7 @@ export class Game {
     this.boss = null;
     this.headbangersLeft = [...this.L.headbangers];
     this.throwersLeft = this.L.throwers.map((d) => ({ ...d }));
+    this.hellbatsLeft = (this.L.hellbats || []).map((d) => ({ ...d }));
     for (const bx of this.L.birds) typeof bx === 'number' ? this.spawnBird(bx) : this.spawnBird(bx.x, bx.y);
     for (const hx of this.L.hands) this.spawnHand(hx);
     this.players.forEach((p, i) => { if (!p.out || first) this.resetPlayer(p, x - i * 1.2); });
@@ -256,6 +257,16 @@ export class Game {
       if (Math.abs(lead.x - d.x) < 15 && d.x > lead.x - 3) { this.spawnThrower(d); return false; }
       return true;
     });
+    this.hellbatsLeft = this.hellbatsLeft.filter((d) => {
+      if (Math.abs(lead.x - d.x) < 14 && d.x > lead.x - 3) { this.spawnHellbat(d); return false; }
+      return true;
+    });
+    // Ghosts 'n Goblins style: every few bars a handful of zombies claw up out of the ground around you
+    if (!quiet && zone.burst && i % 16 === 8 && lead.onGround && lead.y < 1.5 && lead.x > 8) {
+      const ambient = this.enemies.filter((e) => e.ambient && !e.dead).length;
+      const n = Math.min(zone.burst, zone.max + 2 - ambient);
+      for (let k = 0; k < n; k++) this.riseNear(lead, k % 2 ? -1 : 1);
+    }
     if (this.ambush.state === 'active' && this.ambush.queue.length) this.spawnAmbushMember(this.ambush.queue.shift());
     for (const e of this.enemies) e.onBeat && !e.dead && e.onBeat(i);
     if (i % 4 === 0 && this.level.stormAt(this.camX) > 0.6 && Math.random() < 0.3) this.ui.lightning();
@@ -313,12 +324,98 @@ export class Game {
     this.foeShots.push({ kind: 'hearse', x, y: 0, vx: -16, vy: 0, life: 4, mesh, w: 1.8, h: 1.15 });
   }
 
+  /** A zombie claws up out of the ground a few steps from the player (on the same surface, on screen). */
+  riseNear(lead, side) {
+    for (let tries = 0; tries < 5; tries++) {
+      const x = lead.x + side * rand(3, 6.5);
+      if (x < this.camX - this.halfW + 1 || x > this.camX + this.halfW - 0.5 || x > this.L.arena.gate - 3) continue;
+      const sy = this.level.surfaceAt(x);
+      if (sy === null || Math.abs(sy - lead.y) > 0.5 || this.level.surfaceAt(x - 1.5) !== sy || this.level.surfaceAt(x + 1.5) !== sy) continue;
+      if (this.enemies.some((e) => !e.dead && e.kind !== 'bird' && Math.abs(e.x - x) < 1.2)) continue;
+      if (this.level.ladders.some((l) => Math.abs(l.x - x) < 1) || (this.L.amps || []).some(([ax]) => Math.abs(x - ax) < 1.1)) continue;
+      const z = this.spawnZombie('walker', x, sy);
+      z.ambient = true;
+      this.chunks.emit({ x, y: sy + 0.05 }, { n: 10, color: [0x2b2229, 0x3b2f2a], speed: 3, up: 4, life: 0.7, size: 0.12 });
+      return z;
+    }
+    return null;
+  }
+
+  // ---- The Hell Bat: hovers just out of reach, dodges your shots, swoops on the beat ----
+  spawnHellbat({ x, y }) {
+    const model = makeHellbat();
+    model.root.scale.setScalar(1.15);
+    model.root.position.set(x, y, 0);
+    const e = this.base('hellbat', model, x, y, {
+      w: 0.45, h: 1.6, hp: 6, points: 2000, state: 'perch', dodgeCd: 0, dodgeT: 0, life: 999, colors: [0xd8202a, 0x3a0610],
+    });
+    e.center = () => ({ x: e.x, y: e.y + 0.9 });
+    e.box = () => ({ x1: e.x - 0.45, x2: e.x + 0.45, y1: e.y + 0.3, y2: e.y + 1.7 });
+    e.hittable = () => true;
+    e.harmful = () => true;
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (e.state !== 'hover' || this.cine) return;
+      if (i % 4 === 0 && e.t > 1.6) {
+        const p = this.target(e.x);
+        e.state = 'swoop'; e.t = 0; e.from = { x: e.x, y: e.y }; e.to = { x: p.x, y: p.y };
+        this.music.sScreech();
+        popup('SWOOP!', 'beat', { x: e.x, y: e.y + 2.2 }, this.camera);
+      } else if (i % 8 === 6) this.fireball(e, this.target(e.x));
+    };
+    this.music.sScreech();
+    return e;
+  }
+
+  updateHellbat(e, dt) {
+    const p = this.target(e.x), R = e.model.root, Z = e.model;
+    e.dodgeCd -= dt;
+    e.face = p.x < e.x ? -1 : 1;
+    let reach = -0.4, flap = 14;
+    if (e.state === 'perch') {
+      flap = 4;
+      if (Math.abs(p.x - e.x) < 9) { e.state = 'hover'; e.t = 0; }
+    } else if (e.state === 'hover') {
+      const side = e.x > p.x ? 1 : -1;
+      const tx = p.x + side * 3.6, ty = p.y + 2.4 + Math.sin(e.t * 2.5) * 0.4;
+      e.x += (tx - e.x) * Math.min(1, dt * 1.6);
+      e.y += (ty - e.y) * Math.min(1, dt * 2);
+      // Sees your shots coming and darts out of the way (then needs a moment before it can dodge again)
+      if (e.dodgeCd <= 0) for (const s of this.shots) {
+        const dx = e.x - s.x;
+        if (Math.sign(s.vx) === Math.sign(dx) && Math.abs(dx) < 2.6 && Math.abs(s.y - (e.y + 0.9)) < 1.2) {
+          e.dodgeV = e.y < p.y + 1.5 ? 1 : (Math.random() < 0.5 ? 1 : -1); e.dodgeT = 0.3; e.dodgeCd = 1.2;
+          break;
+        }
+      }
+      if (e.dodgeT > 0) { e.dodgeT -= dt; e.y += e.dodgeV * 8 * dt; flap = 24; }
+    } else if (e.state === 'swoop') {
+      // a straight dive through where you were standing, and out the other side
+      const k = Math.min(1.5, e.t / 0.5);
+      e.x = e.from.x + (e.to.x - e.from.x) * k;
+      e.y = e.from.y + (e.to.y - e.from.y) * Math.min(1, k);
+      reach = -2.6; flap = 6;
+      if (e.t > 0.75) { e.state = 'recover'; e.t = 0; }
+    } else if (e.state === 'recover') {
+      e.y += 5 * dt;
+      if (e.t > 0.6) { e.state = 'hover'; e.t = 0; }
+    }
+    e.y = Math.max(0.1, e.y);
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += (faceRot(e.face) - R.rotation.y) * Math.min(1, dt * 8);
+    const f = Math.sin(e.t * flap) * 0.6;
+    Z.wings[0].rotation.y = 0.5 + f; Z.wings[1].rotation.y = -0.5 - f;
+    for (const a of Z.arms) a.rotation.x += (reach - a.rotation.x) * Math.min(1, dt * 10);
+    Z.tail.rotation.y = Math.sin(e.t * 3) * 0.5;
+    Z.body.rotation.x = e.state === 'swoop' ? 0.6 : 0.1;
+  }
+
   spawnAmbient(zone, lead) {
     let roll = Math.random(), kind = 'walker';
     for (const [k, w] of Object.entries(zone.spawn)) { if ((roll -= w) <= 0) { kind = k; break; } }
-    const dir = Math.random() < 0.7 ? 1 : -1;
+    const dir = Math.random() < 0.6 ? 1 : -1;
     for (let tries = 0; tries < 6; tries++) {
-      const x = lead.x + dir * rand(4, 11);
+      const x = lead.x + dir * rand(3.5, 10);
       if (x < this.camX - this.halfW + 1 || x > this.L.arena.gate - 3) continue;
       if (this.enemies.some((e) => e.kind !== 'bird' && Math.abs(e.x - x) < 1.5)) continue;
       if (kind === 'ghost') { this.spawnGhost(x, lead.y + 1.5 + Math.random()).ambient = true; return; }
@@ -1182,6 +1279,7 @@ export class Game {
         case 'gargoyle': this.updateGargoyle(e, dt); break;
         case 'banshee': this.updateBanshee(e, dt); break;
         case 'mummy': this.updateMummy(e, dt); break;
+        case 'hellbat': this.updateHellbat(e, dt); break;
         case 'devil': this.updateDevil(e, dt); break;
       }
       if (e.dead) continue;

@@ -66,7 +66,7 @@ export function installBot({ mute = true } = {}) {
         if (p.face !== dir) move = dir;
         else if (dist < 2.6 && t.harmful()) move = -dir;
         else if (dist > 5.5) move = dir; else move = 0;
-        if (b.y1 > p.y + 1.75 && dist < 8.5) jump = true;
+        if (b.y1 > p.y + 1.75 && dist < 8.5 && groundAt(p.x + 1.2) && groundAt(p.x - 1.2)) jump = true;   // not at a pit edge
         fire = true;
       }
     }
