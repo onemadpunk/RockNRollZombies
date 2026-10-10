@@ -20,7 +20,13 @@ export const LEVEL5 = {
   vents: [14, 30, 110, 132, 170],
   hands: [20, 23, 113, 116],
   ledges: [[43.8, 46.8, 3.8], [74.5, 80.5, 9.0], [119.5, 123.5, 6.2], [140.5, 144, 6.0],
-           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // High route: a walkway over the fire vents and grabbing hands at the gates...
+           [8, 11, 2.6], [11.5, 15, 4.6], [16, 19.5, 4.8], [20.5, 24, 5.0], [25, 28.5, 4.8], [29.5, 33, 5.2], [34, 38, 5.0],
+           [39, 42.5, 5.4], [47.5, 51, 5.0],
+           // ...and a lighting truss above the mosh pit
+           [94.5, 98, 4.4], [99, 102.5, 4.8], [103.5, 107, 5.2], [108, 111.5, 5.4], [112.5, 116, 5.2],
+           [124.5, 128, 5.8], [129, 132.5, 5.6], [133.5, 137, 5.8], [137.5, 140, 6.0], [145, 148.5, 5.4]],
   movers: [
     { kind: 'bob', x: 42.5, y: 0, amp: 1.6, w: 2.4 },
     { kind: 'slide', x: 98.5, y: 0, amp: 1.6, w: 2.6 },
@@ -34,6 +40,7 @@ export const LEVEL5 = {
     { x: 106, loot: 'flame' }, { x: 142, y: 6.0, loot: 'gold' }, { x: 147, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 45.3, y: 5.2 }, { x: 76.5, y: 10.4 }, { x: 121.5, y: 7.6 }],
+  hellbats: [{ x: 30, y: 8.5 }, { x: 88, y: 10 }, { x: 125, y: 9 }],
   birds: [36, 86, 128],
   pigeons: false,
   headbangers: [90, 126],
@@ -59,10 +66,10 @@ export const LEVEL5 = {
   start: 3,
   songs: { boss: 'devil', clear: 'main' },
   zones: [
-    { x: 0, name: 'The Gates of Hell', song: 'hellgate', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 3 },
+    { x: 0, name: 'The Gates of Hell', song: 'hellgate', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 4, burst: 2 },
     { x: 46, checkpoint: 48, name: 'The Bleachers', song: 'hellgate', spawn: { walker: 0.5, ghost: 0.3, pogo: 0.2 }, max: 4 },
-    { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 5 },
-    { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+    { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 6, burst: 3 },
+    { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4, burst: 2 },
   ],
   palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a,
     grade: { lift: [0.035, 0.0, 0.0], gamma: [1.03, 0.98, 0.98], gain: [1.1, 0.93, 0.9], sat: 1.08 } },   // colour mood: blood red

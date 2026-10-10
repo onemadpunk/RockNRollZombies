@@ -4,17 +4,17 @@
 export const DIFFICULTY = {
   easy: {
     name: 'Easy', beatWindow: 0.16, enemySpeed: 0.8, spawnChance: 0.45, spawnMax: -1, lives: 5,
-    bossHp: 0.7, pitSave: 'always', zoneCheckpoints: true, skulls: 0.8,
+    bossHp: 0.7, pitSave: 'always', zoneCheckpoints: true, skulls: 0.8, bursts: 0, hellbatHp: 4, hellbatFire: false,
     blurb: 'Wide beat window, slower zombies, pits never cost a life.',
   },
   normal: {
     name: 'Normal', beatWindow: 0.11, enemySpeed: 1, spawnChance: 0.6, spawnMax: 0, lives: 3,
-    bossHp: 1, pitSave: 'jacket', zoneCheckpoints: true, skulls: 1,
+    bossHp: 1, pitSave: 'jacket', zoneCheckpoints: true, skulls: 1, bursts: 0.67, hellbatHp: 5, hellbatFire: true,
     blurb: 'The jacket saves you from one pit fall. Every zone is a checkpoint.',
   },
   hard: {
     name: 'Hard', beatWindow: 0.08, enemySpeed: 1.15, spawnChance: 0.7, spawnMax: 1, lives: 3,
-    bossHp: 1.35, pitSave: 'never', zoneCheckpoints: false, skulls: 1.2,
+    bossHp: 1.35, pitSave: 'never', zoneCheckpoints: false, skulls: 1.2, bursts: 1.34, hellbatHp: 7, hellbatFire: true,
     blurb: 'True Ghosts ’n Goblins: pits kill, one checkpoint per level, then the encore.',
   },
 };

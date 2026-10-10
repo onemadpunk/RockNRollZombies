@@ -21,7 +21,13 @@ export const LEVEL4 = {
   vents: [60.5, 74.5, 88, 172],
   // Hearses tear through here every couple of bars: jump them, or get up on a wreck
   traffic: { x1: 100, x2: 160 },
-  ledges: [[28.6, 34, 6.5], [145, 153, 5.6], [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+  ledges: [[28.6, 34, 6.5], [145, 153, 5.6], [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // High route: off the truck, over the billboard and the wrecks, along the broken bridge's girders...
+           [25, 28, 4.6], [35.5, 39, 5.6], [40.5, 44, 5.2], [45.5, 49, 5.0], [50, 53, 5.2], [54, 57.5, 5.4], [58.5, 62, 5.6],
+           [63, 66.5, 5.4], [67.5, 71, 5.6], [72, 75.5, 5.4], [76.5, 80, 5.6], [81, 84.5, 5.4], [85.5, 89, 5.0],
+           // ...and above Route 666, where the hearses can't reach you
+           [96.5, 100, 4.6], [101.5, 105, 4.8], [106.5, 110, 5.0], [111.5, 115, 4.8], [116.5, 120, 5.0],
+           [121.5, 125, 5.2], [126.5, 130, 5.4], [131.5, 135, 5.0], [136, 139.5, 5.2], [140.5, 144, 5.4]],
   movers: [
     { kind: 'bob', x: 54.5, y: 0, amp: 1.6, w: 2.4 },
     { kind: 'slide', x: 67.5, y: 0, amp: 2.0, w: 2.9 },
@@ -35,6 +41,7 @@ export const LEVEL4 = {
     { x: 116, loot: 'vinyl' }, { x: 135, y: 2.2, loot: 'gold' }, { x: 155, loot: 'flame' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 32.6, y: 7.9 }, { x: 67.5, y: 2.6 }, { x: 151.5, y: 7.0 }],
+  hellbats: [{ x: 68, y: 8.5 }, { x: 128, y: 8.5 }],
   birds: [36, 92, 140],
   pigeons: false,
   headbangers: [46, 118],
@@ -61,9 +68,9 @@ export const LEVEL4 = {
   start: 3,
   songs: { boss: 'boss4', clear: 'highway' },
   zones: [
-    { x: 0, name: 'The Truck Stop', song: 'highway', spawn: { walker: 0.5, crawler: 0.2, rat: 0.3 }, max: 3 },
+    { x: 0, name: 'The Truck Stop', song: 'highway', spawn: { walker: 0.5, crawler: 0.2, rat: 0.3 }, max: 4, burst: 2 },
     { x: 48, checkpoint: 50, name: 'The Broken Bridge', song: 'highway', spawn: { walker: 0.4, ghost: 0.3, crawler: 0.3 }, max: 3 },
-    { x: 96, checkpoint: 100, name: 'Route 666', song: 'route', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+    { x: 96, checkpoint: 100, name: 'Route 666', song: 'route', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 5, burst: 2 },
     { x: 158, name: 'The Toll Gates', song: 'route', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
   palette: { hemiSky: 0xc07858, hemiGround: 0x1a0a08, key: 0xffc8a0, rim: 0xff6a3a,
@@ -95,7 +102,7 @@ function buildHighway(scene, quality) {
 
   // surface textures: bricks, stone, wood grain, tarmac...
   surface(sand, 'dirt', 3); surface(tar, 'tarmac', 3); surface(rust, 'metal', 2); surface(conc, 'concrete', 3); surface(burnt, 'metal', 2, 0.6); surface(steel, 'metal', 2, 0.4);
-  const world = baseLevel(scene, L, { soil: sand, top: tar, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: null, makeMover: makeRoadSlab, lanternColor: 0xff8a3a });
+  const world = baseLevel(scene, L, { soil: sand, top: tar, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: steel, makeMover: makeRoadSlab, lanternColor: 0xff8a3a });
   const { B, onGround } = world;
   const BG = new Batch();
 

@@ -264,7 +264,7 @@ export class Game {
     // Ghosts 'n Goblins style: every few bars a handful of zombies claw up out of the ground around you
     if (!quiet && zone.burst && i % 16 === 8 && lead.onGround && lead.y < 1.5 && lead.x > 8) {
       const ambient = this.enemies.filter((e) => e.ambient && !e.dead).length;
-      const n = Math.min(zone.burst, zone.max + 2 - ambient);
+      const n = Math.min(Math.round(zone.burst * (this.D.bursts ?? 1)), zone.max + 2 - ambient);   // none on Easy, fewer on Normal
       for (let k = 0; k < n; k++) this.riseNear(lead, k % 2 ? -1 : 1);
     }
     if (this.ambush.state === 'active' && this.ambush.queue.length) this.spawnAmbushMember(this.ambush.queue.shift());
@@ -347,7 +347,7 @@ export class Game {
     model.root.scale.setScalar(1.15);
     model.root.position.set(x, y, 0);
     const e = this.base('hellbat', model, x, y, {
-      w: 0.45, h: 1.6, hp: 6, points: 2000, state: 'perch', dodgeCd: 0, dodgeT: 0, life: 999, colors: [0xd8202a, 0x3a0610],
+      w: 0.45, h: 1.6, hp: this.D.hellbatHp ?? 6, points: 2000, state: 'perch', dodgeCd: 0, dodgeT: 0, life: 999, colors: [0xd8202a, 0x3a0610],
     });
     e.center = () => ({ x: e.x, y: e.y + 0.9 });
     e.box = () => ({ x1: e.x - 0.45, x2: e.x + 0.45, y1: e.y + 0.3, y2: e.y + 1.7 });
@@ -361,7 +361,7 @@ export class Game {
         e.state = 'swoop'; e.t = 0; e.from = { x: e.x, y: e.y }; e.to = { x: p.x, y: p.y };
         this.music.sScreech();
         popup('SWOOP!', 'beat', { x: e.x, y: e.y + 2.2 }, this.camera);
-      } else if (i % 8 === 6) this.fireball(e, this.target(e.x));
+      } else if (i % 8 === 6 && this.D.hellbatFire !== false) this.fireball(e, this.target(e.x));
     };
     this.music.sScreech();
     return e;

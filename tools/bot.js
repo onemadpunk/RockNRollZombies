@@ -129,6 +129,8 @@ export function installBot({ mute = true } = {}) {
       if (p.hitWall) jump = true;
     }
     if (move < 0 && p.onGround && !groundAt(p.x - 0.7) && p.y < 0.5) move = 0;
+    // up on a ledge, don't back off the end of it into a pit
+    if (move < 0 && p.onGround && p.y >= 0.5 && p.standing && p.x - 0.8 < (p.standing.x1 ?? -1e9) && !groundAt(p.x - 1.2)) move = 0;
     if (move !== 0 && p.hitWall && p.onGround) { jump = true; bot.jumpDir = move; bot.jumpHold = 30; }
     if (p.standing && p.standing.mover) {
       const L = p.standing, end = nextGroundStart(p.x);

@@ -586,17 +586,17 @@ const __m = {};
 const DIFFICULTY = {
   easy: {
     name: 'Easy', beatWindow: 0.16, enemySpeed: 0.8, spawnChance: 0.45, spawnMax: -1, lives: 5,
-    bossHp: 0.7, pitSave: 'always', zoneCheckpoints: true, skulls: 0.8,
+    bossHp: 0.7, pitSave: 'always', zoneCheckpoints: true, skulls: 0.8, bursts: 0, hellbatHp: 4, hellbatFire: false,
     blurb: 'Wide beat window, slower zombies, pits never cost a life.',
   },
   normal: {
     name: 'Normal', beatWindow: 0.11, enemySpeed: 1, spawnChance: 0.6, spawnMax: 0, lives: 3,
-    bossHp: 1, pitSave: 'jacket', zoneCheckpoints: true, skulls: 1,
+    bossHp: 1, pitSave: 'jacket', zoneCheckpoints: true, skulls: 1, bursts: 0.67, hellbatHp: 5, hellbatFire: true,
     blurb: 'The jacket saves you from one pit fall. Every zone is a checkpoint.',
   },
   hard: {
     name: 'Hard', beatWindow: 0.08, enemySpeed: 1.15, spawnChance: 0.7, spawnMax: 1, lives: 3,
-    bossHp: 1.35, pitSave: 'never', zoneCheckpoints: false, skulls: 1.2,
+    bossHp: 1.35, pitSave: 'never', zoneCheckpoints: false, skulls: 1.2, bursts: 1.34, hellbatHp: 7, hellbatFire: true,
     blurb: 'True Ghosts ’n Goblins: pits kill, one checkpoint per level, then the encore.',
   },
 };
@@ -3313,9 +3313,11 @@ const LEVEL2 = {
            [48, 55.5, 3.0], [50, 56, 6.0], [56, 67.6, 6.6],          // fire escape landings + plank bridge
            [100, 103, 2.6], [110, 113, 2.6],
            [169.5, 174, 10.3],                                        // water tower catwalk (secret)
+           // High route along the alley's fire escapes, joining the plank bridge up to the rooftops
+           [12.5, 16.5, 5.2], [18, 21.5, 5.6], [28.5, 32, 5.6], [33.5, 37, 5.2], [38.5, 43, 5.0], [44.5, 47.5, 5.4],
            [200.3, 202.8, 4.8], [219.2, 221.7, 4.8], [206, 209, 2.8], [213, 216, 2.8]],
   // Up/Down at a ladder to climb. One up every building's left wall, so a fall is a setback, not a death.
-  ladders: [{ x: 40.05, y1: 0, y2: 3.4 },
+  ladders: [{ x: 33.75, y1: 0, y2: 3.4 },
     { x: 50.5, y1: 0, y2: 3.0 }, { x: 54.6, y1: 3.0, y2: 6.0 }, { x: 67.6, y1: 0, y2: 7.0 },
     { x: 129.6, y1: 0, y2: 4.5 }, { x: 143.6, y1: 0, y2: 6.0 }, { x: 155.6, y1: 0, y2: 4.5 },
     { x: 165.6, y1: 0, y2: 7.0 }, { x: 179.6, y1: 0, y2: 5.0 }, { x: 170.3, y1: 7.0, y2: 10.3 },
@@ -3329,6 +3331,7 @@ const LEVEL2 = {
     { x: 171.6, y: 10.3, loot: 'life' }, { x: 173.3, y: 10.3, loot: 'gold' }, { x: 137, y: 4.5, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 25.5, y: 6.7 }, { x: 111.5, y: 4.9 }, { x: 172.4, y: 11.7 }],
+  hellbats: [{ x: 10, y: 8.5 }, { x: 160, y: 10 }],   // the first one meets you on flat ground at the start of the alley
   birds: [30, { x: 76.5, y: 8.15 }, { x: 150, y: 7.15 }, { x: 186, y: 6.15 }],
   pigeons: true,
   headbangers: [72, 147],
@@ -3340,7 +3343,7 @@ const LEVEL2 = {
     { x: 83.5, theme: 'staff', name: 'STAFF ONLY', loot: ['jacket', 'gold', 'flame'], guards: [['walker', 2], ['rat', 2]] },
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
-  barricades: [[40.5, 41.3, 3.4]],
+  barricades: [[34.2, 35, 3.4]],   // well clear of the sewer pit (stepping off the top used to carry you into it)
   checkpoint: 92,
   soundcheck: null,
   ambush: {
@@ -3355,9 +3358,9 @@ const LEVEL2 = {
   start: 3,
   songs: { boss: 'boss2', clear: 'alley' },
   zones: [
-    { x: 0, name: 'The Back Alley', song: 'alley', spawn: { walker: 0.6, rat: 0.4 }, max: 3 },
+    { x: 0, name: 'The Back Alley', song: 'alley', spawn: { walker: 0.6, rat: 0.4 }, max: 4, burst: 2 },
     { x: 44, checkpoint: 48.5, name: 'Fire Escapes', song: 'alley', spawn: { walker: 0.5, rat: 0.3, pogo: 0.2 }, max: 4 },
-    { x: 80, checkpoint: 82, name: 'The Dive Bar', song: 'bar', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+    { x: 80, checkpoint: 82, name: 'The Dive Bar', song: 'bar', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 5, burst: 2 },
     { x: 121, checkpoint: 128.5, name: 'The Rooftops', song: 'roof', spawn: { pogo: 0.4, walker: 0.3, rat: 0.3 }, max: 5 },
   ],
   palette: { hemiSky: 0x7a8ad0, hemiGround: 0x201828, key: 0xb8c8ff, rim: 0xff6ab8,
@@ -3567,7 +3570,10 @@ const LEVEL3 = {
   campfires: [30, 62, 92],
   loos: [22, 96, 152],
   ledges: [[27.5, 31, 2.6], [60, 63.5, 2.7], [113.5, 118, 8.5], [140, 144, 6.2], [160, 163, 2.7], [168, 171, 2.7],
-           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // High route: lighting-rig walkways over the tents, campfires, mud and both pits
+           [31.5, 35, 4.6], [36, 39.5, 4.8], [41, 44.5, 5.0], [45.5, 49, 5.2], [50.5, 54, 5.4], [55.5, 59, 5.2],
+           [61, 64.5, 5.4], [66, 69.5, 5.6], [71, 74.5, 5.2], [79, 82, 4.8], [83.5, 87, 5.0], [87.5, 91, 5.2]],
   movers: [{ kind: 'slide', x: 69.5, y: 0, amp: 2.0, w: 2.9 }],
   // Ride a car up and jump off near the top for the secret ledge
   wheels: [{ x: 108, y: 6.4, r: 4.2, n: 6, w: 1.8 }],
@@ -3578,6 +3584,7 @@ const LEVEL3 = {
     { x: 117, y: 8.5, loot: 'gold' }, { x: 142, y: 6.2, loot: 'flame' }, { x: 146, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 79.8, y: 3.7 }, { x: 115.8, y: 9.9 }, { x: 142, y: 7.6 }],
+  hellbats: [{ x: 100, y: 9 }, { x: 138, y: 9 }],
   birds: [20, 64, 128],
   pigeons: false,
   headbangers: [57, 145],
@@ -3604,9 +3611,9 @@ const LEVEL3 = {
   start: 3,
   songs: { boss: 'boss3', clear: 'festival' },
   zones: [
-    { x: 0, name: 'The Car Park Field', song: 'festival', spawn: { walker: 0.7, crawler: 0.3 }, max: 3 },
+    { x: 0, name: 'The Car Park Field', song: 'festival', spawn: { walker: 0.7, crawler: 0.3 }, max: 4, burst: 2 },
     { x: 42, checkpoint: 48, name: 'The Campsite', song: 'festival', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 4 },
-    { x: 96, checkpoint: 100, name: 'The Funfair', song: 'funfair', spawn: { walker: 0.4, pogo: 0.3, ghost: 0.3 }, max: 4 },
+    { x: 96, checkpoint: 100, name: 'The Funfair', song: 'funfair', spawn: { walker: 0.4, pogo: 0.3, ghost: 0.3 }, max: 5, burst: 2 },
     { x: 148, name: 'The Main Stage', song: 'funfair', spawn: { pogo: 0.5, walker: 0.5 }, max: 4 },
   ],
   palette: { hemiSky: 0x8a9ad0, hemiGround: 0x1a1a14, key: 0xd8d0ff, rim: 0x7affc8,
@@ -3779,7 +3786,13 @@ const LEVEL4 = {
   vents: [60.5, 74.5, 88, 172],
   // Hearses tear through here every couple of bars: jump them, or get up on a wreck
   traffic: { x1: 100, x2: 160 },
-  ledges: [[28.6, 34, 6.5], [145, 153, 5.6], [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+  ledges: [[28.6, 34, 6.5], [145, 153, 5.6], [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // High route: off the truck, over the billboard and the wrecks, along the broken bridge's girders...
+           [25, 28, 4.6], [35.5, 39, 5.6], [40.5, 44, 5.2], [45.5, 49, 5.0], [50, 53, 5.2], [54, 57.5, 5.4], [58.5, 62, 5.6],
+           [63, 66.5, 5.4], [67.5, 71, 5.6], [72, 75.5, 5.4], [76.5, 80, 5.6], [81, 84.5, 5.4], [85.5, 89, 5.0],
+           // ...and above Route 666, where the hearses can't reach you
+           [96.5, 100, 4.6], [101.5, 105, 4.8], [106.5, 110, 5.0], [111.5, 115, 4.8], [116.5, 120, 5.0],
+           [121.5, 125, 5.2], [126.5, 130, 5.4], [131.5, 135, 5.0], [136, 139.5, 5.2], [140.5, 144, 5.4]],
   movers: [
     { kind: 'bob', x: 54.5, y: 0, amp: 1.6, w: 2.4 },
     { kind: 'slide', x: 67.5, y: 0, amp: 2.0, w: 2.9 },
@@ -3793,6 +3806,7 @@ const LEVEL4 = {
     { x: 116, loot: 'vinyl' }, { x: 135, y: 2.2, loot: 'gold' }, { x: 155, loot: 'flame' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 32.6, y: 7.9 }, { x: 67.5, y: 2.6 }, { x: 151.5, y: 7.0 }],
+  hellbats: [{ x: 68, y: 8.5 }, { x: 128, y: 8.5 }],
   birds: [36, 92, 140],
   pigeons: false,
   headbangers: [46, 118],
@@ -3819,9 +3833,9 @@ const LEVEL4 = {
   start: 3,
   songs: { boss: 'boss4', clear: 'highway' },
   zones: [
-    { x: 0, name: 'The Truck Stop', song: 'highway', spawn: { walker: 0.5, crawler: 0.2, rat: 0.3 }, max: 3 },
+    { x: 0, name: 'The Truck Stop', song: 'highway', spawn: { walker: 0.5, crawler: 0.2, rat: 0.3 }, max: 4, burst: 2 },
     { x: 48, checkpoint: 50, name: 'The Broken Bridge', song: 'highway', spawn: { walker: 0.4, ghost: 0.3, crawler: 0.3 }, max: 3 },
-    { x: 96, checkpoint: 100, name: 'Route 666', song: 'route', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+    { x: 96, checkpoint: 100, name: 'Route 666', song: 'route', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 5, burst: 2 },
     { x: 158, name: 'The Toll Gates', song: 'route', spawn: { walker: 0.5, pogo: 0.5 }, max: 4 },
   ],
   palette: { hemiSky: 0xc07858, hemiGround: 0x1a0a08, key: 0xffc8a0, rim: 0xff6a3a,
@@ -3853,7 +3867,7 @@ function buildHighway(scene, quality) {
 
   // surface textures: bricks, stone, wood grain, tarmac...
   surface(sand, 'dirt', 3); surface(tar, 'tarmac', 3); surface(rust, 'metal', 2); surface(conc, 'concrete', 3); surface(burnt, 'metal', 2, 0.6); surface(steel, 'metal', 2, 0.4);
-  const world = baseLevel(scene, L, { soil: sand, top: tar, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: null, makeMover: makeRoadSlab, lanternColor: 0xff8a3a });
+  const world = baseLevel(scene, L, { soil: sand, top: tar, pitMat: M(0x1a0806), ledgeMat: steel, pillarMat: steel, makeMover: makeRoadSlab, lanternColor: 0xff8a3a });
   const { B, onGround } = world;
   const BG = new Batch();
 
@@ -4032,7 +4046,13 @@ const LEVEL5 = {
   vents: [14, 30, 110, 132, 170],
   hands: [20, 23, 113, 116],
   ledges: [[43.8, 46.8, 3.8], [74.5, 80.5, 9.0], [119.5, 123.5, 6.2], [140.5, 144, 6.0],
-           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // High route: a walkway over the fire vents and grabbing hands at the gates...
+           [8, 11, 2.6], [11.5, 15, 4.6], [16, 19.5, 4.8], [20.5, 24, 5.0], [25, 28.5, 4.8], [29.5, 33, 5.2], [34, 38, 5.0],
+           [39, 42.5, 5.4], [47.5, 51, 5.0],
+           // ...and a lighting truss above the mosh pit
+           [94.5, 98, 4.4], [99, 102.5, 4.8], [103.5, 107, 5.2], [108, 111.5, 5.4], [112.5, 116, 5.2],
+           [124.5, 128, 5.8], [129, 132.5, 5.6], [133.5, 137, 5.8], [137.5, 140, 6.0], [145, 148.5, 5.4]],
   movers: [
     { kind: 'bob', x: 42.5, y: 0, amp: 1.6, w: 2.4 },
     { kind: 'slide', x: 98.5, y: 0, amp: 1.6, w: 2.6 },
@@ -4046,6 +4066,7 @@ const LEVEL5 = {
     { x: 106, loot: 'flame' }, { x: 142, y: 6.0, loot: 'gold' }, { x: 147, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 45.3, y: 5.2 }, { x: 76.5, y: 10.4 }, { x: 121.5, y: 7.6 }],
+  hellbats: [{ x: 30, y: 8.5 }, { x: 88, y: 10 }, { x: 125, y: 9 }],
   birds: [36, 86, 128],
   pigeons: false,
   headbangers: [90, 126],
@@ -4071,10 +4092,10 @@ const LEVEL5 = {
   start: 3,
   songs: { boss: 'devil', clear: 'main' },
   zones: [
-    { x: 0, name: 'The Gates of Hell', song: 'hellgate', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 3 },
+    { x: 0, name: 'The Gates of Hell', song: 'hellgate', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 4, burst: 2 },
     { x: 46, checkpoint: 48, name: 'The Bleachers', song: 'hellgate', spawn: { walker: 0.5, ghost: 0.3, pogo: 0.2 }, max: 4 },
-    { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 5 },
-    { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+    { x: 100, checkpoint: 104, name: 'The Mosh Pit', song: 'stadium', spawn: { pogo: 0.5, walker: 0.3, ghost: 0.2 }, max: 6, burst: 3 },
+    { x: 150, checkpoint: 152, name: 'Backstage', song: 'stadium', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4, burst: 2 },
   ],
   palette: { hemiSky: 0xd05a3a, hemiGround: 0x200806, key: 0xffb090, rim: 0xff3a1a,
     grade: { lift: [0.035, 0.0, 0.0], gamma: [1.03, 0.98, 0.98], gain: [1.1, 0.93, 0.9], sat: 1.08 } },   // colour mood: blood red
@@ -4917,7 +4938,7 @@ class Game {
     // Ghosts 'n Goblins style: every few bars a handful of zombies claw up out of the ground around you
     if (!quiet && zone.burst && i % 16 === 8 && lead.onGround && lead.y < 1.5 && lead.x > 8) {
       const ambient = this.enemies.filter((e) => e.ambient && !e.dead).length;
-      const n = Math.min(zone.burst, zone.max + 2 - ambient);
+      const n = Math.min(Math.round(zone.burst * (this.D.bursts ?? 1)), zone.max + 2 - ambient);   // none on Easy, fewer on Normal
       for (let k = 0; k < n; k++) this.riseNear(lead, k % 2 ? -1 : 1);
     }
     if (this.ambush.state === 'active' && this.ambush.queue.length) this.spawnAmbushMember(this.ambush.queue.shift());
@@ -5000,7 +5021,7 @@ class Game {
     model.root.scale.setScalar(1.15);
     model.root.position.set(x, y, 0);
     const e = this.base('hellbat', model, x, y, {
-      w: 0.45, h: 1.6, hp: 6, points: 2000, state: 'perch', dodgeCd: 0, dodgeT: 0, life: 999, colors: [0xd8202a, 0x3a0610],
+      w: 0.45, h: 1.6, hp: this.D.hellbatHp ?? 6, points: 2000, state: 'perch', dodgeCd: 0, dodgeT: 0, life: 999, colors: [0xd8202a, 0x3a0610],
     });
     e.center = () => ({ x: e.x, y: e.y + 0.9 });
     e.box = () => ({ x1: e.x - 0.45, x2: e.x + 0.45, y1: e.y + 0.3, y2: e.y + 1.7 });
@@ -5014,7 +5035,7 @@ class Game {
         e.state = 'swoop'; e.t = 0; e.from = { x: e.x, y: e.y }; e.to = { x: p.x, y: p.y };
         this.music.sScreech();
         popup('SWOOP!', 'beat', { x: e.x, y: e.y + 2.2 }, this.camera);
-      } else if (i % 8 === 6) this.fireball(e, this.target(e.x));
+      } else if (i % 8 === 6 && this.D.hellbatFire !== false) this.fireball(e, this.target(e.x));
     };
     this.music.sScreech();
     return e;

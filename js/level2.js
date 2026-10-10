@@ -23,9 +23,11 @@ export const LEVEL2 = {
            [48, 55.5, 3.0], [50, 56, 6.0], [56, 67.6, 6.6],          // fire escape landings + plank bridge
            [100, 103, 2.6], [110, 113, 2.6],
            [169.5, 174, 10.3],                                        // water tower catwalk (secret)
+           // High route along the alley's fire escapes, joining the plank bridge up to the rooftops
+           [12.5, 16.5, 5.2], [18, 21.5, 5.6], [28.5, 32, 5.6], [33.5, 37, 5.2], [38.5, 43, 5.0], [44.5, 47.5, 5.4],
            [200.3, 202.8, 4.8], [219.2, 221.7, 4.8], [206, 209, 2.8], [213, 216, 2.8]],
   // Up/Down at a ladder to climb. One up every building's left wall, so a fall is a setback, not a death.
-  ladders: [{ x: 40.05, y1: 0, y2: 3.4 },
+  ladders: [{ x: 33.75, y1: 0, y2: 3.4 },
     { x: 50.5, y1: 0, y2: 3.0 }, { x: 54.6, y1: 3.0, y2: 6.0 }, { x: 67.6, y1: 0, y2: 7.0 },
     { x: 129.6, y1: 0, y2: 4.5 }, { x: 143.6, y1: 0, y2: 6.0 }, { x: 155.6, y1: 0, y2: 4.5 },
     { x: 165.6, y1: 0, y2: 7.0 }, { x: 179.6, y1: 0, y2: 5.0 }, { x: 170.3, y1: 7.0, y2: 10.3 },
@@ -39,6 +41,7 @@ export const LEVEL2 = {
     { x: 171.6, y: 10.3, loot: 'life' }, { x: 173.3, y: 10.3, loot: 'gold' }, { x: 137, y: 4.5, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 25.5, y: 6.7 }, { x: 111.5, y: 4.9 }, { x: 172.4, y: 11.7 }],
+  hellbats: [{ x: 10, y: 8.5 }, { x: 160, y: 10 }],   // the first one meets you on flat ground at the start of the alley
   birds: [30, { x: 76.5, y: 8.15 }, { x: 150, y: 7.15 }, { x: 186, y: 6.15 }],
   pigeons: true,
   headbangers: [72, 147],
@@ -50,7 +53,7 @@ export const LEVEL2 = {
     { x: 83.5, theme: 'staff', name: 'STAFF ONLY', loot: ['jacket', 'gold', 'flame'], guards: [['walker', 2], ['rat', 2]] },
   ],
   // Crew barricade: the Roadie barges through, everyone else climbs the ladder over it
-  barricades: [[40.5, 41.3, 3.4]],
+  barricades: [[34.2, 35, 3.4]],   // well clear of the sewer pit (stepping off the top used to carry you into it)
   checkpoint: 92,
   soundcheck: null,
   ambush: {
@@ -65,9 +68,9 @@ export const LEVEL2 = {
   start: 3,
   songs: { boss: 'boss2', clear: 'alley' },
   zones: [
-    { x: 0, name: 'The Back Alley', song: 'alley', spawn: { walker: 0.6, rat: 0.4 }, max: 3 },
+    { x: 0, name: 'The Back Alley', song: 'alley', spawn: { walker: 0.6, rat: 0.4 }, max: 4, burst: 2 },
     { x: 44, checkpoint: 48.5, name: 'Fire Escapes', song: 'alley', spawn: { walker: 0.5, rat: 0.3, pogo: 0.2 }, max: 4 },
-    { x: 80, checkpoint: 82, name: 'The Dive Bar', song: 'bar', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 4 },
+    { x: 80, checkpoint: 82, name: 'The Dive Bar', song: 'bar', spawn: { walker: 0.4, pogo: 0.3, rat: 0.3 }, max: 5, burst: 2 },
     { x: 121, checkpoint: 128.5, name: 'The Rooftops', song: 'roof', spawn: { pogo: 0.4, walker: 0.3, rat: 0.3 }, max: 5 },
   ],
   palette: { hemiSky: 0x7a8ad0, hemiGround: 0x201828, key: 0xb8c8ff, rim: 0xff6ab8,

@@ -19,7 +19,10 @@ export const LEVEL3 = {
   campfires: [30, 62, 92],
   loos: [22, 96, 152],
   ledges: [[27.5, 31, 2.6], [60, 63.5, 2.7], [113.5, 118, 8.5], [140, 144, 6.2], [160, 163, 2.7], [168, 171, 2.7],
-           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9]],
+           [203.5, 206.5, 2.9], [215.5, 218.5, 2.9],
+           // High route: lighting-rig walkways over the tents, campfires, mud and both pits
+           [31.5, 35, 4.6], [36, 39.5, 4.8], [41, 44.5, 5.0], [45.5, 49, 5.2], [50.5, 54, 5.4], [55.5, 59, 5.2],
+           [61, 64.5, 5.4], [66, 69.5, 5.6], [71, 74.5, 5.2], [79, 82, 4.8], [83.5, 87, 5.0], [87.5, 91, 5.2]],
   movers: [{ kind: 'slide', x: 69.5, y: 0, amp: 2.0, w: 2.9 }],
   // Ride a car up and jump off near the top for the secret ledge
   wheels: [{ x: 108, y: 6.4, r: 4.2, n: 6, w: 1.8 }],
@@ -30,6 +33,7 @@ export const LEVEL3 = {
     { x: 117, y: 8.5, loot: 'gold' }, { x: 142, y: 6.2, loot: 'flame' }, { x: 146, loot: 'vinyl' }, { x: 193, loot: 'jacket' },
   ],
   records: [{ x: 79.8, y: 3.7 }, { x: 115.8, y: 9.9 }, { x: 142, y: 7.6 }],
+  hellbats: [{ x: 100, y: 9 }, { x: 138, y: 9 }],
   birds: [20, 64, 128],
   pigeons: false,
   headbangers: [57, 145],
@@ -56,9 +60,9 @@ export const LEVEL3 = {
   start: 3,
   songs: { boss: 'boss3', clear: 'festival' },
   zones: [
-    { x: 0, name: 'The Car Park Field', song: 'festival', spawn: { walker: 0.7, crawler: 0.3 }, max: 3 },
+    { x: 0, name: 'The Car Park Field', song: 'festival', spawn: { walker: 0.7, crawler: 0.3 }, max: 4, burst: 2 },
     { x: 42, checkpoint: 48, name: 'The Campsite', song: 'festival', spawn: { walker: 0.4, crawler: 0.3, ghost: 0.3 }, max: 4 },
-    { x: 96, checkpoint: 100, name: 'The Funfair', song: 'funfair', spawn: { walker: 0.4, pogo: 0.3, ghost: 0.3 }, max: 4 },
+    { x: 96, checkpoint: 100, name: 'The Funfair', song: 'funfair', spawn: { walker: 0.4, pogo: 0.3, ghost: 0.3 }, max: 5, burst: 2 },
     { x: 148, name: 'The Main Stage', song: 'funfair', spawn: { pogo: 0.5, walker: 0.5 }, max: 4 },
   ],
   palette: { hemiSky: 0x8a9ad0, hemiGround: 0x1a1a14, key: 0xd8d0ff, rim: 0x7affc8,
