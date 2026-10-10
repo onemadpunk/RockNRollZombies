@@ -1595,6 +1595,7 @@ const OUTFITS = {
   hellfire: { name: 'Hellfire', jacket: 0xb01010, hair: 0x141414, how: 'All 3 platinum records in The Number of the Beast', records: 4 },
   zombie: { name: 'Zombie', skin: 0x7d9a5a, jacket: 0x3a4250, hair: 0x2a3a1e, how: 'Find all 10 secret areas', secrets: 10 },
   golden: { name: 'Golden Jacket', jacket: 0xffd23a, metal: true, how: 'Beat the Devil', beaten: true },
+  suit: { name: "Manager's Suit", jacket: 0x8a3ad0, hair: 0x141414, how: 'Get the true ending', manager: true },
 };
 
 function makeHero(kind = 'punk', outfit = null) {
@@ -1792,14 +1793,14 @@ const ZCLOTH = [0x4a3b33, 0x3a4250, 0x55402a, 0x40303f, 0x2f3b2f, 0x6a5a40];
 
 function makeZombie(variant = 'walker') {
   const skin = M(pick(ZSKIN), { roughness: 0.85 });
-  const clothCol = { bouncer: 0x0d0d10, pogo: 0x16141a, barfly: 0xd8d2c0 }[variant] ?? pick(ZCLOTH);
+  const clothCol = { bouncer: 0x0d0d10, pogo: 0x16141a, barfly: 0xd8d2c0, manager: 0x8a3ad0 }[variant] ?? pick(ZCLOTH);
   const cloth = M(clothCol);
-  const pants = M(variant === 'bouncer' ? 0x1b1b22 : variant === 'pogo' ? 0x9a1a22 : pick([0x2a2622, 0x2b3346, 0x3a3020]));
+  const pants = M(variant === 'bouncer' ? 0x1b1b22 : variant === 'pogo' ? 0x9a1a22 : variant === 'manager' ? 0x5a2a8a : pick([0x2a2622, 0x2b3346, 0x3a3020]));
   const root = new THREE.Group();
   const body = pivot(0, 0, 0, root);
   const z = { root, body, mats: [skin, cloth, pants] };
   const wide = variant === 'bouncer' ? 1.35 : variant === 'barfly' ? 1.15 : 1;
-  const look = variant === 'walker' ? pick(['plain', 'plain', 'onearm', 'crew', 'cap', 'suit', 'poncho', 'wellies']) : variant;
+  const look = variant === 'walker' ? pick(['plain', 'plain', 'onearm', 'crew', 'cap', 'suit', 'poncho', 'wellies']) : variant === 'manager' ? 'suit' : variant;
 
   for (const side of [-1, 1]) {
     const L = leg(body, side * 0.14 * wide, 0.92, wide, pants, (knee) => {
@@ -1811,7 +1812,7 @@ function makeZombie(variant = 'walker') {
   }
   const torso = pivot(0, 1.25, 0, body);
   z.torso = torso;
-  box(0.5 * wide, 0.62, 0.27 * wide, look === 'suit' ? M(0x1c1c24) : cloth, 0, 0, 0, torso);
+  box(0.5 * wide, 0.62, 0.27 * wide, look === 'suit' ? (variant === 'manager' ? cloth : M(0x1c1c24)) : cloth, 0, 0, 0, torso);
   if (variant === 'barfly') box(0.5, 0.3, 0.12, skin, 0, -0.18, 0.15, torso);           // beer belly
   if (look === 'suit') { box(0.1, 0.5, 0.01, MAT.white, 0, 0.04, 0.14, torso); box(0.05, 0.35, 0.012, MAT.tartan, 0, 0.0, 0.146, torso); }
   if (variant === 'walker' || variant === 'digger') {
@@ -1831,7 +1832,7 @@ function makeZombie(variant = 'walker') {
     box(0.16, 0.16, 0.01, MAT.greenHawk, 0, 0.0, 0.14, torso);
   }
   for (const side of [-1, 1]) {
-    const bare = variant === 'barfly' || side < 0;
+    const bare = variant === 'barfly' || (side < 0 && variant !== 'manager');
     const A = arm(torso, side * 0.32 * wide, 0.25, wide, bare ? skin : cloth, skin, skin);
     A.sh.rotation.x = -1.35 - Math.random() * 0.2;
     A.el.rotation.x = -0.2;
@@ -2521,6 +2522,38 @@ function makeRival() {
   return z;
 }
 
+// The Manager: the one who signed the deal. Purple suit, gold chain, shades, a briefcase of contracts.
+function makeManager() {
+  const z = makeZombie('manager');
+  const [skin, cloth] = z.mats;
+  skin.color.setHex(0xb4c4a0);
+  cloth.emissive.setHex(0x2a0c50);     // lit from within, so he reads against the red stage
+  z.mats[2].emissive.setHex(0x180630);
+  const gold = M(0xffc94a, { metalness: 0.6, roughness: 0.3, emissive: 0x8a6000 });
+  box(0.36, 0.1, 0.37, MAT.dark, 0, 0.42, -0.01, z.head);      // slicked-back hair
+  box(0.34, 0.12, 0.1, MAT.dark, 0, 0.34, -0.17, z.head);
+  box(0.34, 0.07, 0.03, MAT.dark, 0, 0.24, 0.2, z.head);        // shades
+  for (let i = 0; i < 7; i++) { const a = (i / 6) * Math.PI; box(0.04, 0.04, 0.02, gold, Math.cos(a) * 0.12, 0.27 - Math.sin(a) * 0.1, 0.15, z.torso); }
+  box(0.08, 0.05, 0.1, gold, 0, -0.3, 0, z.elbowL);             // gold watch
+  // briefcase in the right hand
+  const bc = pivot(0, -0.4, 0.05, z.elbowR);
+  box(0.12, 0.46, 0.36, M(0x8a5a2a, { roughness: 0.5, emissive: 0x2a1404 }), 0, -0.2, 0, bc);
+  box(0.13, 0.05, 0.14, gold, 0, 0.04, 0, bc);
+  z.briefcase = bc;
+  z.mats = [cloth, gold];
+  z.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return z;
+}
+
+// The Manager's contracts, thrown like Arthur's enemies throw axes. Shoot them down.
+function makeContract() {
+  const g = new THREE.Group();
+  box(0.44, 0.56, 0.04, M(0xf3ece0, { roughness: 0.8, emissive: 0x302a20 }), 0, 0, 0, g);
+  for (let i = 0; i < 3; i++) box(0.3, 0.03, 0.05, MAT.dark, 0, 0.16 - i * 0.1, 0, g);
+  box(0.24, 0.06, 0.05, M(0xe0201a, { emissive: 0x600000 }), 0.02, -0.18, 0, g);
+  return g;
+}
+
 // The curse from a mystery case: you're a rubber duck for a few seconds (Arthur got turned into a frog)
 function makeDuck() {
   const g = new THREE.Group();
@@ -2547,7 +2580,7 @@ function makeMysterySticker() {
   return m;
 }
 
-Object.assign(__m, { MAT, HEROES, OUTFITS, makeHero, makePunk, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeDiscoBall, makeGondola, makeFlightCase, makeJukebox, makeAmp, makeCoffin, makeScaffold, makeWeaponMesh, makeSkull, makeBottle, makeFireball, GOLD_JACKET, makePickup, makeBones, makeCutout, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeDuck, makeMysterySticker });
+Object.assign(__m, { MAT, HEROES, OUTFITS, makeHero, makePunk, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeDiscoBall, makeGondola, makeFlightCase, makeJukebox, makeAmp, makeCoffin, makeScaffold, makeWeaponMesh, makeSkull, makeBottle, makeFireball, GOLD_JACKET, makePickup, makeBones, makeCutout, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeManager, makeContract, makeDuck, makeMysterySticker });
 }
 
 // ---- levelkit.js ----
@@ -4610,6 +4643,16 @@ const devil = (x, y, s = 1) => `
     <path d="M-12 -56 l9 4 l-9 3 z" fill="${GOLD}"/><path d="M12 -56 l-9 4 l9 3 z" fill="${GOLD}"/>
     <path d="M-10 -40 Q0 -32 10 -40" stroke="${GOLD}" stroke-width="2" fill="none"/>
   </g>`;
+const suit = (x, y, s = 1) => `
+  <g transform="translate(${x} ${y}) scale(${s})">
+    <rect x="-8" y="-50" width="16" height="16" rx="2" fill="#9aa88a"/>
+    <rect x="-9" y="-54" width="18" height="6" rx="2" fill="${INK}"/><rect x="-7" y="-45" width="14" height="4" fill="${INK}"/>
+    <rect x="-12" y="-34" width="24" height="26" fill="#8a3ad0"/>
+    <path d="M-4 -34 l4 14 l4 -14 z" fill="${BONE}"/><rect x="-1.5" y="-32" width="3" height="11" fill="${RED}"/>
+    <rect x="-10" y="-8" width="8" height="22" fill="#5a2a8a"/><rect x="2" y="-8" width="8" height="22" fill="#5a2a8a"/>
+    <rect x="-18" y="-32" width="6" height="20" fill="#8a3ad0"/><rect x="12" y="-32" width="6" height="20" fill="#8a3ad0"/>
+    <rect x="12" y="-14" width="22" height="16" rx="2" fill="#3a2414"/><rect x="20" y="-17" width="6" height="4" fill="${GOLD}"/>
+  </g>`;
 const flames = (y) => Array.from({ length: 12 }, (_, i) => `<path d="M${i * 26 - 4} ${y} q13 -${30 + (i % 3) * 14} 26 0 z" fill="${i % 2 ? '#ff6a1a' : RED}" opacity=".9"/>`).join('');
 const sky = (a = '#1b1233', b = '#3b2a58') => `<defs><linearGradient id="g${a.slice(1)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="300" height="200" fill="url(#g${a.slice(1)})"/>`;
 const graves = () => [20, 70, 120, 190, 250].map((x, i) => `<path d="M${x} 200 v-${22 + (i % 2) * 8} a10 10 0 0 1 20 0 v${22 + (i % 2) * 8} z" fill="#4d5163"/>`).join('');
@@ -4644,7 +4687,7 @@ const ART = {
     ${person(110, 150, 1.4)}${person(160, 150, 1.4, INK, '#2fa8ff')}${person(210, 150, 1.4, INK, '#111')}
     <text x="150" y="40" text-anchor="middle" font-family="Bungee, Impact" font-size="16" fill="${TOXIC}">THE BAND'S GETTING BACK TOGETHER</text>`,
   festival: `${sky('#0a0510', '#3a1a30')}${moon(60, 50, 18)}<rect x="0" y="160" width="300" height="40" fill="#2a1e14"/>
-    <path d="M140 160 L190 60 L240 160 Z" fill="#5a1a3a"/><path d="M60 160 L95 90 L130 160 Z" fill="#3a1a5a"/><path d="M190 60 v-16" stroke="${GOLD}" stroke-width="2"/>
+    <path d="M140 160 L190 60 L240 160 Z" fill="#5a1a3a"/><path d="M60 160 L95 90 L130 160 Z" fill="#8a3ad0"/><path d="M190 60 v-16" stroke="${GOLD}" stroke-width="2"/>
     <circle cx="250" cy="110" r="34" fill="none" stroke="#666" stroke-width="3"/>${[0, 60, 120, 180, 240, 300].map((a) => `<line x1="250" y1="110" x2="${250 + 34 * Math.cos(a * Math.PI / 180)}" y2="${110 + 34 * Math.sin(a * Math.PI / 180)}" stroke="#666" stroke-width="2"/>`).join('')}
     <path d="M120 40 q20 -20 40 0 q-10 30 -20 40 q-10 -10 -20 -40" fill="#c8d6ff" opacity=".7"/>`,
   highway: `${sky('#120406', '#8a2a12')}<rect x="0" y="120" width="300" height="80" fill="#5a3424"/>
@@ -4664,6 +4707,25 @@ const ART = {
     <polygon points="60,0 30,120 100,120" fill="${PINK}" opacity=".22"/><polygon points="150,0 120,120 180,120" fill="${GOLD}" opacity=".18"/><polygon points="240,0 200,120 270,120" fill="${TOXIC}" opacity=".2"/>
     ${person(70, 118, 1)}${guitar(74, 98)}${person(120, 118, 1, INK, '#2fa8ff')}${person(170, 118, 1, INK, '#111')}${guitar(174, 96, -20)}${person(220, 118, 1, INK, GOLD)}
     ${[20, 60, 100, 140, 180, 220, 260].map((x) => zhead(x, 168 + (x % 3) * 4)).join('')}`,
+  manager: `${sky('#1a0a14', '#3a1a30')}<rect x="0" y="160" width="300" height="40" fill="#141016"/>
+    ${[0, 1, 2, 3, 4, 5].map((k) => `<circle cx="${60 + k * 36}" cy="${150 - (k % 2) * 14}" r="${26 + (k % 3) * 6}" fill="#3a3038" opacity=".55"/>`).join('')}
+    ${suit(150, 166, 1.8)}
+    <text x="60" y="56" text-anchor="middle" font-family="Bungee, Impact" font-size="24" fill="${GOLD}" transform="rotate(-10 60 56)">90%</text>
+    <text x="244" y="56" text-anchor="middle" font-family="Bungee, Impact" font-size="16" fill="${GOLD}" transform="rotate(8 244 56)">$ $ $</text>`,
+  torn: `${sky('#120618', '#3a1a40')}<rect x="0" y="160" width="300" height="40" fill="#141016"/>
+    ${person(80, 160, 1.4)}${guitar(86, 124)}
+    <g transform="translate(160 40) rotate(-14)"><path d="M0 0 h40 l-6 16 l8 14 l-6 14 l6 14 l-4 14 h-38 z" fill="${BONE}"/><path d="M6 14 h24 M6 26 h22 M6 38 h20" stroke="#999"/></g>
+    <g transform="translate(214 44) rotate(16)"><path d="M6 0 h40 v72 h-40 l4 -14 l-6 -14 l6 -14 l-8 -14 z" fill="${BONE}"/><path d="M14 14 h26 M14 26 h24" stroke="#999"/><path d="M14 58 q8 -8 16 2" stroke="${RED}" stroke-width="3" fill="none"/></g>
+    <text x="214" y="150" text-anchor="middle" font-family="Bungee, Impact" font-size="20" fill="${PINK}">RIIIP!</text>`,
+  ourmusic: `${sky('#2a1040', '#c8506a')}<circle cx="150" cy="120" r="54" fill="${GOLD}" opacity=".75"/><rect x="0" y="120" width="300" height="80" fill="#141018"/>
+    ${person(80, 118, 1)}${guitar(84, 98)}${person(130, 118, 1, INK, '#2fa8ff')}${person(180, 118, 1, INK, '#111')}${guitar(184, 96, -20)}${person(230, 118, 1, INK, GOLD)}
+    <rect x="64" y="16" width="172" height="28" fill="${INK}" stroke="${PINK}" stroke-width="2"/><text x="150" y="36" text-anchor="middle" font-family="Bungee, Impact" font-size="14" fill="${PINK}">OUR SONGS, OUR WAY</text>
+    ${[20, 60, 100, 140, 180, 220, 260].map((x) => zhead(x, 168 + (x % 3) * 4)).join('')}`,
+  trueend: `${sky('#06050d', '#2a1240')}${moon(60, 46, 20)}<rect x="0" y="160" width="300" height="40" fill="#141018"/>
+    <text x="150" y="84" text-anchor="middle" font-family="Bungee, Impact" font-size="30" fill="${GOLD}">TRUE ENDING</text>
+    <text x="150" y="112" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${TOXIC}">TURN IT UP TO 11</text>
+    <text x="150" y="130" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${PINK}">AND DEAD THE UNDEAD</text>
+    <g transform="translate(222 140)"><rect width="56" height="22" rx="3" fill="${PINK}"/><rect x="38" y="-8" width="18" height="10" rx="2" fill="${PINK}"/><circle cx="12" cy="23" r="6" fill="#000"/><circle cx="44" cy="23" r="6" fill="#000"/></g>`,
   theend: `${sky('#06050d', '#191232')}${moon(240, 50, 22)}<rect x="0" y="160" width="300" height="40" fill="#141018"/>
     <text x="150" y="90" text-anchor="middle" font-family="Bungee, Impact" font-size="34" fill="${PINK}">THE END</text>
     <text x="150" y="118" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${TOXIC}">...OF THE TOUR</text>
@@ -4700,9 +4762,16 @@ const COMICS = {
   after4: [
     { art: 'devilbeat', text: 'The Devil drops his flying-V. The contract goes up in flames. Your soul is your own again.' },
     { art: 'finale', text: 'And the zombies? Turns out they just wanted a decent gig.' },
-    { art: 'theend', text: 'Thanks for playing! Made by One Mad Punk. Try Hard mode for the Encore, and hunt down every platinum record.' },
+    { art: 'theend', text: "Thanks for playing! Made by One Mad Punk. Try Hard mode for the Encore. Psst... find all five demo tapes, then face the Devil again. Something isn't right." },
   ],
 };
+
+COMICS.trueEnd = [
+  { art: 'manager', text: '"Not so fast." Your manager steps out of the smoke. He signed the deal, and let the Devil do his dirty work.' },
+  { art: 'torn', text: 'The small print said 90% of everything, forever. You tear it up on the beat.' },
+  { art: 'ourmusic', text: 'No managers. No devils. The band plays its own songs its own way, and the zombies have never had a better night.' },
+  { art: 'trueend', text: "TRUE ENDING! Made by One Mad Punk. Thanks for playing all the way to the end. You've unlocked the Manager's Suit." },
+];
 
 function renderComic(container, key) {
   container.innerHTML = COMICS[key].map((p, i) => `
@@ -4865,11 +4934,11 @@ Object.assign(__m, { SCOREBOARD, online });
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 
 const {
-  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeDuck, makeMysterySticker, GOLD_JACKET, makeFlightCase,
+  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeManager, makeContract, makeDuck, makeMysterySticker, GOLD_JACKET, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } = __m;
 const { popup } = __m;
-const { save, collectRecord, findSecret, collectTape } = __m;
+const { save, persist, collectRecord, findSecret, collectTape } = __m;
 
 const G = 38;               // gravity
 const RUN = 6.2;
@@ -6317,6 +6386,7 @@ class Game {
         case 'hellbat': this.updateHellbat(e, dt); break;
         case 'rival': this.updateRival(e, dt); break;
         case 'devil': this.updateDevil(e, dt); break;
+        case 'manager': this.updateManager(e, dt); break;
       }
       if (e.dead) continue;
       if (e.hitTilt) { e.hitTilt *= Math.exp(-dt * 9); if (Math.abs(e.hitTilt) < 0.01) e.hitTilt = 0; e.model.root.rotation.x = e.hitTilt; }
@@ -6786,6 +6856,9 @@ class Game {
       e.moves = ['duel', 'fly', 'hellfire', 'duel', 'fireballs', 'summon'];
       e.model.wings.visible = true;
       this.ui.banner("He's furious!", 'Wings out. Longer riffs.');
+    } else if (e.kind === 'manager') {
+      e.moves = ['contracts', 'cashrain', 'stomp', 'call', 'cashrain', 'contracts', 'stomp'];
+      this.ui.banner('"You\'re FIRED!"', 'He\'s lost his temper: faster, more of everything');
     } else this.ui.banner("He's cracking!", 'Faster dives, rubble from the sky');
     this.ui.shake(0.6);
     this.music.sStomp();
@@ -7372,15 +7445,16 @@ class Game {
     if (Z.wings.visible) { const f = Math.sin(e.t * (flying ? 14 : 3)) * (flying ? 0.7 : 0.2); Z.wingL.rotation.y = 0.4 + f; Z.wingR.rotation.y = -0.4 - f; }
   }
 
-  rubble(x, delay) {
+  rubble(x, delay, mesh = null) {
     // warning marker on the ground first, then the chunk drops
     const mark = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 24), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
     mark.rotation.x = -Math.PI / 2; mark.position.set(x, 0.04, 0);
     this.scene.add(mark);
-    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), MAT.stone);
+    const cash = !!mesh;
+    mesh ||= new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), MAT.stone);
     mesh.position.set(x, 12, 0);
     this.scene.add(mesh);
-    this.foeShots.push({ kind: 'rubble', x, y: 12, vx: 0, vy: 0, g: 0, wait: 0.8 + delay, mark, life: 4, mesh, w: 0.35, h: 0.4, spin: 3 });
+    this.foeShots.push({ kind: 'rubble', x, y: 12, vx: 0, vy: 0, g: 0, wait: 0.8 + delay, mark, life: 4, mesh, w: 0.35, h: 0.4, spin: cash ? 0 : 3, cash });
   }
 
   spawnShockwave(x, dir, speed) {
@@ -7472,7 +7546,7 @@ class Game {
         if (!p.dead && Math.abs(p.x - f.x) < f.w + p.w && f.y > p.y - 0.3 && f.y < p.y + p.h) { this.hurt(p, f.x); f.life = 0; }
       }
       // Skulls and bottles can be shot down
-      if (f.kind === 'skull' || f.kind === 'bottle') {
+      if (f.kind === 'skull' || f.kind === 'bottle' || f.kind === 'contract') {
         for (const s of this.shots) {
           if (Math.hypot(s.x - f.x, s.y - f.y) < s.r + 0.25) { f.life = 0; this.run.score += 50; if (s.type !== 'vinyl') s.life = 0; break; }
         }
@@ -7482,7 +7556,7 @@ class Game {
       if (f.life <= 0) {
         const glass = f.kind === 'bottle';
         if (glass) this.music.sBottle(); else this.music.sCrate();
-        const cols = f.kind === 'skull' ? [0xeee6d2, 0xa6ff4d] : glass ? [0x3a8a3a, 0xc8ffc8] : f.kind === 'fireball' ? [0xff8a20, 0xffc94a] : [0x6a6e80, 0x4d5163];
+        const cols = f.cash ? [0xffc94a, 0x5a8a3a] : f.kind === 'contract' ? [0xf3ece0, 0xe0201a] : f.kind === 'skull' ? [0xeee6d2, 0xa6ff4d] : glass ? [0x3a8a3a, 0xc8ffc8] : f.kind === 'fireball' ? [0xff8a20, 0xffc94a] : [0x6a6e80, 0x4d5163];
         (f.kind === 'fireball' ? this.sparks : this.chunks).emit({ x: f.x, y: Math.max(0.2, f.y + 0.2) }, { n: 14, color: cols, speed: 6, up: 4, life: 0.8, size: 0.1 });
         if (f.mark) this.scene.remove(f.mark);
       }
@@ -7509,18 +7583,160 @@ class Game {
     for (const z of this.enemies) if (z !== e) this.killEnemy(z, false);
     for (const f of this.foeShots) f.life = 0;
     this.rescued = this.L.rescue;
-    if (this.stats.deaths === 0) {
+    if (this.stats.deaths === 0 && e.kind !== 'manager') {
       this.run.score += 10000;
       setTimeout(() => popup('FLAWLESS GIG! +10000', 'beat', { x: c.x, y: c.y + 2.2 }, this.camera), 600);
     }
     setTimeout(() => {
       const who = { drummer: 'Drummer', bassist: 'Bassist', singer: 'Singer', roadie: 'Roadie' }[this.L.rescue] || 'Bandmate';
       const sub = { drummer: 'The beat is back for good', bassist: 'The low end is back', singer: 'The band has a voice again', roadie: 'The gear is back on the road' }[this.L.rescue] || '';
-      if (this.L.rescue === 'soul') this.ui.banner('Your soul is saved!', 'The contract goes up in flames');
+      if (e.kind === 'manager') this.ui.banner('The contract is torn up!', 'The band is free, and owns its own music');
+      else if (this.L.rescue === 'soul') this.ui.banner('Your soul is saved!', 'The contract goes up in flames');
       else this.ui.banner(`${who} rescued!`, sub);
       this.music.setLayer('beat', true);
     }, 1200);
+    if (e.kind === 'manager') { save.trueEnding = true; persist(); this.trueEnding = true; }
+    else if (e.kind === 'devil' && this.trueEndingReady()) { setTimeout(() => this.managerReveal(), 4200); return; }
     setTimeout(() => this.ui.levelClear(this), 5600);
+  }
+
+  // ---- The Manager: the secret final boss (find every demo tape, then beat the Devil) ----------
+  trueEndingReady() {
+    return this.L.boss === 'devil' && Array.from({ length: this.L.id + 1 }, (_, i) => save.tapes[i]).every(Boolean);
+  }
+
+  managerReveal() {
+    if (!this.alive.length) return;
+    const A = this.L.arena;
+    this.bossDone = false; this.bossAngry = false; this.boss = null;
+    this.lock = { x1: A.x1, x2: A.x2 };
+    this.ui.banner('"Not so fast."', 'Your manager still has the real contract');
+    this.music.sScreech();
+    setTimeout(() => {
+      if (!this.alive.length) return;
+      const e = this.spawnManager();
+      e.boss = true;
+      e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
+      this.boss = e;
+      this.cine = { t: 0, dur: 2.6, x: e.x, y: e.camY };
+      this.ui.bossName?.('The Manager');
+      this.ui.bossIntro('The Manager', 'Signed your souls away. Wants 90% of everything.', 'Money for Nothing');
+      this.ui.boss(1);
+      this.ui.shake(0.3);
+    }, 2200);
+  }
+
+  spawnManager() {
+    const model = makeManager();
+    const s = 1.4;
+    model.root.scale.setScalar(s);
+    const A = this.L.arena;
+    const p = this.target((A.x1 + A.x2) / 2);
+    const x = p.x > (A.x1 + A.x2) / 2 ? A.x1 + 4 : A.x2 - 4;
+    model.root.position.set(x, 10, 0);
+    const e = this.base('manager', model, x, 10, {
+      w: 0.45, h: 1.8 * s, hp: 120, points: 99999, state: 'enter', camY: 3.2,
+      moves: ['contracts', 'cashrain', 'stomp', 'contracts', 'call'], mi: 0, act: 0, seen: {},
+      colors: [0x3a1a5a, 0xffc94a],
+    });
+    e.hittable = () => e.state !== 'enter';
+    e.harmful = () => e.state !== 'enter';
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (this.cine || e.state !== 'strut' || i % 4 !== 0 || e.t < (e.angry ? 1.0 : 1.5)) return;
+      const mv = e.moves[e.mi++ % e.moves.length];
+      e.t = 0; e.act = 0; e.state = mv;
+      const say = {
+        contracts: ['"Sign here! And here!"', 'Shoot the contracts down'],
+        cashrain: ['"MAKE IT RAIN!"', 'Out of the red circles'],
+        stomp: ['"Read the small print!"', 'Jump the shockwaves'],
+        call: ['"Get me SECURITY!"', null],
+      }[mv];
+      popup(say[0], 'beat', { x: e.x, y: e.y + e.h + 0.6 }, this.camera);
+      if (say[1] && !e.seen[mv]) { e.seen[mv] = true; popup(say[1], 'info', { x: e.x, y: e.y + e.h + 1.5 }, this.camera); }
+    };
+    return e;
+  }
+
+  throwContract(e, p, T) {
+    const x0 = e.x + e.face * 0.8, y0 = e.y + e.h * 0.85;
+    const g = 20;
+    const vx = (p.x - x0) / T;
+    const vy = (p.y + 0.8 - y0 + 0.5 * g * T * T) / T;
+    const mesh = makeContract();
+    mesh.position.set(x0, y0, 0);
+    this.scene.add(mesh);
+    this.music.sWhoosh?.();
+    this.foeShots.push({ kind: 'contract', x: x0, y: y0, vx, vy, g, life: 4, mesh, w: 0.3, h: 0.5, spin: e.face * -8 });
+  }
+
+  updateManager(e, dt) {
+    const R = e.model.root, Z = e.model, A = this.L.arena;
+    const p = this.target(e.x);
+    const bf = this.music.beatFloat();
+    let armL = -0.25 + Math.sin(bf * Math.PI) * 0.08, armR = -0.15, lean = 0;
+    if (e.state === 'enter') {
+      // lowered in from the rigging like a rock star
+      e.y = Math.max(0, e.y - dt * 6);
+      armL = -2.9;
+      if (e.y <= 0) { e.state = 'strut'; e.t = 0; this.ui.shake(0.4); this.music.sStomp(); }
+    } else if (e.state === 'strut') {
+      e.face = p.x < e.x ? -1 : 1;
+      const d = Math.abs(p.x - e.x);
+      e.vx = this.cine ? 0 : d > 5 ? e.face * (e.angry ? 2.6 : 1.9) : d < 3 ? -e.face * 1.6 : 0;
+    } else if (e.state === 'contracts') {
+      e.vx = 0; e.face = p.x < e.x ? -1 : 1;
+      const n = e.angry ? 3 : 2;
+      armL = Math.sin(e.t * 7) > 0 ? -2.7 : -1.2;   // flinging them overarm
+      if (e.act < n && e.t > 0.45 + e.act * 0.45) { e.act++; this.throwContract(e, this.target(e.x), 0.75 + e.act * 0.1); }
+      if (e.t > 0.7 + n * 0.45) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'cashrain') {
+      e.vx = 0; armL = armR = -2.9;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        const n = e.angry ? 6 : 4;
+        const xs = [Math.min(Math.max(p.x, A.x1 + 0.8), A.x2 - 0.8)];
+        for (let tries = 0; xs.length < n && tries < 60; tries++) {
+          const x = A.x1 + 1 + Math.random() * (A.x2 - A.x1 - 2);
+          if (xs.every((q) => Math.abs(q - x) > 1.8)) xs.push(x);
+        }
+        xs.forEach((x, k) => {
+          const bag = makeCashBag();
+          bag.children[bag.children.length - 1].visible = false;   // no pickup beam: this one hurts
+          this.rubble(x, k * 0.15, bag);
+        });
+      }
+      if (e.t > 2) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'stomp') {
+      e.vx = 0;
+      armR = e.act ? 0.3 : -3.0;   // briefcase up... and SLAM
+      lean = e.act ? 0.35 : -0.1;
+      if (!e.act && e.t > 0.7) {
+        e.act = 1;
+        this.ui.shake(0.5); this.music.sStomp();
+        const sp = e.angry ? 7.5 : 6.2;
+        this.spawnShockwave(e.x - 0.6, -1, sp); this.spawnShockwave(e.x + 0.6, 1, sp);
+        this.chunks.emit({ x: e.x + e.face * 0.8, y: 0.1 }, { n: 16, color: [0xf3ece0, 0xffc94a], speed: 5, up: 4, life: 0.8, size: 0.1 });
+      }
+      if (e.t > 1.4) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'call') {
+      e.vx = 0; armL = -2.4;   // on the phone
+      if (!e.act && e.t > 0.6) {
+        e.act = 1;
+        const minions = this.enemies.filter((z) => !z.dead && !z.boss).length;
+        for (let k = minions; k < (e.angry ? 3 : 2); k++) this.spawnZombie(e.angry && k === 2 ? 'headbanger' : 'walker', k % 2 ? A.x1 + 1.5 : A.x2 - 1.5);
+      }
+      if (e.t > 1.3) { e.state = 'strut'; e.t = 0; }
+    }
+    if (e.state !== 'enter') { this.move(e, dt, false); e.x = Math.min(Math.max(e.x, A.x1 + e.w), A.x2 - e.w); }
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += (faceRot(e.face) - R.rotation.y) * Math.min(1, dt * 8);
+    Z.armL.rotation.x += (armL - Z.armL.rotation.x) * Math.min(1, dt * 12);
+    Z.armR.rotation.x += (armR - Z.armR.rotation.x) * Math.min(1, dt * 12);
+    Z.elbowL.rotation.x = Z.elbowR.rotation.x = 0;
+    Z.body.rotation.x += (lean - Z.body.rotation.x) * Math.min(1, dt * 10);
+    e.phase += Math.abs(e.vx) * dt * 1.8;
+    Z.legL.rotation.x = Math.sin(e.phase) * 0.45; Z.legR.rotation.x = -Math.sin(e.phase) * 0.45;
   }
 
   // ---------------------------------------------------------------------------
@@ -7915,6 +8131,7 @@ const ui = {
       card.querySelector('.sg').hidden = !song;
     }
   },
+  bossName(n) { $('bossname').textContent = n.toUpperCase(); },
   gameOver(g) { endLevel(g, false); },
   levelClear(g) { endLevel(g, true); },
 };
@@ -8022,12 +8239,13 @@ function outfitUnlocked(k) {
   if (!o) return false;
   if (o.records !== undefined) return (save.records[o.records] || []).length >= 3;
   if (o.secrets) return secretsFound() >= secretsTotal();
+  if (o.manager) return !!save.trueEnding;
   if (o.beaten) return save.unlocked.levels > LEVELS.length;
   return true;
 }
 function renderCollection() {
   const recs = LEVELS.reduce((n, L) => n + (save.records[L.id] || []).length, 0);
-  $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
+  $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Demo tapes ${LEVELS.filter((L) => save.tapes[L.id]).length}/${LEVELS.length}  ·  True ending ${save.trueEnding ? '\u2714' : '???'}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
   const disc = (n, of) => Array.from({ length: of }, (_, i) => (i < n ? '\u25CF' : '\u25CB')).join(' ');
   $('col-gigs').innerHTML = '<tr><th>Gig</th><th>Records</th><th>Secrets</th><th>Tape</th></tr>' + LEVELS.map((L, i) => {
     const open = i < save.unlocked.levels;
@@ -8304,7 +8522,10 @@ function endLevel(g, clear) {
   if (clear) {
     music.sClear();
     if (HEROES[L.rescue] && unlockCharacter(L.rescue)) unlockText = `New character: ${HEROES[L.rescue].name}!`;
-    if (last && !run.encore) unlockText = 'You beat the Devil! The tour is complete.';
+    const tapes = LEVELS.filter((T) => save.tapes[T.id]).length;
+    if (g.trueEnding) unlockText = "TRUE ENDING! The Manager is beaten and the band is free. New outfit: Manager's Suit!";
+    else if (last && !run.encore) unlockText = tapes >= LEVELS.length ? 'You beat the Devil! The tour is complete.'
+      : `You beat the Devil! But something's not right... Find all ${LEVELS.length} demo tapes (${tapes}/${LEVELS.length}) and face him again.`;
     unlockLevel(run.level + 2);
   } else music.sOver();
   $('unlock').textContent = unlockText;
@@ -8326,6 +8547,7 @@ function endLevel(g, clear) {
   only('over');
   setTimeout(() => (!$('hs').hidden ? $('initials') : $('over-next')).focus(), 50);
   endLevel.clear = clear;
+  endLevel.trueEnd = clear && !!g.trueEnding;
 }
 
 let pending = null;
@@ -8387,7 +8609,7 @@ $('over-next').addEventListener('click', () => {
     const next = run.level + 1;
     const comicKey = 'after' + run.level;
     if (next < LEVELS.length) showComic(comicKey, () => showMap(next));
-    else showComic(comicKey, toTitle);
+    else showComic(endLevel.trueEnd ? 'trueEnd' : comicKey, toTitle);
   } else {
     // Continue after a game over: back to the last checkpoint of this gig, score wiped
     run.score = 0; run.lives = run.diff.lives;

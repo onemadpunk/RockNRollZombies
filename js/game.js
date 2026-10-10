@@ -2,11 +2,11 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeDuck, makeMysterySticker, GOLD_JACKET, makeFlightCase,
+  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeManager, makeContract, makeDuck, makeMysterySticker, GOLD_JACKET, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
-import { save, collectRecord, findSecret, collectTape } from './config.js';
+import { save, persist, collectRecord, findSecret, collectTape } from './config.js';
 
 const G = 38;               // gravity
 const RUN = 6.2;
@@ -1454,6 +1454,7 @@ export class Game {
         case 'hellbat': this.updateHellbat(e, dt); break;
         case 'rival': this.updateRival(e, dt); break;
         case 'devil': this.updateDevil(e, dt); break;
+        case 'manager': this.updateManager(e, dt); break;
       }
       if (e.dead) continue;
       if (e.hitTilt) { e.hitTilt *= Math.exp(-dt * 9); if (Math.abs(e.hitTilt) < 0.01) e.hitTilt = 0; e.model.root.rotation.x = e.hitTilt; }
@@ -1923,6 +1924,9 @@ export class Game {
       e.moves = ['duel', 'fly', 'hellfire', 'duel', 'fireballs', 'summon'];
       e.model.wings.visible = true;
       this.ui.banner("He's furious!", 'Wings out. Longer riffs.');
+    } else if (e.kind === 'manager') {
+      e.moves = ['contracts', 'cashrain', 'stomp', 'call', 'cashrain', 'contracts', 'stomp'];
+      this.ui.banner('"You\'re FIRED!"', 'He\'s lost his temper: faster, more of everything');
     } else this.ui.banner("He's cracking!", 'Faster dives, rubble from the sky');
     this.ui.shake(0.6);
     this.music.sStomp();
@@ -2509,15 +2513,16 @@ export class Game {
     if (Z.wings.visible) { const f = Math.sin(e.t * (flying ? 14 : 3)) * (flying ? 0.7 : 0.2); Z.wingL.rotation.y = 0.4 + f; Z.wingR.rotation.y = -0.4 - f; }
   }
 
-  rubble(x, delay) {
+  rubble(x, delay, mesh = null) {
     // warning marker on the ground first, then the chunk drops
     const mark = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 24), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
     mark.rotation.x = -Math.PI / 2; mark.position.set(x, 0.04, 0);
     this.scene.add(mark);
-    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), MAT.stone);
+    const cash = !!mesh;
+    mesh ||= new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), MAT.stone);
     mesh.position.set(x, 12, 0);
     this.scene.add(mesh);
-    this.foeShots.push({ kind: 'rubble', x, y: 12, vx: 0, vy: 0, g: 0, wait: 0.8 + delay, mark, life: 4, mesh, w: 0.35, h: 0.4, spin: 3 });
+    this.foeShots.push({ kind: 'rubble', x, y: 12, vx: 0, vy: 0, g: 0, wait: 0.8 + delay, mark, life: 4, mesh, w: 0.35, h: 0.4, spin: cash ? 0 : 3, cash });
   }
 
   spawnShockwave(x, dir, speed) {
@@ -2609,7 +2614,7 @@ export class Game {
         if (!p.dead && Math.abs(p.x - f.x) < f.w + p.w && f.y > p.y - 0.3 && f.y < p.y + p.h) { this.hurt(p, f.x); f.life = 0; }
       }
       // Skulls and bottles can be shot down
-      if (f.kind === 'skull' || f.kind === 'bottle') {
+      if (f.kind === 'skull' || f.kind === 'bottle' || f.kind === 'contract') {
         for (const s of this.shots) {
           if (Math.hypot(s.x - f.x, s.y - f.y) < s.r + 0.25) { f.life = 0; this.run.score += 50; if (s.type !== 'vinyl') s.life = 0; break; }
         }
@@ -2619,7 +2624,7 @@ export class Game {
       if (f.life <= 0) {
         const glass = f.kind === 'bottle';
         if (glass) this.music.sBottle(); else this.music.sCrate();
-        const cols = f.kind === 'skull' ? [0xeee6d2, 0xa6ff4d] : glass ? [0x3a8a3a, 0xc8ffc8] : f.kind === 'fireball' ? [0xff8a20, 0xffc94a] : [0x6a6e80, 0x4d5163];
+        const cols = f.cash ? [0xffc94a, 0x5a8a3a] : f.kind === 'contract' ? [0xf3ece0, 0xe0201a] : f.kind === 'skull' ? [0xeee6d2, 0xa6ff4d] : glass ? [0x3a8a3a, 0xc8ffc8] : f.kind === 'fireball' ? [0xff8a20, 0xffc94a] : [0x6a6e80, 0x4d5163];
         (f.kind === 'fireball' ? this.sparks : this.chunks).emit({ x: f.x, y: Math.max(0.2, f.y + 0.2) }, { n: 14, color: cols, speed: 6, up: 4, life: 0.8, size: 0.1 });
         if (f.mark) this.scene.remove(f.mark);
       }
@@ -2646,18 +2651,160 @@ export class Game {
     for (const z of this.enemies) if (z !== e) this.killEnemy(z, false);
     for (const f of this.foeShots) f.life = 0;
     this.rescued = this.L.rescue;
-    if (this.stats.deaths === 0) {
+    if (this.stats.deaths === 0 && e.kind !== 'manager') {
       this.run.score += 10000;
       setTimeout(() => popup('FLAWLESS GIG! +10000', 'beat', { x: c.x, y: c.y + 2.2 }, this.camera), 600);
     }
     setTimeout(() => {
       const who = { drummer: 'Drummer', bassist: 'Bassist', singer: 'Singer', roadie: 'Roadie' }[this.L.rescue] || 'Bandmate';
       const sub = { drummer: 'The beat is back for good', bassist: 'The low end is back', singer: 'The band has a voice again', roadie: 'The gear is back on the road' }[this.L.rescue] || '';
-      if (this.L.rescue === 'soul') this.ui.banner('Your soul is saved!', 'The contract goes up in flames');
+      if (e.kind === 'manager') this.ui.banner('The contract is torn up!', 'The band is free, and owns its own music');
+      else if (this.L.rescue === 'soul') this.ui.banner('Your soul is saved!', 'The contract goes up in flames');
       else this.ui.banner(`${who} rescued!`, sub);
       this.music.setLayer('beat', true);
     }, 1200);
+    if (e.kind === 'manager') { save.trueEnding = true; persist(); this.trueEnding = true; }
+    else if (e.kind === 'devil' && this.trueEndingReady()) { setTimeout(() => this.managerReveal(), 4200); return; }
     setTimeout(() => this.ui.levelClear(this), 5600);
+  }
+
+  // ---- The Manager: the secret final boss (find every demo tape, then beat the Devil) ----------
+  trueEndingReady() {
+    return this.L.boss === 'devil' && Array.from({ length: this.L.id + 1 }, (_, i) => save.tapes[i]).every(Boolean);
+  }
+
+  managerReveal() {
+    if (!this.alive.length) return;
+    const A = this.L.arena;
+    this.bossDone = false; this.bossAngry = false; this.boss = null;
+    this.lock = { x1: A.x1, x2: A.x2 };
+    this.ui.banner('"Not so fast."', 'Your manager still has the real contract');
+    this.music.sScreech();
+    setTimeout(() => {
+      if (!this.alive.length) return;
+      const e = this.spawnManager();
+      e.boss = true;
+      e.maxHp = e.hp = Math.round(e.hp * this.D.bossHp * (this.run.encore ? 1.3 : 1) * (this.coop ? 1.4 : 1));
+      this.boss = e;
+      this.cine = { t: 0, dur: 2.6, x: e.x, y: e.camY };
+      this.ui.bossName?.('The Manager');
+      this.ui.bossIntro('The Manager', 'Signed your souls away. Wants 90% of everything.', 'Money for Nothing');
+      this.ui.boss(1);
+      this.ui.shake(0.3);
+    }, 2200);
+  }
+
+  spawnManager() {
+    const model = makeManager();
+    const s = 1.4;
+    model.root.scale.setScalar(s);
+    const A = this.L.arena;
+    const p = this.target((A.x1 + A.x2) / 2);
+    const x = p.x > (A.x1 + A.x2) / 2 ? A.x1 + 4 : A.x2 - 4;
+    model.root.position.set(x, 10, 0);
+    const e = this.base('manager', model, x, 10, {
+      w: 0.45, h: 1.8 * s, hp: 120, points: 99999, state: 'enter', camY: 3.2,
+      moves: ['contracts', 'cashrain', 'stomp', 'contracts', 'call'], mi: 0, act: 0, seen: {},
+      colors: [0x3a1a5a, 0xffc94a],
+    });
+    e.hittable = () => e.state !== 'enter';
+    e.harmful = () => e.state !== 'enter';
+    e.onBeat = (i) => {
+      e.pulse = 1;
+      if (this.cine || e.state !== 'strut' || i % 4 !== 0 || e.t < (e.angry ? 1.0 : 1.5)) return;
+      const mv = e.moves[e.mi++ % e.moves.length];
+      e.t = 0; e.act = 0; e.state = mv;
+      const say = {
+        contracts: ['"Sign here! And here!"', 'Shoot the contracts down'],
+        cashrain: ['"MAKE IT RAIN!"', 'Out of the red circles'],
+        stomp: ['"Read the small print!"', 'Jump the shockwaves'],
+        call: ['"Get me SECURITY!"', null],
+      }[mv];
+      popup(say[0], 'beat', { x: e.x, y: e.y + e.h + 0.6 }, this.camera);
+      if (say[1] && !e.seen[mv]) { e.seen[mv] = true; popup(say[1], 'info', { x: e.x, y: e.y + e.h + 1.5 }, this.camera); }
+    };
+    return e;
+  }
+
+  throwContract(e, p, T) {
+    const x0 = e.x + e.face * 0.8, y0 = e.y + e.h * 0.85;
+    const g = 20;
+    const vx = (p.x - x0) / T;
+    const vy = (p.y + 0.8 - y0 + 0.5 * g * T * T) / T;
+    const mesh = makeContract();
+    mesh.position.set(x0, y0, 0);
+    this.scene.add(mesh);
+    this.music.sWhoosh?.();
+    this.foeShots.push({ kind: 'contract', x: x0, y: y0, vx, vy, g, life: 4, mesh, w: 0.3, h: 0.5, spin: e.face * -8 });
+  }
+
+  updateManager(e, dt) {
+    const R = e.model.root, Z = e.model, A = this.L.arena;
+    const p = this.target(e.x);
+    const bf = this.music.beatFloat();
+    let armL = -0.25 + Math.sin(bf * Math.PI) * 0.08, armR = -0.15, lean = 0;
+    if (e.state === 'enter') {
+      // lowered in from the rigging like a rock star
+      e.y = Math.max(0, e.y - dt * 6);
+      armL = -2.9;
+      if (e.y <= 0) { e.state = 'strut'; e.t = 0; this.ui.shake(0.4); this.music.sStomp(); }
+    } else if (e.state === 'strut') {
+      e.face = p.x < e.x ? -1 : 1;
+      const d = Math.abs(p.x - e.x);
+      e.vx = this.cine ? 0 : d > 5 ? e.face * (e.angry ? 2.6 : 1.9) : d < 3 ? -e.face * 1.6 : 0;
+    } else if (e.state === 'contracts') {
+      e.vx = 0; e.face = p.x < e.x ? -1 : 1;
+      const n = e.angry ? 3 : 2;
+      armL = Math.sin(e.t * 7) > 0 ? -2.7 : -1.2;   // flinging them overarm
+      if (e.act < n && e.t > 0.45 + e.act * 0.45) { e.act++; this.throwContract(e, this.target(e.x), 0.75 + e.act * 0.1); }
+      if (e.t > 0.7 + n * 0.45) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'cashrain') {
+      e.vx = 0; armL = armR = -2.9;
+      if (!e.act && e.t > 0.4) {
+        e.act = 1;
+        const n = e.angry ? 6 : 4;
+        const xs = [Math.min(Math.max(p.x, A.x1 + 0.8), A.x2 - 0.8)];
+        for (let tries = 0; xs.length < n && tries < 60; tries++) {
+          const x = A.x1 + 1 + Math.random() * (A.x2 - A.x1 - 2);
+          if (xs.every((q) => Math.abs(q - x) > 1.8)) xs.push(x);
+        }
+        xs.forEach((x, k) => {
+          const bag = makeCashBag();
+          bag.children[bag.children.length - 1].visible = false;   // no pickup beam: this one hurts
+          this.rubble(x, k * 0.15, bag);
+        });
+      }
+      if (e.t > 2) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'stomp') {
+      e.vx = 0;
+      armR = e.act ? 0.3 : -3.0;   // briefcase up... and SLAM
+      lean = e.act ? 0.35 : -0.1;
+      if (!e.act && e.t > 0.7) {
+        e.act = 1;
+        this.ui.shake(0.5); this.music.sStomp();
+        const sp = e.angry ? 7.5 : 6.2;
+        this.spawnShockwave(e.x - 0.6, -1, sp); this.spawnShockwave(e.x + 0.6, 1, sp);
+        this.chunks.emit({ x: e.x + e.face * 0.8, y: 0.1 }, { n: 16, color: [0xf3ece0, 0xffc94a], speed: 5, up: 4, life: 0.8, size: 0.1 });
+      }
+      if (e.t > 1.4) { e.state = 'strut'; e.t = 0; }
+    } else if (e.state === 'call') {
+      e.vx = 0; armL = -2.4;   // on the phone
+      if (!e.act && e.t > 0.6) {
+        e.act = 1;
+        const minions = this.enemies.filter((z) => !z.dead && !z.boss).length;
+        for (let k = minions; k < (e.angry ? 3 : 2); k++) this.spawnZombie(e.angry && k === 2 ? 'headbanger' : 'walker', k % 2 ? A.x1 + 1.5 : A.x2 - 1.5);
+      }
+      if (e.t > 1.3) { e.state = 'strut'; e.t = 0; }
+    }
+    if (e.state !== 'enter') { this.move(e, dt, false); e.x = Math.min(Math.max(e.x, A.x1 + e.w), A.x2 - e.w); }
+    R.position.set(e.x, e.y, 0);
+    R.rotation.y += (faceRot(e.face) - R.rotation.y) * Math.min(1, dt * 8);
+    Z.armL.rotation.x += (armL - Z.armL.rotation.x) * Math.min(1, dt * 12);
+    Z.armR.rotation.x += (armR - Z.armR.rotation.x) * Math.min(1, dt * 12);
+    Z.elbowL.rotation.x = Z.elbowR.rotation.x = 0;
+    Z.body.rotation.x += (lean - Z.body.rotation.x) * Math.min(1, dt * 10);
+    e.phase += Math.abs(e.vx) * dt * 1.8;
+    Z.legL.rotation.x = Math.sin(e.phase) * 0.45; Z.legR.rotation.x = -Math.sin(e.phase) * 0.45;
   }
 
   // ---------------------------------------------------------------------------

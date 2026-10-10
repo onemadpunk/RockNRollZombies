@@ -88,6 +88,7 @@ export const OUTFITS = {
   hellfire: { name: 'Hellfire', jacket: 0xb01010, hair: 0x141414, how: 'All 3 platinum records in The Number of the Beast', records: 4 },
   zombie: { name: 'Zombie', skin: 0x7d9a5a, jacket: 0x3a4250, hair: 0x2a3a1e, how: 'Find all 10 secret areas', secrets: 10 },
   golden: { name: 'Golden Jacket', jacket: 0xffd23a, metal: true, how: 'Beat the Devil', beaten: true },
+  suit: { name: "Manager's Suit", jacket: 0x8a3ad0, hair: 0x141414, how: 'Get the true ending', manager: true },
 };
 
 export function makeHero(kind = 'punk', outfit = null) {
@@ -285,14 +286,14 @@ const ZCLOTH = [0x4a3b33, 0x3a4250, 0x55402a, 0x40303f, 0x2f3b2f, 0x6a5a40];
 
 export function makeZombie(variant = 'walker') {
   const skin = M(pick(ZSKIN), { roughness: 0.85 });
-  const clothCol = { bouncer: 0x0d0d10, pogo: 0x16141a, barfly: 0xd8d2c0 }[variant] ?? pick(ZCLOTH);
+  const clothCol = { bouncer: 0x0d0d10, pogo: 0x16141a, barfly: 0xd8d2c0, manager: 0x8a3ad0 }[variant] ?? pick(ZCLOTH);
   const cloth = M(clothCol);
-  const pants = M(variant === 'bouncer' ? 0x1b1b22 : variant === 'pogo' ? 0x9a1a22 : pick([0x2a2622, 0x2b3346, 0x3a3020]));
+  const pants = M(variant === 'bouncer' ? 0x1b1b22 : variant === 'pogo' ? 0x9a1a22 : variant === 'manager' ? 0x5a2a8a : pick([0x2a2622, 0x2b3346, 0x3a3020]));
   const root = new THREE.Group();
   const body = pivot(0, 0, 0, root);
   const z = { root, body, mats: [skin, cloth, pants] };
   const wide = variant === 'bouncer' ? 1.35 : variant === 'barfly' ? 1.15 : 1;
-  const look = variant === 'walker' ? pick(['plain', 'plain', 'onearm', 'crew', 'cap', 'suit', 'poncho', 'wellies']) : variant;
+  const look = variant === 'walker' ? pick(['plain', 'plain', 'onearm', 'crew', 'cap', 'suit', 'poncho', 'wellies']) : variant === 'manager' ? 'suit' : variant;
 
   for (const side of [-1, 1]) {
     const L = leg(body, side * 0.14 * wide, 0.92, wide, pants, (knee) => {
@@ -304,7 +305,7 @@ export function makeZombie(variant = 'walker') {
   }
   const torso = pivot(0, 1.25, 0, body);
   z.torso = torso;
-  box(0.5 * wide, 0.62, 0.27 * wide, look === 'suit' ? M(0x1c1c24) : cloth, 0, 0, 0, torso);
+  box(0.5 * wide, 0.62, 0.27 * wide, look === 'suit' ? (variant === 'manager' ? cloth : M(0x1c1c24)) : cloth, 0, 0, 0, torso);
   if (variant === 'barfly') box(0.5, 0.3, 0.12, skin, 0, -0.18, 0.15, torso);           // beer belly
   if (look === 'suit') { box(0.1, 0.5, 0.01, MAT.white, 0, 0.04, 0.14, torso); box(0.05, 0.35, 0.012, MAT.tartan, 0, 0.0, 0.146, torso); }
   if (variant === 'walker' || variant === 'digger') {
@@ -324,7 +325,7 @@ export function makeZombie(variant = 'walker') {
     box(0.16, 0.16, 0.01, MAT.greenHawk, 0, 0.0, 0.14, torso);
   }
   for (const side of [-1, 1]) {
-    const bare = variant === 'barfly' || side < 0;
+    const bare = variant === 'barfly' || (side < 0 && variant !== 'manager');
     const A = arm(torso, side * 0.32 * wide, 0.25, wide, bare ? skin : cloth, skin, skin);
     A.sh.rotation.x = -1.35 - Math.random() * 0.2;
     A.el.rotation.x = -0.2;
@@ -1012,6 +1013,38 @@ export function makeRival() {
   for (let i = 0; i < 2; i++) box(0.3, 0.02, 0.07, MAT.chrome, 0, -0.14 - i * 0.08, 0, gtr);
   z.guitar = gtr;
   return z;
+}
+
+// The Manager: the one who signed the deal. Purple suit, gold chain, shades, a briefcase of contracts.
+export function makeManager() {
+  const z = makeZombie('manager');
+  const [skin, cloth] = z.mats;
+  skin.color.setHex(0xb4c4a0);
+  cloth.emissive.setHex(0x2a0c50);     // lit from within, so he reads against the red stage
+  z.mats[2].emissive.setHex(0x180630);
+  const gold = M(0xffc94a, { metalness: 0.6, roughness: 0.3, emissive: 0x8a6000 });
+  box(0.36, 0.1, 0.37, MAT.dark, 0, 0.42, -0.01, z.head);      // slicked-back hair
+  box(0.34, 0.12, 0.1, MAT.dark, 0, 0.34, -0.17, z.head);
+  box(0.34, 0.07, 0.03, MAT.dark, 0, 0.24, 0.2, z.head);        // shades
+  for (let i = 0; i < 7; i++) { const a = (i / 6) * Math.PI; box(0.04, 0.04, 0.02, gold, Math.cos(a) * 0.12, 0.27 - Math.sin(a) * 0.1, 0.15, z.torso); }
+  box(0.08, 0.05, 0.1, gold, 0, -0.3, 0, z.elbowL);             // gold watch
+  // briefcase in the right hand
+  const bc = pivot(0, -0.4, 0.05, z.elbowR);
+  box(0.12, 0.46, 0.36, M(0x8a5a2a, { roughness: 0.5, emissive: 0x2a1404 }), 0, -0.2, 0, bc);
+  box(0.13, 0.05, 0.14, gold, 0, 0.04, 0, bc);
+  z.briefcase = bc;
+  z.mats = [cloth, gold];
+  z.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return z;
+}
+
+// The Manager's contracts, thrown like Arthur's enemies throw axes. Shoot them down.
+export function makeContract() {
+  const g = new THREE.Group();
+  box(0.44, 0.56, 0.04, M(0xf3ece0, { roughness: 0.8, emissive: 0x302a20 }), 0, 0, 0, g);
+  for (let i = 0; i < 3; i++) box(0.3, 0.03, 0.05, MAT.dark, 0, 0.16 - i * 0.1, 0, g);
+  box(0.24, 0.06, 0.05, M(0xe0201a, { emissive: 0x600000 }), 0.02, -0.18, 0, g);
+  return g;
 }
 
 // The curse from a mystery case: you're a rubber duck for a few seconds (Arthur got turned into a frog)

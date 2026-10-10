@@ -52,6 +52,7 @@ Each rescued bandmate becomes playable. Each gig hides three platinum records.
 - **Gold jacket:** from "?" flight cases and Hell Bats. Hold Throw to charge a super attack: Punk power chord, Drummer drum roll, Bassist big vinyl, Singer high note (all around you), Roadie tool storm (both ways). One hit knocks it off.
 - **"?" flight cases:** a gamble. Usually gold, sometimes the gold jacket, sometimes a rubber-duck curse for 5 seconds (slower, lower jumps, can only quack).
 - **Rick Rotten:** a zombie guitarist on the Devil's payroll who crashes the end of every ambush, tougher each gig.
+- **The true ending:** find all five demo tapes, then beat the Devil. Someone else has been pulling the strings...
 - **Outfits and Collection:** platinum records, secret areas and beating the Devil unlock outfits; the Collection screen shows what's left to find.
 - **Settings:** music and sound volume, flashing, shake, full screen, graphics quality.
 

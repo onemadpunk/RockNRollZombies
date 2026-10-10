@@ -220,6 +220,7 @@ const ui = {
       card.querySelector('.sg').hidden = !song;
     }
   },
+  bossName(n) { $('bossname').textContent = n.toUpperCase(); },
   gameOver(g) { endLevel(g, false); },
   levelClear(g) { endLevel(g, true); },
 };
@@ -327,12 +328,13 @@ function outfitUnlocked(k) {
   if (!o) return false;
   if (o.records !== undefined) return (save.records[o.records] || []).length >= 3;
   if (o.secrets) return secretsFound() >= secretsTotal();
+  if (o.manager) return !!save.trueEnding;
   if (o.beaten) return save.unlocked.levels > LEVELS.length;
   return true;
 }
 function renderCollection() {
   const recs = LEVELS.reduce((n, L) => n + (save.records[L.id] || []).length, 0);
-  $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
+  $('col-total').textContent = `Platinum records ${recs}/${LEVELS.length * 3}  ·  Secret areas ${secretsFound()}/${secretsTotal()}  ·  Demo tapes ${LEVELS.filter((L) => save.tapes[L.id]).length}/${LEVELS.length}  ·  True ending ${save.trueEnding ? '\u2714' : '???'}  ·  Outfits ${Object.keys(OUTFITS).filter(outfitUnlocked).length}/${Object.keys(OUTFITS).length}`;
   const disc = (n, of) => Array.from({ length: of }, (_, i) => (i < n ? '\u25CF' : '\u25CB')).join(' ');
   $('col-gigs').innerHTML = '<tr><th>Gig</th><th>Records</th><th>Secrets</th><th>Tape</th></tr>' + LEVELS.map((L, i) => {
     const open = i < save.unlocked.levels;
@@ -609,7 +611,10 @@ function endLevel(g, clear) {
   if (clear) {
     music.sClear();
     if (HEROES[L.rescue] && unlockCharacter(L.rescue)) unlockText = `New character: ${HEROES[L.rescue].name}!`;
-    if (last && !run.encore) unlockText = 'You beat the Devil! The tour is complete.';
+    const tapes = LEVELS.filter((T) => save.tapes[T.id]).length;
+    if (g.trueEnding) unlockText = "TRUE ENDING! The Manager is beaten and the band is free. New outfit: Manager's Suit!";
+    else if (last && !run.encore) unlockText = tapes >= LEVELS.length ? 'You beat the Devil! The tour is complete.'
+      : `You beat the Devil! But something's not right... Find all ${LEVELS.length} demo tapes (${tapes}/${LEVELS.length}) and face him again.`;
     unlockLevel(run.level + 2);
   } else music.sOver();
   $('unlock').textContent = unlockText;
@@ -631,6 +636,7 @@ function endLevel(g, clear) {
   only('over');
   setTimeout(() => (!$('hs').hidden ? $('initials') : $('over-next')).focus(), 50);
   endLevel.clear = clear;
+  endLevel.trueEnd = clear && !!g.trueEnding;
 }
 
 let pending = null;
@@ -692,7 +698,7 @@ $('over-next').addEventListener('click', () => {
     const next = run.level + 1;
     const comicKey = 'after' + run.level;
     if (next < LEVELS.length) showComic(comicKey, () => showMap(next));
-    else showComic(comicKey, toTitle);
+    else showComic(endLevel.trueEnd ? 'trueEnd' : comicKey, toTitle);
   } else {
     // Continue after a game over: back to the last checkpoint of this gig, score wiped
     run.score = 0; run.lives = run.diff.lives;

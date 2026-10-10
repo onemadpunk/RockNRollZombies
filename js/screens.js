@@ -24,6 +24,16 @@ const devil = (x, y, s = 1) => `
     <path d="M-12 -56 l9 4 l-9 3 z" fill="${GOLD}"/><path d="M12 -56 l-9 4 l9 3 z" fill="${GOLD}"/>
     <path d="M-10 -40 Q0 -32 10 -40" stroke="${GOLD}" stroke-width="2" fill="none"/>
   </g>`;
+const suit = (x, y, s = 1) => `
+  <g transform="translate(${x} ${y}) scale(${s})">
+    <rect x="-8" y="-50" width="16" height="16" rx="2" fill="#9aa88a"/>
+    <rect x="-9" y="-54" width="18" height="6" rx="2" fill="${INK}"/><rect x="-7" y="-45" width="14" height="4" fill="${INK}"/>
+    <rect x="-12" y="-34" width="24" height="26" fill="#8a3ad0"/>
+    <path d="M-4 -34 l4 14 l4 -14 z" fill="${BONE}"/><rect x="-1.5" y="-32" width="3" height="11" fill="${RED}"/>
+    <rect x="-10" y="-8" width="8" height="22" fill="#5a2a8a"/><rect x="2" y="-8" width="8" height="22" fill="#5a2a8a"/>
+    <rect x="-18" y="-32" width="6" height="20" fill="#8a3ad0"/><rect x="12" y="-32" width="6" height="20" fill="#8a3ad0"/>
+    <rect x="12" y="-14" width="22" height="16" rx="2" fill="#3a2414"/><rect x="20" y="-17" width="6" height="4" fill="${GOLD}"/>
+  </g>`;
 const flames = (y) => Array.from({ length: 12 }, (_, i) => `<path d="M${i * 26 - 4} ${y} q13 -${30 + (i % 3) * 14} 26 0 z" fill="${i % 2 ? '#ff6a1a' : RED}" opacity=".9"/>`).join('');
 const sky = (a = '#1b1233', b = '#3b2a58') => `<defs><linearGradient id="g${a.slice(1)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="300" height="200" fill="url(#g${a.slice(1)})"/>`;
 const graves = () => [20, 70, 120, 190, 250].map((x, i) => `<path d="M${x} 200 v-${22 + (i % 2) * 8} a10 10 0 0 1 20 0 v${22 + (i % 2) * 8} z" fill="#4d5163"/>`).join('');
@@ -58,7 +68,7 @@ const ART = {
     ${person(110, 150, 1.4)}${person(160, 150, 1.4, INK, '#2fa8ff')}${person(210, 150, 1.4, INK, '#111')}
     <text x="150" y="40" text-anchor="middle" font-family="Bungee, Impact" font-size="16" fill="${TOXIC}">THE BAND'S GETTING BACK TOGETHER</text>`,
   festival: `${sky('#0a0510', '#3a1a30')}${moon(60, 50, 18)}<rect x="0" y="160" width="300" height="40" fill="#2a1e14"/>
-    <path d="M140 160 L190 60 L240 160 Z" fill="#5a1a3a"/><path d="M60 160 L95 90 L130 160 Z" fill="#3a1a5a"/><path d="M190 60 v-16" stroke="${GOLD}" stroke-width="2"/>
+    <path d="M140 160 L190 60 L240 160 Z" fill="#5a1a3a"/><path d="M60 160 L95 90 L130 160 Z" fill="#8a3ad0"/><path d="M190 60 v-16" stroke="${GOLD}" stroke-width="2"/>
     <circle cx="250" cy="110" r="34" fill="none" stroke="#666" stroke-width="3"/>${[0, 60, 120, 180, 240, 300].map((a) => `<line x1="250" y1="110" x2="${250 + 34 * Math.cos(a * Math.PI / 180)}" y2="${110 + 34 * Math.sin(a * Math.PI / 180)}" stroke="#666" stroke-width="2"/>`).join('')}
     <path d="M120 40 q20 -20 40 0 q-10 30 -20 40 q-10 -10 -20 -40" fill="#c8d6ff" opacity=".7"/>`,
   highway: `${sky('#120406', '#8a2a12')}<rect x="0" y="120" width="300" height="80" fill="#5a3424"/>
@@ -78,6 +88,25 @@ const ART = {
     <polygon points="60,0 30,120 100,120" fill="${PINK}" opacity=".22"/><polygon points="150,0 120,120 180,120" fill="${GOLD}" opacity=".18"/><polygon points="240,0 200,120 270,120" fill="${TOXIC}" opacity=".2"/>
     ${person(70, 118, 1)}${guitar(74, 98)}${person(120, 118, 1, INK, '#2fa8ff')}${person(170, 118, 1, INK, '#111')}${guitar(174, 96, -20)}${person(220, 118, 1, INK, GOLD)}
     ${[20, 60, 100, 140, 180, 220, 260].map((x) => zhead(x, 168 + (x % 3) * 4)).join('')}`,
+  manager: `${sky('#1a0a14', '#3a1a30')}<rect x="0" y="160" width="300" height="40" fill="#141016"/>
+    ${[0, 1, 2, 3, 4, 5].map((k) => `<circle cx="${60 + k * 36}" cy="${150 - (k % 2) * 14}" r="${26 + (k % 3) * 6}" fill="#3a3038" opacity=".55"/>`).join('')}
+    ${suit(150, 166, 1.8)}
+    <text x="60" y="56" text-anchor="middle" font-family="Bungee, Impact" font-size="24" fill="${GOLD}" transform="rotate(-10 60 56)">90%</text>
+    <text x="244" y="56" text-anchor="middle" font-family="Bungee, Impact" font-size="16" fill="${GOLD}" transform="rotate(8 244 56)">$ $ $</text>`,
+  torn: `${sky('#120618', '#3a1a40')}<rect x="0" y="160" width="300" height="40" fill="#141016"/>
+    ${person(80, 160, 1.4)}${guitar(86, 124)}
+    <g transform="translate(160 40) rotate(-14)"><path d="M0 0 h40 l-6 16 l8 14 l-6 14 l6 14 l-4 14 h-38 z" fill="${BONE}"/><path d="M6 14 h24 M6 26 h22 M6 38 h20" stroke="#999"/></g>
+    <g transform="translate(214 44) rotate(16)"><path d="M6 0 h40 v72 h-40 l4 -14 l-6 -14 l6 -14 l-8 -14 z" fill="${BONE}"/><path d="M14 14 h26 M14 26 h24" stroke="#999"/><path d="M14 58 q8 -8 16 2" stroke="${RED}" stroke-width="3" fill="none"/></g>
+    <text x="214" y="150" text-anchor="middle" font-family="Bungee, Impact" font-size="20" fill="${PINK}">RIIIP!</text>`,
+  ourmusic: `${sky('#2a1040', '#c8506a')}<circle cx="150" cy="120" r="54" fill="${GOLD}" opacity=".75"/><rect x="0" y="120" width="300" height="80" fill="#141018"/>
+    ${person(80, 118, 1)}${guitar(84, 98)}${person(130, 118, 1, INK, '#2fa8ff')}${person(180, 118, 1, INK, '#111')}${guitar(184, 96, -20)}${person(230, 118, 1, INK, GOLD)}
+    <rect x="64" y="16" width="172" height="28" fill="${INK}" stroke="${PINK}" stroke-width="2"/><text x="150" y="36" text-anchor="middle" font-family="Bungee, Impact" font-size="14" fill="${PINK}">OUR SONGS, OUR WAY</text>
+    ${[20, 60, 100, 140, 180, 220, 260].map((x) => zhead(x, 168 + (x % 3) * 4)).join('')}`,
+  trueend: `${sky('#06050d', '#2a1240')}${moon(60, 46, 20)}<rect x="0" y="160" width="300" height="40" fill="#141018"/>
+    <text x="150" y="84" text-anchor="middle" font-family="Bungee, Impact" font-size="30" fill="${GOLD}">TRUE ENDING</text>
+    <text x="150" y="112" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${TOXIC}">TURN IT UP TO 11</text>
+    <text x="150" y="130" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${PINK}">AND DEAD THE UNDEAD</text>
+    <g transform="translate(222 140)"><rect width="56" height="22" rx="3" fill="${PINK}"/><rect x="38" y="-8" width="18" height="10" rx="2" fill="${PINK}"/><circle cx="12" cy="23" r="6" fill="#000"/><circle cx="44" cy="23" r="6" fill="#000"/></g>`,
   theend: `${sky('#06050d', '#191232')}${moon(240, 50, 22)}<rect x="0" y="160" width="300" height="40" fill="#141018"/>
     <text x="150" y="90" text-anchor="middle" font-family="Bungee, Impact" font-size="34" fill="${PINK}">THE END</text>
     <text x="150" y="118" text-anchor="middle" font-family="Bungee, Impact" font-size="12" fill="${TOXIC}">...OF THE TOUR</text>
@@ -114,9 +143,16 @@ export const COMICS = {
   after4: [
     { art: 'devilbeat', text: 'The Devil drops his flying-V. The contract goes up in flames. Your soul is your own again.' },
     { art: 'finale', text: 'And the zombies? Turns out they just wanted a decent gig.' },
-    { art: 'theend', text: 'Thanks for playing! Made by One Mad Punk. Try Hard mode for the Encore, and hunt down every platinum record.' },
+    { art: 'theend', text: "Thanks for playing! Made by One Mad Punk. Try Hard mode for the Encore. Psst... find all five demo tapes, then face the Devil again. Something isn't right." },
   ],
 };
+
+COMICS.trueEnd = [
+  { art: 'manager', text: '"Not so fast." Your manager steps out of the smoke. He signed the deal, and let the Devil do his dirty work.' },
+  { art: 'torn', text: 'The small print said 90% of everything, forever. You tear it up on the beat.' },
+  { art: 'ourmusic', text: 'No managers. No devils. The band plays its own songs its own way, and the zombies have never had a better night.' },
+  { art: 'trueend', text: "TRUE ENDING! Made by One Mad Punk. Thanks for playing all the way to the end. You've unlocked the Manager's Suit." },
+];
 
 export function renderComic(container, key) {
   container.innerHTML = COMICS[key].map((p, i) => `
