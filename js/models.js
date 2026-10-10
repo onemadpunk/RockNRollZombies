@@ -747,13 +747,17 @@ export function makeFireball() {
   return g;
 }
 
+// The gold jacket (our Ghosts 'n Goblins golden armour): hold Throw to charge a super attack
+export const GOLD_JACKET = new THREE.MeshStandardMaterial({ color: 0xffd23a, metalness: 0.7, roughness: 0.25, emissive: 0x6a4a00 });
+
 export function makePickup(kind) {
   const g = new THREE.Group();
-  if (kind === 'jacket') {
+  if (kind === 'jacket' || kind === 'goldjacket') {
     const j = new THREE.Group();
-    box(0.5, 0.55, 0.15, MAT.leather, 0, 0, 0, j);
-    box(0.16, 0.45, 0.14, MAT.leather, -0.33, -0.02, 0, j).rotation.z = 0.25;
-    box(0.16, 0.45, 0.14, MAT.leather, 0.33, -0.02, 0, j).rotation.z = -0.25;
+    const lea = kind === 'goldjacket' ? GOLD_JACKET : MAT.leather;
+    box(0.5, 0.55, 0.15, lea, 0, 0, 0, j);
+    box(0.16, 0.45, 0.14, lea, -0.33, -0.02, 0, j).rotation.z = 0.25;
+    box(0.16, 0.45, 0.14, lea, 0.33, -0.02, 0, j).rotation.z = -0.25;
     box(0.12, 0.5, 0.01, MAT.tee, 0, 0, 0.08, j);
     for (let i = 0; i < 4; i++) box(0.04, 0.04, 0.02, MAT.stud, -0.1, 0.18 - i * 0.12, 0.08, j);
     g.add(j);
@@ -779,7 +783,7 @@ export function makePickup(kind) {
     }
     g.add(w);
   }
-  const ringCol = kind === 'platinum' ? 0xe8f0ff : kind === 'jacket' || kind === 'life' ? 0xffc94a : 0xa6ff4d;
+  const ringCol = kind === 'platinum' ? 0xe8f0ff : kind === 'goldjacket' ? 0xffffff : kind === 'jacket' || kind === 'life' ? 0xffc94a : 0xa6ff4d;
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.025, 6, 32), new THREE.MeshBasicMaterial({ color: ringCol }));
   ring.rotation.x = Math.PI / 2; ring.position.y = -0.55;
   g.add(ring);
@@ -1008,4 +1012,30 @@ export function makeRival() {
   for (let i = 0; i < 2; i++) box(0.3, 0.02, 0.07, MAT.chrome, 0, -0.14 - i * 0.08, 0, gtr);
   z.guitar = gtr;
   return z;
+}
+
+// The curse from a mystery case: you're a rubber duck for a few seconds (Arthur got turned into a frog)
+export function makeDuck() {
+  const g = new THREE.Group();
+  const yellow = M(0xffd23a, { roughness: 0.35 }), orange = M(0xff8a20, { roughness: 0.4 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), yellow); body.scale.set(1.25, 0.85, 1); body.position.y = 0.38; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), yellow); head.position.set(0.28, 0.85, 0); g.add(head);
+  box(0.24, 0.07, 0.16, orange, 0.55, 0.82, 0, g);                                   // beak
+  for (const sz of [-1, 1]) box(0.05, 0.07, 0.03, MAT.dark, 0.4, 0.92, sz * 0.15, g);  // eyes
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 6), yellow); tail.rotation.z = 2.2; tail.position.set(-0.52, 0.55, 0); g.add(tail);
+  // the punk's mohawk survives the curse
+  for (let i = 0; i < 4; i++) box(0.05, 0.14 + Math.sin(i / 3 * Math.PI) * 0.06, 0.05, MAT.mohawk, 0.3 - i * 0.07, 1.12, 0, g);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+// "?" sticker on mystery flight cases
+export function makeMysterySticker() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffc94a'; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#0c0a14'; g.font = 'bold 52px Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 32, 36);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshStandardMaterial({ map: t, emissive: 0x6a4a00, emissiveIntensity: 0.6, roughness: 0.6 }));
+  return m;
 }

@@ -48,6 +48,9 @@ Each rescued bandmate becomes playable. Each gig hides three platinum records.
 - **Jukeboxes:** passing one saves your spot; shooting one first smashes it for cash, but then it won't save anything.
 - **Dropped cash:** die and half your cash drops in a glowing bag where you fell. Grab it back before you die again.
 - **Demo tapes:** one hidden on each gig's high route. Each unlocks that gig's songs in the Jukebox menu.
+- **Stage dive:** hold Down in mid-air to bounce off zombies' heads. On the beat it hits twice as hard.
+- **Gold jacket:** from "?" flight cases and Hell Bats. Hold Throw to charge a super attack: Punk power chord, Drummer drum roll, Bassist big vinyl, Singer high note (all around you), Roadie tool storm (both ways). One hit knocks it off.
+- **"?" flight cases:** a gamble. Usually gold, sometimes the gold jacket, sometimes a rubber-duck curse for 5 seconds (slower, lower jumps, can only quack).
 - **Rick Rotten:** a zombie guitarist on the Devil's payroll who crashes the end of every ambush, tougher each gig.
 - **Outfits and Collection:** platinum records, secret areas and beating the Devil unlock outfits; the Collection screen shows what's left to find.
 - **Settings:** music and sound volume, flashing, shake, full screen, graphics quality.

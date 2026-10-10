@@ -2,7 +2,7 @@
 // Anything that carries between levels (score, lives, cash, upgrades, difficulty) lives in `run`.
 import * as THREE from 'three';
 import {
-  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeFlightCase,
+  makeHero, HEROES, OUTFITS, makeZombie, makeCrawler, makeRat, makeGhost, makeHand, makeCrow, makeGargoyle, makeBanshee, makeMummy, makeHearse, makeDevil, makeHellbat, makeTape, makeCashBag, makeRival, makeDuck, makeMysterySticker, GOLD_JACKET, makeFlightCase,
   makeWeaponMesh, makeSkull, makeBottle, makeFireball, makePickup, makeBones, makeCutout, MAT,
 } from './models.js';
 import { popup } from './fx.js';
@@ -59,8 +59,10 @@ export class Game {
       const y = c.y || 0;
       mesh.position.set(c.x, y, -0.5);
       mesh.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      const mystery = c.loot === 'gold';
+      if (mystery) { const st = makeMysterySticker(); st.position.set(0, 0.45, 0.41); mesh.add(st); }
       scene.add(mesh);
-      return { x: c.x, y, hp: 2, mesh, loot: c.loot, flash: 0 };
+      return { x: c.x, y, hp: 2, mesh, loot: c.loot, flash: 0, mystery };
     };
     this.crates = this.L.crates.map(mkCrate);
     // Secret areas: their loot waits in flight cases inside each room
@@ -480,7 +482,7 @@ export class Game {
     if (p.soloT > 0 || this.cine) p.vx *= 0.8;
     else if (ctrl && p.wallJumpT <= 0) {
       const inMud = p.onGround && this.level.mudAt(p.x);
-      const goal = target * RUN * (inMud ? 0.5 : 1);
+      const goal = target * RUN * (inMud ? 0.5 : 1) * (p.duckT > 0 ? 0.75 : 1);
       if (inMud && Math.abs(p.vx) > 1 && Math.random() < 0.2) this.chunks.emit({ x: p.x, y: 0.05 }, { n: 1, color: 0x3a2618, speed: 1.5, up: 1.5, life: 0.4, size: 0.08 });
       p.vx += Math.sign(goal - p.vx) * Math.min(Math.abs(goal - p.vx), accel * dt);
     }
@@ -500,7 +502,7 @@ export class Game {
         popup('AMPED!', 'beat', { x: p.x, y: p.y + 2.4 }, this.camera);
         this.ui.shake(0.25);
       } else {
-        p.vy = p.jumpV * (this.level.mudAt(p.x) ? 0.85 : 1);
+        p.vy = p.jumpV * (this.level.mudAt(p.x) ? 0.85 : 1) * (p.duckT > 0 ? 0.8 : 1);
         M.sJump();
         if (p.standing && p.standing.amp) popup('Jump on the beat!', 'info', { x: p.x, y: p.y + 2.4 }, this.camera);
       }
@@ -542,7 +544,36 @@ export class Game {
 
     const W = WEAPONS[p.weapon];
     const mine = this.shots.filter((s) => s.owner === p).length;
-    if (ctrl && inp.pressed.throw && p.cd <= 0 && mine < W.max) this.throwWeapon(p);
+    if (p.duckT > 0) {
+      p.duckT -= dt;
+      if (ctrl && inp.pressed.throw) { this.music.sSqueak?.(); popup('Quack!', 'info', { x: p.x, y: p.y + 1.8 }, this.camera); }
+      if (p.duckT <= 0) { p.duck.visible = false; popup('Back to normal!', 'info', { x: p.x, y: p.y + 2.4 }, this.camera); this.sparks.emit({ x: p.x, y: p.y + 1 }, { n: 20, color: [0xb04aff, 0xffd23a], speed: 4, up: 2, life: 0.6, size: 0.08, gravity: 2, intensity: 2 }); }
+    } else if (ctrl && inp.pressed.throw && p.cd <= 0 && mine < W.max) this.throwWeapon(p);
+    // Gold jacket: keep holding Throw to charge, let go for the super
+    if (p.gold && !(p.duckT > 0)) {
+      if (ctrl && inp.held.throw) {
+        p.charge = (p.charge || 0) + dt;
+        if (p.charge > 0.3 && Math.random() < 0.5) this.sparks.emit({ x: p.x + (Math.random() - 0.5), y: p.y + 0.5 + Math.random() * 1.5 }, { n: 1, color: p.charge > 0.8 ? 0xffffff : 0xffd23a, speed: 1, up: 1, life: 0.3, size: 0.07, gravity: -1, intensity: 2 });
+        if (p.charge > 0.8 && !p.chargeReady) { p.chargeReady = true; this.music.sPickup(); }
+      } else {
+        if (p.charge > 0.8) this.superAttack(p);
+        p.charge = 0; p.chargeReady = false;
+      }
+    }
+    // Stage dive: hold Down in the air to come down guitar-first and bounce off heads
+    p.diving = ctrl && !p.onGround && !p.climb && inp.held.down && p.vy < 0 && !(p.clingT > 0);
+    if (p.diving) {
+      const feet = { x1: p.x - 0.4, x2: p.x + 0.4, y1: p.y - 0.3, y2: p.y + 0.3 };
+      const e = this.enemies.find((q) => !q.dead && q.hittable() && overlap(q.box(), feet) && p.y > q.box().y2 - 0.7);
+      if (e) {
+        const onBeat = M.onBeat(this.D.beatWindow);
+        this.damage(e, { dmg: onBeat ? 4 : 2, x: e.x, y: e.box().y2, vx: p.face, power: onBeat, owner: p, r: 0.4 });
+        p.vy = 12.5; p.jumpCut = true; p.inv = Math.max(p.inv, 0.12); p.airJump = true;
+        this.music.sThwack();
+        popup(onBeat ? 'ON-BEAT STAGE DIVE!' : 'STAGE DIVE!', onBeat ? 'beat' : 'info', { x: p.x, y: p.y + 2 }, this.camera);
+        this.sparks.emit({ x: p.x, y: p.y }, { n: 14, color: [0xff2e88, 0xffffff], speed: 5, up: 2, life: 0.4, size: 0.08, gravity: 4, intensity: 2 });
+      }
+    }
     if (inp.pressed.special && !this.cine && p.soloT <= 0) {
       if (p.solo >= 100) this.guitarSolo(p);
       else popup('Solo not ready', 'info', { x: p.x, y: p.y + 2.4 }, this.camera);
@@ -677,6 +708,12 @@ export class Game {
     P.root.position.set(p.x, p.y, 0);
     P.root.rotation.y += ((p.climb ? Math.PI : faceRot(p.face)) - P.root.rotation.y) * Math.min(1, dt * 18);
     P.root.visible = p.inv > 0 && p.soloT <= 0 ? Math.floor(p.inv * 16) % 2 === 0 : true;
+    if (p.duckT > 0 && p.duck) {
+      p.duck.visible = P.root.visible; P.root.visible = false;
+      p.duck.position.set(p.x, p.y + Math.abs(Math.sin(p.phase * 2)) * 0.12, 0);
+      p.duck.rotation.y = p.face > 0 ? -0.3 : Math.PI + 0.3;
+      p.phase += Math.abs(p.vx) * dt * 2;
+    }
 
     // Beat ring at the feet: a little metronome you can see
     const f = this.beat.frac ?? 0;
@@ -707,6 +744,9 @@ export class Game {
     } else if (p.clingT > 0 && !p.onGround) {
       // clinging to a wall: one hand up on it, knees tucked
       legL = -0.6; legR = -0.2; kneeL = 1.2; kneeR = 0.8; armL = armR = -2.6; elL = elR = -0.3; lean = -0.1;
+    } else if (p.diving) {
+      // stage dive: legs together, guitar pointed at their heads
+      legL = legR = 0.1; kneeL = kneeR = 0.2; armL = armR = 0.6; elL = elR = 0; lean = 0.5;
     } else if (p.slideT > 0) {
       legL = -1.4; legR = -1.2; kneeL = 0.2; kneeR = 0.4; armL = armR = -1.0; elL = elR = -0.3; bodyY = -0.55; lean = -0.7;
     } else if (p.gliding) {
@@ -844,6 +884,7 @@ export class Game {
     p.climb = null;
     if (p.armor > 0) {
       p.armor--;
+      if (p.gold) this.setGold(p, false);
       p.hero.setArmor(p.armor);
       p.inv = 2; p.stun = 0.45;
       const dir = p.x < fromX ? -1 : 1;
@@ -865,6 +906,9 @@ export class Game {
   kill(p) {
     if (p.dead) return;
     this.dropCash(p);
+    if (p.gold) this.setGold(p, false);
+    p.duckT = 0;
+    if (p.duck) p.duck.visible = false;
     p.climb = null;
     p.dead = true; p.deadT = 2.6;
     p.combo = 0;
@@ -880,6 +924,48 @@ export class Game {
       }
       this.chunks.emit({ x: p.x, y: p.y + 1 }, { n: 16, color: [0x17151c, 0x2c3c62, p.color], speed: 6, up: 5, life: 1.2, size: 0.14 });
     }
+  }
+
+  // ---- Gold jacket, super attacks, the duck curse ------------------------------------------
+  setGold(p, on) {
+    p.gold = on; p.charge = 0;
+    for (const m of p.hero.jacket) {
+      if (!m.isMesh) continue;
+      if (on) { if (!m.userData.mat) m.userData.mat = m.material; m.material = GOLD_JACKET; }
+      else if (m.userData.mat) m.material = m.userData.mat;
+    }
+  }
+
+  /** Charged with the gold jacket: a different super for each bandmate. */
+  superAttack(p) {
+    const name = { punk: 'POWER CHORD!', drummer: 'DRUM ROLL!', bassist: 'BIG VINYL!', singer: 'HIGH NOTE!', roadie: 'TOOL STORM!' }[p.char] || 'SUPER!';
+    const hits = this.enemies.filter((e) => {
+      if (e.dead || !e.hittable()) return false;
+      const c = e.center(), dx = (c.x - p.x) * p.face, dy = c.y - (p.y + 1);
+      if (p.char === 'singer') return Math.hypot(c.x - p.x, dy) < 5.5;                      // a ring all around you
+      if (p.char === 'roadie') return Math.abs(c.x - p.x) < 10 && Math.abs(dy) < 2;         // both ways along the ground
+      if (p.char === 'drummer') return dx > -0.5 && dx < 8 && dy > -2 && dy < 6;            // sticks raining down ahead
+      return dx > -0.5 && dx < 12 && Math.abs(dy) < 2.5;                                     // a blast straight ahead
+    });
+    for (const e of hits) this.damage(e, { dmg: 4, x: e.x, y: e.y + 1, vx: p.face, power: true, owner: p, r: 0.4 });
+    this.music.sAmp?.(); this.music.sPower();
+    this.ui.shake(0.6); this.ui.flash('#ffd23a', 0.35);
+    const fx = (x, y) => this.sparks.emit({ x, y }, { n: 6, color: [0xffd23a, 0xffffff, 0xff2e88], speed: 4, up: 1, life: 0.5, size: 0.1, gravity: 1, intensity: 2 });
+    if (p.char === 'singer') for (let a = 0; a < 24; a++) fx(p.x + Math.cos(a / 24 * Math.PI * 2) * 3, p.y + 1 + Math.sin(a / 24 * Math.PI * 2) * 3);
+    else if (p.char === 'roadie') for (let d = -10; d <= 10; d += 1) fx(p.x + d, p.y + 0.2);
+    else if (p.char === 'drummer') for (let d = 1; d <= 8; d += 1) fx(p.x + p.face * d, p.y + 3 + Math.random() * 2);
+    else for (let d = 1; d <= 12; d += 0.7) fx(p.x + p.face * d, p.y + 1.2);
+    popup(name, 'beat', { x: p.x, y: p.y + 2.8 }, this.camera);
+  }
+
+  /** Mystery-case curse: a rubber duck for a few seconds. Slower, lower jumps, can only quack. */
+  curse(p) {
+    if (!p || p.dead) return;
+    if (!p.duck) { p.duck = makeDuck(); this.scene.add(p.duck); }
+    p.duckT = 5;
+    p.duck.visible = true;
+    this.music.sSqueak?.();
+    popup("CURSED! You're a rubber duck!", 'beat', { x: p.x, y: p.y + 2.6 }, this.camera);
   }
 
   /** Shovel Knight style: half your cash drops where you died. Grab it back, or lose it if you die first. */
@@ -1182,6 +1268,13 @@ export class Game {
     const c = e.center();
     popup(mult > 1 && !e.boss ? `+${pts} x${mult}` : `+${pts}`, 'pts', { x: c.x, y: c.y + 0.8 }, this.camera);
     if (e.boss) { this.bossDefeated(e); return; }
+    if (e.kind === 'hellbat') {
+      const kind = Math.random() < 0.3 ? 'goldjacket' : 'jacket';
+      const mesh = makePickup(kind);
+      const y = Math.max(0.9, (this.level.surfaceAt(c.x) ?? 0) + 0.9);
+      mesh.position.set(c.x, y, 0); this.scene.add(mesh);
+      this.pickups.push({ kind, x: c.x, y, mesh, t: 0 });
+    }
     if (e.kind === 'ghost') {
       this.scene.remove(e.model.root);
       this.sparks.emit(c, { n: 30, color: [0xc8d6ff, 0x6a7cff, 0xffffff], speed: 5, up: 1, life: 0.8, size: 0.09, gravity: -1, intensity: 1.5 });
@@ -2583,6 +2676,17 @@ export class Game {
     this.chunks.emit({ x: c.x, y: c.y + 0.4 }, { n: 20, color: [0x18181c, 0xa7adb8], speed: 6, up: 4, life: 1, size: 0.14 });
     let kind = c.loot;
     if (this.players.every((p) => p.weapon === kind)) kind = 'gold';
+    // Mystery case ("?"): usually gold, sometimes the gold jacket, sometimes a curse
+    if (c.mystery) {
+      const roll = Math.random();
+      if (roll < 0.2) {
+        const p = this.target(c.x);
+        this.curse(p);
+        this.sparks.emit({ x: c.x, y: c.y + 0.8 }, { n: 30, color: [0xb04aff, 0xffffff], speed: 5, up: 3, life: 0.8, size: 0.1, gravity: 1, intensity: 2 });
+        return;
+      }
+      if (roll < 0.45) kind = 'goldjacket';
+    }
     const mesh = makePickup(kind);
     mesh.position.set(c.x, c.y + 0.9, 0);
     this.scene.add(mesh);
@@ -2612,6 +2716,11 @@ export class Game {
         this.run.score += 2500; this.run.cash += k.old ? 25 : 100;
         popup(`PLATINUM RECORD ${this.recordsFound.length}/3!`, 'beat', at, this.camera);
       } else if (k.kind === 'life') { this.run.lives++; this.music.sLife(); popup('1UP!', 'beat', at, this.camera); }
+      else if (k.kind === 'goldjacket') {
+        p.armor = Math.max(p.armor, 1); p.hero.setArmor(p.armor); this.setGold(p, true);
+        this.music.sPlatinum();
+        popup('GOLD JACKET! Hold THROW to charge a super attack', 'beat', at, this.camera);
+      }
       else if (k.kind === 'cashbag') { this.run.cash += k.amount; this.cashBag = null; popup(`+$${k.amount} GOT IT BACK!`, 'beat', at, this.camera); }
       else if (k.kind === 'tape') {
         this.music.sPlatinum();
