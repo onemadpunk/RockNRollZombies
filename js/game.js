@@ -272,7 +272,7 @@ export class Game {
       return true;
     });
     // Ghosts 'n Goblins style: every few bars a handful of zombies claw up out of the ground around you
-    if (!quiet && zone.burst && i % 16 === 8 && lead.onGround && lead.y < 1.5 && lead.x > 8) {
+    if (!quiet && zone.burst && i % 16 === 8 && lead.onGround && lead.x > 8) {
       const ambient = this.enemies.filter((e) => e.ambient && !e.dead).length;
       const n = Math.min(Math.round(zone.burst * (this.D.bursts ?? 1)), zone.max + 2 - ambient);   // none on Easy, fewer on Normal
       for (let k = 0; k < n; k++) this.riseNear(lead, k % 2 ? -1 : 1);
@@ -336,15 +336,17 @@ export class Game {
 
   /** A zombie claws up out of the ground a few steps from the player (on the same surface, on screen). */
   riseNear(lead, side) {
-    for (let tries = 0; tries < 5; tries++) {
+    const high = lead.y > 2;   // up on the walkways they climb up over the edge
+    const floor = high ? (x) => this.floorAt(x) : (x) => this.level.surfaceAt(x);
+    for (let tries = 0; tries < (high ? 10 : 5); tries++) {
       const x = lead.x + side * rand(3, 6.5);
       if (x < this.camX - this.halfW + 1 || x > this.camX + this.halfW - 0.5 || x > this.L.arena.gate - 3) continue;
-      const sy = this.level.surfaceAt(x);
-      if (sy === null || Math.abs(sy - lead.y) > 0.5 || this.level.surfaceAt(x - 1.5) !== sy || this.level.surfaceAt(x + 1.5) !== sy) continue;
+      const sy = floor(x);
+      if (sy === null || Math.abs(sy - lead.y) > (high ? 1.3 : 0.5) || !this.roomAt(x, sy, high ? 0.9 : 1.5, floor)) continue;
       if (this.enemies.some((e) => !e.dead && e.kind !== 'bird' && Math.abs(e.x - x) < 1.2)) continue;
       if (this.level.ladders.some((l) => Math.abs(l.x - x) < 1) || (this.L.amps || []).some(([ax]) => Math.abs(x - ax) < 1.1)) continue;
       const z = this.spawnZombie('walker', x, sy);
-      z.ambient = true;
+      z.ambient = true; z.patrol = high;
       this.chunks.emit({ x, y: sy + 0.05 }, { n: 10, color: [0x2b2229, 0x3b2f2a], speed: 3, up: 4, life: 0.7, size: 0.12 });
       return z;
     }
@@ -420,27 +422,41 @@ export class Game {
     Z.body.rotation.x = e.state === 'swoop' ? 0.6 : 0.1;
   }
 
+  /** Room to stand at x on the surface at height sy, at least `margin` from either end. */
+  roomAt(x, sy, margin, floor) {
+    return floor(x) === sy && floor(x - margin) === sy && floor(x + margin) === sy;
+  }
+
+  /** Top surface at x counting the one-way walkways too (not the moving ones), or null over a pit. */
+  floorAt(x) {
+    let top = this.level.surfaceAt(x);
+    for (const l of this.level.ledges) if (!l.mover && x > l.x1 + 0.3 && x < l.x2 - 0.3 && (top === null || l.y > top)) top = l.y;
+    return top;
+  }
+
   spawnAmbient(zone, lead) {
     let roll = Math.random(), kind = 'walker';
     for (const [k, w] of Object.entries(zone.spawn)) { if ((roll -= w) <= 0) { kind = k; break; } }
     const dir = Math.random() < 0.6 ? 1 : -1;
-    for (let tries = 0; tries < 6; tries++) {
+    const high = lead.y > 2;   // the high route gets its own zombies, pacing the narrow walkways
+    const floor = high ? (x) => this.floorAt(x) : (x) => this.level.surfaceAt(x);
+    for (let tries = 0; tries < (high ? 14 : 6); tries++) {
       const x = lead.x + dir * rand(3.5, 10);
       if (x < this.camX - this.halfW + 1 || x > this.L.arena.gate - 3) continue;
       if (this.enemies.some((e) => e.kind !== 'bird' && Math.abs(e.x - x) < 1.5)) continue;
       if (kind === 'ghost') { this.spawnGhost(x, lead.y + 1.5 + Math.random()).ambient = true; return; }
       // Appear on the surface the player is on (street or rooftop), never right at an edge.
-      const sy = this.level.surfaceAt(x);
-      if (sy === null || Math.abs(sy - lead.y) > 2.5 || this.level.ladders.some((l) => Math.abs(l.x - x) < 1)) continue;
-      if (this.level.surfaceAt(x - 2.5) !== sy || this.level.surfaceAt(x + 2.5) !== sy) continue;
+      const sy = floor(x);
+      if (sy === null || Math.abs(sy - lead.y) > (high ? 1.3 : 2.5) || this.level.ladders.some((l) => Math.abs(l.x - x) < 1)) continue;
+      if (!this.roomAt(x, sy, high ? 0.9 : 2.5, floor)) continue;
       if ((this.L.amps || []).some(([ax]) => Math.abs(x - ax) < 1.1)) continue;
       if (kind === 'rat') {
         // rats come in packs out of the drains
-        for (let k = 0; k < 2; k++) if (this.level.surfaceAt(x + k * 0.9 * dir) === sy) this.spawnRat(x + k * 0.9 * dir, sy).ambient = true;
+        for (let k = 0; k < 2; k++) if (floor(x + k * 0.9 * dir) === sy) { const r = this.spawnRat(x + k * 0.9 * dir, sy); r.ambient = true; r.patrol = high; }
         return;
       }
       const e = kind === 'crawler' ? this.spawnCrawler(x, sy) : this.spawnZombie(kind, x, sy);
-      e.ambient = true;
+      e.ambient = true; e.patrol = high;
       return;
     }
   }
@@ -980,8 +996,9 @@ export class Game {
     this.run.cash -= amount;
     const fell = p.y < -1 && p.safeX !== undefined;
     const x = fell ? p.safeX : p.x, y = (fell ? p.safeY : Math.max(0, p.y)) + 0.9;
-    const mesh = makeCashBag();
+    const mesh = makeCashBag(amount);
     mesh.position.set(x, y, 0); this.scene.add(mesh);
+    popup(`Dropped $${amount}! Grab it back`, 'info', { x: p.x, y: p.y + 2.6 }, this.camera);
     this.cashBag = { kind: 'cashbag', amount, x, y, mesh, t: 0, forever: true };
     this.pickups.push(this.cashBag);
   }
@@ -1486,8 +1503,8 @@ export class Game {
   }
 
   sinkOrTurn(e) {
-    const ahead = this.level.surfaceAt(e.x + e.face * 0.6);
-    if (e.onGround && (ahead === null || ahead < e.y - 0.5) && Math.random() < 0.02) e.face *= -1;
+    const ahead = e.patrol ? this.floorAt(e.x + e.face * 0.6) : this.level.surfaceAt(e.x + e.face * 0.6);
+    if (e.onGround && (ahead === null || ahead < e.y - 0.5) && (e.patrol || Math.random() < 0.02)) e.face *= -1;
     if (e.life && e.t > e.life && e.ambient) e.state = 'sink';
   }
 
@@ -1502,7 +1519,7 @@ export class Game {
     }
     if (e.kind === 'pogo') { if (e.onGround) e.vx *= 0.8; }
     else e.vx = e.face * e.speed * (0.35 + e.pulse * 1.6);   // lurch on the beat
-    this.move(e, dt, false);
+    this.move(e, dt, !!e.patrol);
     if (e.hitWall) e.face *= -1;
     this.sinkOrTurn(e);
     R.position.set(e.x, e.y, 0);
@@ -1539,9 +1556,9 @@ export class Game {
   updateCrawler(e, dt) {
     const R = e.model.root, Z = e.model;
     if (e.state === 'rise') { this.rise(e, dt, 0.6, 0.8); return; }
-    if (e.state === 'sink') { R.position.y -= dt; if (R.position.y < -1) { e.dead = true; this.scene.remove(R); disposeTree(R); } return; }
+    if (e.state === 'sink') { R.position.y -= dt; if (R.position.y < e.y - 1) { e.dead = true; this.scene.remove(R); disposeTree(R); } return; }
     e.vx = e.face * e.speed * (0.5 + e.pulse * 1.5);
-    this.move(e, dt, false);
+    this.move(e, dt, !!e.patrol);
     if (e.hitWall) e.face *= -1;
     this.sinkOrTurn(e);
     R.position.set(e.x, e.y, 0);
@@ -1556,11 +1573,11 @@ export class Game {
   updateRat(e, dt) {
     const R = e.model.root, Z = e.model;
     if (e.state === 'rise') { this.rise(e, dt, 0.3, 0.5); return; }
-    if (e.state === 'sink') { R.position.y -= dt; if (R.position.y < -0.8) { e.dead = true; this.scene.remove(R); disposeTree(R); } return; }
+    if (e.state === 'sink') { R.position.y -= dt; if (R.position.y < e.y - 0.8) { e.dead = true; this.scene.remove(R); disposeTree(R); } return; }
     // scurry at you, darting faster on the beat
     e.face = this.target(e.x).x < e.x ? -1 : 1;
     e.vx = e.face * e.speed * (0.6 + e.pulse * 1.0);
-    this.move(e, dt, false);
+    this.move(e, dt, !!e.patrol);
     this.sinkOrTurn(e);
     R.position.set(e.x, e.y, 0);
     R.rotation.y = e.face > 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -2770,7 +2787,7 @@ export class Game {
         }
         xs.forEach((x, k) => {
           const bag = makeCashBag();
-          bag.children[bag.children.length - 1].visible = false;   // no pickup beam: this one hurts
+          bag.userData.beam.visible = false;   // no pickup beam: this one hurts
           this.rubble(x, k * 0.15, bag);
         });
       }

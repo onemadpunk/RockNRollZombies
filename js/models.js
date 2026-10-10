@@ -971,15 +971,38 @@ export function makeTape(old = false) {
 }
 
 // The cash you dropped when you died: a bag of money with a beam of light so you can find it again
-export function makeCashBag() {
+export function makeCashBag(amount = 0) {
   const g = new THREE.Group();
-  const bag = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), M(0x5a8a3a, { roughness: 0.7 }));
-  bag.scale.set(1, 0.9, 0.9); g.add(bag);
-  box(0.16, 0.12, 0.16, M(0x4a7a2a), 0, 0.3, 0, g);                                                        // tied neck
-  box(0.14, 0.22, 0.02, M(0xffc94a, { emissive: 0x6a4a00, emissiveIntensity: 1.5 }), 0, 0, 0.29, g);       // $ sign
+  // a tan money sack with a big gold $ on both sides (the old green one looked like a bomb)
+  const sack = M(0xc8a060, { roughness: 0.85 });
+  const bag = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), sack);
+  bag.scale.set(1, 0.95, 0.8); g.add(bag);
+  box(0.18, 0.14, 0.16, sack, 0, 0.32, 0, g);                                                         // gathered neck
+  box(0.22, 0.05, 0.2, M(0x6a3a1a), 0, 0.27, 0, g);                                                   // rope tie
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ffc94a'; x.font = 'bold 56px Impact, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('$', 32, 34);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const dollar = new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false });
+  for (const sz of [1, -1]) { const d = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), dollar); d.position.z = sz * 0.28; if (sz < 0) d.rotation.y = Math.PI; g.add(d); }
+  const coin = M(0xffc94a, { metalness: 0.7, roughness: 0.3, emissive: 0x6a4a00 });
+  for (const [cx, cz] of [[-0.3, 0.1], [0.32, -0.05], [0.22, 0.2]]) {
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.025, 12), coin); k.position.set(cx, -0.3, cz); g.add(k);
+  }
+  if (amount) {
+    // how much is in it, floating above
+    const lc = document.createElement('canvas'); lc.width = 128; lc.height = 48;
+    const lx = lc.getContext('2d');
+    lx.fillStyle = 'rgba(12,10,20,.75)'; lx.fillRect(0, 0, 128, 48);
+    lx.fillStyle = '#ffc94a'; lx.font = 'bold 34px Impact, sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillText('$' + amount, 64, 26);
+    const lt = new THREE.CanvasTexture(lc); lt.colorSpace = THREE.SRGBColorSpace;
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: lt, toneMapped: false, depthTest: false }));
+    label.scale.set(0.9, 0.34, 1); label.position.y = 0.85; g.add(label);
+  }
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, 6, 10, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xa6ff4d, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
   beam.position.y = 3; g.add(beam);
+  g.userData.beam = beam;
   return g;
 }
 
