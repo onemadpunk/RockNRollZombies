@@ -43,6 +43,10 @@ Each rescued bandmate becomes playable. Each gig hides three platinum records.
 - **Scoreboards:** high scores and fastest clear time per gig, on this device and worldwide (filter the fastest times by character). Share a challenge link with a friend.
 - **Special moves:** Drummer double jump (Jump in the air), Singer glide (hold Jump while falling), Bassist slide tackle (Down while running), Roadie barges through crew barricades. The Punk throws fastest.
 - **Secret areas:** two per gig, behind cracked walls with a faint light in the cracks. Shoot the wall, then Up at the door.
+- **Two routes:** every gig has a high route (walkways, rigging, girders: faster, flyers, most of the platinum records) and a low route (zombies rising from the ground, barricades, pits).
+- **Hell Bats:** winged demons that hover out of reach, dodge your shots and swoop on the beat.
+- **Outfits and Collection:** platinum records, secret areas and beating the Devil unlock outfits; the Collection screen shows what's left to find.
+- **Settings:** music and sound volume, flashing, shake, full screen, graphics quality.
 
 ## Working on the code
 The game code lives in `js/`. After changing anything, rebuild the double-clickable file:
